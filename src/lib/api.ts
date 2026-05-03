@@ -1,4 +1,12 @@
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
+
+/**
+ * API base config:
+ * Local dev URL: http://localhost:8080
+ * Production URL: https://vault-api-0uue.onrender.com
+ * CORS is currently open (*) with no credentials.
+ * If the backend enables credentials, update CORS to explicit origins and coordinate withCredentials.
+ */
 
 import type {
   Account,
@@ -25,21 +33,35 @@ import type {
 
 
 if (!process.env.NEXT_PUBLIC_API_URL) {
-  if (process.env.NODE_ENV === "development") {
-    throw new Error(
-      "NEXT_PUBLIC_API_URL is not set in .env.local. Please set it to your backend URL."
-    );
-  }
+  throw new Error(
+    "NEXT_PUBLIC_API_URL is not set. Provide it in .env.local (dev) or .env.production (prod)."
+  );
 }
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const api = axios.create({
   baseURL: `${apiBaseUrl}/api/v1`,
+  timeout: 30000,
 });
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error.config as
+      | (InternalAxiosRequestConfig & { __retry?: boolean })
+      | undefined;
+    const status = error.response?.status;
+    const shouldRetry =
+      (status === 502 || status === 504) && config && !config.__retry;
+
+    if (shouldRetry) {
+      config.__retry = true;
+      await wait(5000);
+      return api.request(config);
+    }
+
     if (process.env.NODE_ENV === "development") {
       console.error("API error:", error);
     }
@@ -287,7 +309,7 @@ export async function updateGoal(
 }
 
 export async function deactivateGoal(id: string): Promise<void> {
-  await api.post<void>(`/goals/${id}/deactivate`);
+  await api.delete<void>(`/goals/${id}`);
 }
 
 export async function contributeToGoal(

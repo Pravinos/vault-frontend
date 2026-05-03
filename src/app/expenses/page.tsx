@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
+import axios from "axios";
 
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
@@ -17,12 +18,24 @@ import {
 import { formatCurrency, getMonthString } from "@/lib/utils";
 import type { Account, Category, Expense } from "@/types";
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isColdStartError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+
+  const status = error.response?.status;
+  return status === 502 || status === 504 || error.code === "ECONNABORTED";
+};
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -33,27 +46,38 @@ export default function ExpensesPage() {
   const initialCategoryRef = useRef<number | null>(selectedCategoryId);
   const hasFetchedAfterLoadRef = useRef<boolean>(false);
 
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await getExpenses({
-        month: selectedMonth || undefined,
-        categoryId: selectedCategoryId ?? undefined,
-      });
-      setExpenses(data);
-    } catch (err) {
-      setError("Unable to load expenses.");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedCategoryId, selectedMonth]);
-
-  useEffect(() => {
-    const fetchInitial = async () => {
+  const fetchExpenses = useCallback(
+    async (allowRetry = true) => {
       setLoading(true);
       setError(null);
+      setRetryMessage(null);
+
+      try {
+        const data = await getExpenses({
+          month: selectedMonth || undefined,
+          categoryId: selectedCategoryId ?? undefined,
+        });
+        setExpenses(data);
+      } catch (err) {
+        if (allowRetry && isColdStartError(err)) {
+          setRetryMessage("Waking up the server... retrying");
+          await wait(5000);
+          return fetchExpenses(false);
+        }
+
+        setError("Unable to load expenses.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedCategoryId, selectedMonth]
+  );
+
+  useEffect(() => {
+    const fetchInitial = async (allowRetry = true) => {
+      setLoading(true);
+      setError(null);
+      setRetryMessage(null);
 
       try {
         const [categoriesData, accountsData, expensesData] = await Promise.all([
@@ -70,13 +94,19 @@ export default function ExpensesPage() {
         setExpenses(expensesData);
         setHasLoaded(true);
       } catch (err) {
+        if (allowRetry && isColdStartError(err)) {
+          setRetryMessage("Waking up the server... retrying");
+          await wait(5000);
+          return fetchInitial(false);
+        }
+
         setError("Unable to load expenses.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchInitial();
+    void fetchInitial();
   }, []);
 
   useEffect(() => {
@@ -178,6 +208,9 @@ export default function ExpensesPage() {
           onAccountChange={setSelectedAccountId}
         />
 
+        {retryMessage ? (
+          <p className="text-xs font-medium text-amber-300">{retryMessage}</p>
+        ) : null}
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
         {loading ? (
           <div className="space-y-2">

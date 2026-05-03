@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
+import axios from "axios";
 
 import CategoryChart from "@/components/dashboard/CategoryChart";
 import StatsBar from "@/components/dashboard/StatsBar";
@@ -35,6 +36,17 @@ const accountTypeBadgeColor: Record<string, string> = {
   INVESTMENT: "bg-purple-900/60 text-purple-300",
 };
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isColdStartError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+
+  const status = error.response?.status;
+  return status === 502 || status === 504 || error.code === "ECONNABORTED";
+};
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<ExpenseStats | null>(null);
   const [summary, setSummary] = useState<ExpenseMonthlySummary | null>(null);
@@ -48,11 +60,13 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetchDashboard = async (allowRetry = true) => {
       setLoading(true);
       setError(null);
+      setRetryMessage(null);
 
       try {
         const month = getMonthString();
@@ -73,13 +87,19 @@ export default function DashboardPage() {
         setIncomeSummary(incomeData);
         setGoals(goalsData);
       } catch (err) {
+        if (allowRetry && isColdStartError(err)) {
+          setRetryMessage("Waking up the server... retrying");
+          await wait(5000);
+          return fetchDashboard(false);
+        }
+
         setError("Unable to load dashboard data.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboard();
+    void fetchDashboard();
   }, []);
 
   const netWorth = accounts.reduce(
@@ -130,6 +150,11 @@ export default function DashboardPage() {
           <ErrorMessage message={error} onRetry={() => window.location.reload()} />
         ) : loading ? (
           <div className="space-y-6">
+            {retryMessage ? (
+              <p className="text-xs font-medium text-amber-300">
+                {retryMessage}
+              </p>
+            ) : null}
             <Skeleton variant="card" className="h-28 rounded-xl" />
             <div className="flex gap-3 overflow-x-auto pb-1">
               {Array.from({ length: 4 }).map((_, index) => (

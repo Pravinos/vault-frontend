@@ -19,6 +19,7 @@ A personal finance web app built with Next.js. Track expenses, manage savings go
 - **Dashboard** — Weekly summary, spending stats, and category breakdown chart
 - **Expenses** — Create, edit, delete, and filter expenses by month and category
 - **Goals** — Create short-term and long-term savings goals with progress tracking and contributions
+- **Vault AI** — Chat about your finances, generate weekly summaries, and configure AI providers/models
 
 ## Project Structure
 
@@ -28,11 +29,15 @@ src/
 │   ├── dashboard/      # Dashboard page
 │   ├── expenses/       # Expenses page
 │   └── goals/          # Goals page
+│   ├── chat/           # Vault AI chat page
+│   └── settings/ai/    # AI settings page
 ├── components/
 │   ├── dashboard/      # StatsBar, WeeklySummaryCard, CategoryChart
 │   ├── expenses/       # ExpenseForm, ExpenseList, ExpenseFilters
 │   ├── goals/          # GoalCard, GoalForm, ContributeModal
+│   ├── chat/           # ChatBubble, ChatInput, TypingIndicator
 │   ├── layout/         # Sidebar, TopBar
+│   ├── settings/       # AiProviderCard, ModelDropdown, ConnectivityIndicator
 │   └── ui/             # Badge, Modal, Toast, Skeleton, ErrorMessage
 ├── lib/
 │   ├── api.ts          # Axios API client and all API functions
@@ -93,3 +98,7 @@ All API calls are defined in `src/lib/api.ts` and hit the following endpoints:
 | Goals | `GET /goals`, `POST /goals`, `PUT /goals/:id`, `DELETE /goals/:id` |
 | Goal Contributions | `POST /goals/:id/contribute` |
 | Weekly Summary | `GET /expenses/weekly-summary` |
+| AI Chat | `POST /ai/chat` |
+| AI Config | `GET /ai/config`, `PATCH /ai/config` |
+| AI Models | `GET /ai/models/lmstudio`, `GET /ai/models/groq` |
+| AI Summaries | `POST /ai/summaries/generate` |

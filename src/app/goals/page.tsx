@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Target } from "lucide-react";
+import axios from "axios";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalForm from "@/components/goals/GoalForm";
 import ContributeModal from "@/components/goals/ContributeModal";
@@ -10,21 +11,41 @@ import Skeleton from "@/components/ui/Skeleton";
 import { deactivateGoal, getGoals } from "@/lib/api";
 import type { Goal } from "@/types";
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isColdStartError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) {
+    return false;
+  }
+
+  const status = error.response?.status;
+  return status === 502 || status === 504 || error.code === "ECONNABORTED";
+};
+
 export default function GoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingGoal, setEditingGoal] = useState<Goal | undefined>(undefined);
   const [contributingGoal, setContributingGoal] = useState<Goal | undefined>(undefined);
 
-  const fetchGoals = async () => {
+  const fetchGoals = async (allowRetry = true) => {
     setLoading(true);
     setError(null);
+    setRetryMessage(null);
+
     try {
       const data = await getGoals();
       setGoals(data.filter((g) => g.isActive));
     } catch (err) {
+      if (allowRetry && isColdStartError(err)) {
+        setRetryMessage("Waking up the server... retrying");
+        await wait(5000);
+        return fetchGoals(false);
+      }
+
       setError("Unable to load goals.");
     } finally {
       setLoading(false);
@@ -86,6 +107,9 @@ export default function GoalsPage() {
         }
       />
       <div className="flex-1 space-y-6 px-4 py-6 sm:px-6">
+        {retryMessage ? (
+          <p className="text-xs font-medium text-amber-300">{retryMessage}</p>
+        ) : null}
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
         {loading ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
