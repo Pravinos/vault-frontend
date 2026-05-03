@@ -80,7 +80,8 @@ export default function Sidebar() {
                 isActive
                   ? "border-l-[3px] border-emerald-500 bg-gray-800 text-white" +
                     (collapsed ? "" : " pl-[9px]")
-                  : "text-gray-400 hover:bg-gray-800/70 hover:text-white"
+                  : "text-gray-400 hover:bg-gray-800/70 hover:text-white hover:border-l-[3px] hover:border-emerald-500/40" +
+                    (collapsed ? "" : " hover:pl-[9px]")
               }`}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
@@ -114,7 +115,8 @@ export default function Sidebar() {
                 isActive
                   ? "border-l-[3px] border-emerald-500 bg-gray-800 text-white" +
                     (collapsed ? "" : " pl-[9px]")
-                  : "text-gray-400 hover:bg-gray-800/70 hover:text-white"
+                  : "text-gray-400 hover:bg-gray-800/70 hover:text-white hover:border-l-[3px] hover:border-emerald-500/40" +
+                    (collapsed ? "" : " hover:pl-[9px]")
               }`}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />

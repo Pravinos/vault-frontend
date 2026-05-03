@@ -14,10 +14,12 @@ import {
   getAccounts,
   getExpenseStats,
   getExpenseSummary,
+  getGoals,
+  getIncomeSummary,
   getLatestSummary,
 } from "@/lib/api";
 import { formatCurrency, getCurrentTimestamp, getMonthString } from "@/lib/utils";
-import type { Account, ExpenseMonthlySummary, ExpenseStats, WeeklySummary } from "@/types";
+import type { Account, ExpenseMonthlySummary, ExpenseStats, Goal, WeeklySummary } from "@/types";
 
 const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -39,6 +41,10 @@ export default function DashboardPage() {
   const [weeklySummary, setWeeklySummary] = useState<WeeklySummary | null>(
     null
   );
+  const [incomeSummary, setIncomeSummary] = useState<Record<string, number> | null>(
+    null
+  );
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,17 +56,22 @@ export default function DashboardPage() {
 
       try {
         const month = getMonthString();
-        const [statsData, summaryData, weeklyData, accountsData] = await Promise.all([
-          getExpenseStats(),
-          getExpenseSummary(month),
-          getLatestSummary(),
-          getAccounts(),
-        ]);
+        const [statsData, summaryData, weeklyData, accountsData, incomeData, goalsData] =
+          await Promise.all([
+            getExpenseStats(),
+            getExpenseSummary(month),
+            getLatestSummary(),
+            getAccounts(),
+            getIncomeSummary(month),
+            getGoals(),
+          ]);
 
         setStats(statsData);
         setSummary(summaryData);
         setWeeklySummary(weeklyData);
         setAccounts(accountsData);
+        setIncomeSummary(incomeData);
+        setGoals(goalsData);
       } catch (err) {
         setError("Unable to load dashboard data.");
       } finally {
@@ -83,10 +94,19 @@ export default function DashboardPage() {
   );
 
   const accountsWithManual = accounts.filter((a) => a.manualBalance !== null);
+  const manualLabel = accountsWithManual.length > 0
+    ? formatCurrency(totalManualBalance)
+    : "—";
   const trendDelta =
     accountsWithManual.length > 0 && totalManualBalance !== 0
       ? ((netWorth - totalManualBalance) / Math.abs(totalManualBalance)) * 100
       : null;
+
+  const totalIncomeThisMonth = incomeSummary
+    ? Object.values(incomeSummary).reduce((sum, value) => sum + value, 0)
+    : 0;
+  const netCashFlow = stats ? totalIncomeThisMonth - stats.totalThisMonth : 0;
+  const activeGoals = goals.filter((goal) => goal.isActive);
 
   const staleAccounts = accounts.filter((account) => {
     const referenceDate =
@@ -135,13 +155,13 @@ export default function DashboardPage() {
             {/* Net Worth */}
             <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-5">
               <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-                Net Worth (Calculated)
+                Net Worth
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Sum of all account calculated balances
+                Calculated vs manual balances
               </p>
               <div className="mt-3 flex items-end gap-4">
-                <p className="text-4xl font-semibold tabular-nums text-white drop-shadow-[0_0_12px_rgba(52,211,153,0.25)]">
+                <p className="text-5xl font-semibold tabular-nums text-white drop-shadow-[0_0_12px_rgba(52,211,153,0.25)]">
                   {formatCurrency(netWorth)}
                 </p>
                 {trendDelta !== null ? (
@@ -160,7 +180,15 @@ export default function DashboardPage() {
                   </span>
                 ) : null}
               </div>
-              <div className="mt-3 h-0.5 w-24 rounded-full bg-emerald-500/60" />
+              <div className="mt-2 flex flex-wrap items-center gap-6 text-xs text-gray-400">
+                <span className="tabular-nums text-gray-200">
+                  {formatCurrency(netWorth)} <span className="text-gray-500">(calculated)</span>
+                </span>
+                <span className="tabular-nums text-gray-200">
+                  {manualLabel} <span className="text-gray-500">(manual)</span>
+                </span>
+              </div>
+              <div className="mt-3 h-0.5 w-40 rounded-full bg-emerald-500/60" />
             </div>
 
             {staleAccounts.length > 0 ? (
@@ -174,37 +202,143 @@ export default function DashboardPage() {
 
             {/* Account strip */}
             <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-4">
-              {accounts.slice(0, 8).map((account) => (
-                <Link
-                  key={account.id}
-                  href="/accounts"
-                  className={`flex-shrink-0 min-w-[160px] rounded-xl border-l-4 border border-gray-800 bg-gray-900/60 p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/40 md:min-w-0 ${
-                    accountTypeBorderColor[account.accountType] ?? "border-l-gray-600"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-white truncate">{account.name}</p>
-                    <span
-                      className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                        accountTypeBadgeColor[account.accountType] ?? "bg-gray-700 text-gray-300"
-                      }`}
-                    >
-                      {account.accountType}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold tabular-nums text-emerald-300">
-                    {formatCurrency(account.calculatedBalance)}
-                  </p>
-                </Link>
-              ))}
+              {accounts.slice(0, 8).map((account) => {
+                const delta = account.calculatedBalance - account.openingBalance;
+                const isDeltaUp = delta >= 0;
+                const deltaLabel = `${isDeltaUp ? "+" : "-"}${formatCurrency(
+                  Math.abs(delta)
+                )}`;
+
+                return (
+                  <Link
+                    key={account.id}
+                    href={`/accounts/${account.id}`}
+                    className={`flex-shrink-0 min-w-[160px] cursor-pointer rounded-xl border-l-4 border border-gray-800 bg-gray-900/60 p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/40 md:min-w-0 ${
+                      accountTypeBorderColor[account.accountType] ?? "border-l-gray-600"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-white truncate">{account.name}</p>
+                      <div className="flex items-center gap-2">
+                        {account.accountType === "INVESTMENT" &&
+                        account.returnPercentage !== null ? (
+                          <span className="rounded-full bg-emerald-900/60 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
+                            +{account.returnPercentage.toFixed(2)}%
+                          </span>
+                        ) : null}
+                        <span
+                          className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                            accountTypeBadgeColor[account.accountType] ??
+                              "bg-gray-700 text-gray-300"
+                          }`}
+                        >
+                          {account.accountType}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold tabular-nums text-emerald-300">
+                      {formatCurrency(account.calculatedBalance)}
+                    </p>
+                    <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
+                      {isDeltaUp ? (
+                        <TrendingUp className="h-3 w-3 text-emerald-400" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 text-red-400" />
+                      )}
+                      <span className="tabular-nums">
+                        {deltaLabel} since opening
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
 
+            <div className="border-t border-gray-800" />
+
             <StatsBar stats={stats} />
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-xl bg-gray-800 p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                  Income this month
+                </p>
+                <p className="mt-2 text-xl font-semibold tabular-nums text-white">
+                  {formatCurrency(totalIncomeThisMonth)}
+                </p>
+              </div>
+              <div className="rounded-xl bg-gray-800 p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                  Expenses this month
+                </p>
+                <p className="mt-2 text-xl font-semibold tabular-nums text-white">
+                  {formatCurrency(stats.totalThisMonth)}
+                </p>
+              </div>
+              <div className="rounded-xl bg-gray-800 p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                  Net cash flow
+                </p>
+                <p
+                  className={`mt-2 text-xl font-semibold tabular-nums ${
+                    netCashFlow >= 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {formatCurrency(netCashFlow)}
+                </p>
+              </div>
+            </div>
+
+            {activeGoals.length > 0 ? (
+              <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🎯</span>
+                    <h3 className="text-sm font-semibold text-white">Goals</h3>
+                  </div>
+                  <Link
+                    href="/goals"
+                    className="text-xs font-medium text-emerald-400 hover:text-emerald-300"
+                  >
+                    View all {"->"}
+                  </Link>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {activeGoals.slice(0, 2).map((goal) => {
+                    const progress = Math.min(goal.progressPercentage, 100);
+                    return (
+                      <div key={goal.id} className="space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-300">
+                          <span className="font-medium text-white">{goal.name}</span>
+                          <span className="text-gray-400">
+                            {goal.daysRemaining} days left
+                          </span>
+                        </div>
+                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-800">
+                          <div
+                            className="h-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+                          <span className="tabular-nums">
+                            {formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}
+                          </span>
+                          <span className="font-medium text-gray-300">
+                            {goal.progressPercentage.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-3 min-h-[420px]">
                 <CategoryChart summary={summary} />
               </div>
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 min-h-[420px]">
                 <WeeklySummaryCard
                   summary={weeklySummary}
                   onGenerated={setWeeklySummary}

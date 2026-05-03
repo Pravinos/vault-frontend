@@ -156,6 +156,7 @@ export interface WeeklySummary {
   totalSpent: number;
   generatedAt: string;
   provider: string;
+  model?: string;
 }
 
 export interface ChatMessage {

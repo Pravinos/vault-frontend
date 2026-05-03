@@ -1,22 +1,34 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 
 interface ChatInputProps {
+  value: string;
+  onChange: (value: string) => void;
   onSend: (message: string) => void;
   disabled?: boolean;
 }
 
-export default function ChatInput({ onSend, disabled }: ChatInputProps) {
-  const [value, setValue] = useState("");
+export default function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const resizeToFit = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    resizeToFit();
+  }, [value]);
 
   const handleSubmit = () => {
     const trimmed = value.trim();
     if (!trimmed || disabled) return;
     onSend(trimmed);
-    setValue("");
+    onChange("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -30,12 +42,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value);
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.style.height = "auto";
-      ta.style.height = `${ta.scrollHeight}px`;
-    }
+    onChange(e.target.value);
   };
 
   return (
@@ -46,10 +53,12 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
           value={value}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
+          onInput={resizeToFit}
           disabled={disabled}
-          placeholder="Message Vault AI…"
+          placeholder="Message Vault AI..."
           rows={1}
-          className="flex-1 resize-none rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none disabled:opacity-50 max-h-36 overflow-y-auto"
+          className="flex-1 resize-none rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none disabled:opacity-50 overflow-y-auto"
+          style={{ maxHeight: "6rem" }}
         />
         <button
           type="button"
@@ -61,6 +70,9 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
           <Send className="h-4 w-4" />
         </button>
       </div>
+      <p className="mt-1.5 text-center text-[10px] text-gray-600">
+        Shift + Enter for new line
+      </p>
     </div>
   );
 }

@@ -9,17 +9,29 @@ type StatsBarProps = {
   stats: ExpenseStats;
 };
 
+function getMonthLabel(offset: number): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+function displayAmount(amount: number): React.ReactNode {
+  if (amount === 0) return <span className="text-gray-500">—</span>;
+  return <>{formatCurrency(amount)}</>;
+}
+
 export default function StatsBar({ stats }: StatsBarProps) {
   const isUp = stats.totalThisMonth > stats.totalLastMonth;
   const isDown = stats.totalThisMonth < stats.totalLastMonth;
-  const pctChange =
-    stats.totalLastMonth > 0
-      ? Math.abs(
-          ((stats.totalThisMonth - stats.totalLastMonth) /
-            stats.totalLastMonth) *
-            100
-        ).toFixed(1)
-      : null;
+  const showPct = stats.totalLastMonth > 0;
+  const pctChange = showPct
+    ? Math.abs(
+        ((stats.totalThisMonth - stats.totalLastMonth) /
+          stats.totalLastMonth) *
+          100
+      ).toFixed(1)
+    : null;
 
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -31,22 +43,23 @@ export default function StatsBar({ stats }: StatsBarProps) {
               This month
             </p>
           </div>
-          {isUp ? (
+          {showPct && isUp ? (
             <span className="flex items-center gap-1 text-xs text-red-400">
               <TrendingUp className="h-3 w-3" />
-              {pctChange ? `+${pctChange}%` : "Up"}
+              {`+${pctChange}%`}
             </span>
           ) : null}
-          {isDown ? (
+          {showPct && isDown ? (
             <span className="flex items-center gap-1 text-xs text-emerald-400">
               <TrendingDown className="h-3 w-3" />
-              {pctChange ? `-${pctChange}%` : "Down"}
+              {`-${pctChange}%`}
             </span>
           ) : null}
         </div>
         <p className="mt-2 text-xl font-semibold tabular-nums text-white">
-          {formatCurrency(stats.totalThisMonth)}
+          {displayAmount(stats.totalThisMonth)}
         </p>
+        <p className="mt-1 text-[10px] text-gray-500">{getMonthLabel(0)}</p>
       </div>
 
       <div className="rounded-xl bg-gray-800 p-4">
@@ -56,9 +69,16 @@ export default function StatsBar({ stats }: StatsBarProps) {
             Last month
           </p>
         </div>
-        <p className="mt-2 text-xl font-semibold tabular-nums text-white">
-          {formatCurrency(stats.totalLastMonth)}
-        </p>
+        {stats.totalLastMonth === 0 ? (
+          <>
+            <p className="mt-2 text-xl font-semibold text-gray-500">No data</p>
+          </>
+        ) : (
+          <p className="mt-2 text-xl font-semibold tabular-nums text-white">
+            {formatCurrency(stats.totalLastMonth)}
+          </p>
+        )}
+        <p className="mt-1 text-[10px] text-gray-500">{getMonthLabel(-1)}</p>
       </div>
 
       <div className="rounded-xl bg-gray-800 p-4">
@@ -69,8 +89,9 @@ export default function StatsBar({ stats }: StatsBarProps) {
           </p>
         </div>
         <p className="mt-2 text-xl font-semibold tabular-nums text-white">
-          {formatCurrency(stats.averagePerDay)}
+          {displayAmount(stats.averagePerDay)}
         </p>
+        <p className="mt-1 text-[10px] text-gray-500">{getMonthLabel(0)}</p>
       </div>
 
       <div className="rounded-xl bg-gray-800 p-4">

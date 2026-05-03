@@ -33,7 +33,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
 
   if (summary.byCategory.length === 0) {
     return (
-      <div className="rounded-xl bg-gray-800 p-6">
+      <div className="rounded-xl bg-gray-800 p-6 h-full">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-white">
             Spending by category
@@ -52,7 +52,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
             href="/expenses"
             className="mt-4 text-xs font-medium text-emerald-400 hover:text-emerald-300"
           >
-            Add your first expense â†’
+            Add your first expense {"->"}
           </Link>
         </div>
       </div>
@@ -60,7 +60,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
   }
 
   return (
-    <div className="rounded-xl bg-gray-800 p-6">
+    <div className="rounded-xl bg-gray-800 p-6 h-full">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-white">
           Spending by category
@@ -68,16 +68,16 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
         <p className="text-sm text-gray-400">{formatMonth(summary.month)}</p>
       </div>
 
-      <div className="mt-6 h-64 min-w-[200px] min-h-[200px]">
+      <div className="mt-6" style={{ height: "280px", minWidth: "200px", minHeight: "200px" }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={summary.byCategory}
               dataKey="total"
               nameKey="category"
-              innerRadius={60}
+              innerRadius={summary.byCategory.length === 1 ? 0 : 60}
               outerRadius={90}
-              paddingAngle={2}
+              paddingAngle={summary.byCategory.length === 1 ? 0 : 2}
             >
               {summary.byCategory.map((entry, index) => (
                 <Cell
@@ -123,11 +123,11 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
                 />
                 <span>{item.category}</span>
               </div>
-              <div className="flex items-center gap-3 text-xs text-gray-400">
+              <div className="flex items-center gap-3 text-xs">
                 <span className="tabular-nums text-gray-200">
                   {formatCurrency(item.total)}
                 </span>
-                <span>{percent.toFixed(0)}%</span>
+                <span className="w-8 text-right text-gray-500">{percent.toFixed(0)}%</span>
               </div>
             </div>
           );
