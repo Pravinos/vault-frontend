@@ -156,7 +156,7 @@ export default function ExpensesPage() {
         <div className="border-b border-gray-800 px-4 py-2 sm:px-6">
           <p className="text-sm text-gray-400">
             {monthLabel && <span className="font-medium text-gray-300">{monthLabel}</span>}
-            {monthLabel && " â€” "}
+            {monthLabel && " — "}
             <span className="tabular-nums">
               Total: <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
             </span>

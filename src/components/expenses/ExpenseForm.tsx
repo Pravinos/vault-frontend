@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { createExpense, updateExpense } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
@@ -135,10 +136,11 @@ export default function ExpenseForm({
 
         <div>
           <label className="text-sm text-gray-200">Category</label>
+          <div className="relative mt-1">
           <select
             value={categoryId}
             onChange={(event) => setCategoryId(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-white"
             required
           >
             <option value="" disabled>
@@ -150,6 +152,8 @@ export default function ExpenseForm({
               </option>
             ))}
           </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
           {errors.categoryId ? (
             <p className="mt-1 text-xs text-red-400">{errors.categoryId}</p>
           ) : null}
@@ -157,10 +161,11 @@ export default function ExpenseForm({
 
         <div>
           <label className="text-sm text-gray-200">Account</label>
+          <div className="relative mt-1">
           <select
             value={accountId}
             onChange={(event) => setAccountId(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-white"
             required
           >
             <option value="" disabled>
@@ -172,6 +177,8 @@ export default function ExpenseForm({
               </option>
             ))}
           </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
           {errors.accountId ? (
             <p className="mt-1 text-xs text-red-400">{errors.accountId}</p>
           ) : null}

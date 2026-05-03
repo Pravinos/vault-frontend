@@ -37,6 +37,14 @@ textarea {
   min-height: 44px;
 }
 
+/* Dark color scheme for date/time inputs so browser icons are light-colored */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
 /* Tabular numbers for monetary values */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

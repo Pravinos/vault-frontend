@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { createGoal, updateGoal } from "@/lib/api";
 import type { Goal, CreateGoalRequest } from "@/types";
@@ -116,15 +117,18 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
         </div>
         <div>
           <label className="text-sm text-gray-200">Goal type</label>
+          <div className="relative mt-1">
           <select
             value={goalType}
             onChange={e => setGoalType(e.target.value as "SHORT_TERM" | "LONG_TERM")}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-white"
             required
           >
             <option value="SHORT_TERM">Short Term</option>
             <option value="LONG_TERM">Long Term</option>
           </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
           {errors.goalType ? <p className="mt-1 text-xs text-red-400">{errors.goalType}</p> : null}
         </div>
         <div>
