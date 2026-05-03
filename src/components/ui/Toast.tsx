@@ -17,7 +17,7 @@ export default function Toast({ message, type, onClose }: ToastProps) {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg
+      className={`fixed top-4 left-1/2 z-[100] -translate-x-1/2 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg sm:left-auto sm:right-4 sm:translate-x-0
         ${type === "success" ? "border-green-500 bg-gray-900" : "border-red-500 bg-gray-900"}`}
       role="alert"
     >

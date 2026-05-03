@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d1117;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -10,16 +10,34 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-inter);
+  --animate-fadeIn: fadeIn 150ms ease forwards;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
 body {
   min-height: 100%;
   font-family: var(--font-inter);
+  font-size: 15px;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Touch-friendly input heights */
+input,
+select,
+textarea {
+  min-height: 44px;
+}
+
+/* Tabular numbers for monetary values */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

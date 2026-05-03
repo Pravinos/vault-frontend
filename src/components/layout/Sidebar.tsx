@@ -2,53 +2,101 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Receipt, Target, Wallet } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  HandCoins,
+  Landmark,
+  LayoutDashboard,
+  Receipt,
+  Target,
+  Wallet,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 const navItems = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/expenses",
-    label: "Expenses",
-    icon: Receipt,
-  },
-  {
-    href: "/goals",
-    label: "Goals",
-    icon: Target,
-  },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/income", label: "Income", icon: HandCoins },
+  { href: "/accounts", label: "Accounts", icon: Landmark },
+  { href: "/goals", label: "Goals", icon: Target },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("vault_sidebar_collapsed");
+    if (stored === "true") setCollapsed(true);
+    setMounted(true);
+  }, []);
+
+  const toggleCollapse = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    localStorage.setItem("vault_sidebar_collapsed", String(next));
+  };
 
   return (
-    <aside className="flex h-full w-60 flex-col bg-gray-950 px-4 py-6">
-      <div className="flex items-center gap-2 px-2 text-white">
-        <Wallet className="h-6 w-6" />
-        <span className="text-lg font-semibold">Vault</span>
+    <aside
+      className={`hidden md:flex h-screen sticky top-0 flex-col bg-gray-950 transition-all duration-200 flex-shrink-0 ${
+        collapsed ? "w-16" : "w-60"
+      } ${mounted ? "" : "w-60"}`}
+    >
+      <div
+        className={`flex items-center gap-2 px-4 py-6 text-white ${
+          collapsed ? "justify-center px-0" : ""
+        }`}
+      >
+        <Wallet className="h-6 w-6 flex-shrink-0" />
+        {!collapsed && <span className="text-lg font-semibold">Vault</span>}
       </div>
-      <nav className="mt-8 flex flex-col gap-2">
+
+      <div className="mx-3 border-t border-gray-800" />
+
+      <nav className="mt-4 flex flex-col gap-1 px-2">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const itemClasses = isActive
-            ? "flex items-center gap-3 rounded-md bg-gray-800 px-3 py-2 text-white"
-            : "flex items-center gap-3 rounded-md px-3 py-2 text-gray-400 hover:bg-gray-800 hover:text-white";
-
           const Icon = item.icon;
 
           return (
-            <Link key={item.href} href={item.href} className={itemClasses}>
-              <Icon className="h-4 w-4" />
-              <span className="text-sm font-medium">{item.label}</span>
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed ? item.label : undefined}
+              className={`flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-all duration-150 ${
+                collapsed ? "justify-center px-2" : "px-3"
+              } ${
+                isActive
+                  ? "border-l-[3px] border-emerald-500 bg-gray-800 text-white" +
+                    (collapsed ? "" : " pl-[9px]")
+                  : "text-gray-400 hover:bg-gray-800/70 hover:text-white"
+              }`}
+            >
+              <Icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
+
+      <div className="mt-auto px-2 pb-4">
+        <button
+          type="button"
+          onClick={toggleCollapse}
+          className="flex w-full items-center justify-center rounded-md p-2 text-gray-400 transition-colors duration-150 hover:bg-gray-800 hover:text-white"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </button>
+      </div>
     </aside>
   );
 }

@@ -74,7 +74,7 @@ export default function ContributeModal({ goal, onSuccess, onClose }: Contribute
         </div>
         <button
           type="submit"
-          className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 active:scale-95"
           disabled={isSubmitting}
         >
           {isSubmitting ? "Adding..." : `Add €${amount || "0.00"}`}

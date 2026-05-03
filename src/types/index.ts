@@ -9,6 +9,8 @@ export interface Expense {
   amount: number;
   note: string | null;
   category: Category;
+  accountId: string;
+  accountName: string;
   expenseDate: string;
   createdAt: string;
 }
@@ -31,7 +33,91 @@ export interface CreateExpenseRequest {
   amount: number;
   note?: string;
   categoryId: number;
+  accountId: string;
   expenseDate?: string;
+}
+
+export type AccountType = "CHECKING" | "SAVINGS" | "INVESTMENT";
+
+export interface Account {
+  id: string;
+  name: string;
+  accountType: AccountType;
+  openingBalance: number;
+  manualBalance: number | null;
+  manualBalanceUpdatedAt: string | null;
+  createdAt: string;
+  calculatedBalance: number;
+  totalIncome: number;
+  totalExpenses: number;
+  contributedAmount: number | null;
+  currentValue: number | null;
+  returnAmount: number | null;
+  returnPercentage: number | null;
+  platform: string | null;
+  instrument: string | null;
+  assetType: string | null;
+}
+
+export interface CreateAccountPayload {
+  name: string;
+  accountType: AccountType;
+  openingBalance: number;
+  platform?: string;
+  instrument?: string;
+  assetType?: string;
+}
+
+export interface UpdateAccountPayload {
+  name: string;
+  accountType: AccountType;
+  platform?: string;
+  instrument?: string;
+  assetType?: string;
+}
+
+export interface ManualBalancePayload {
+  manualBalance: number;
+  alsoSetAsOpeningBalance?: boolean;
+}
+
+export interface InvestmentCheckpoint {
+  id: string;
+  value: number;
+  recordedAt: string;
+  note: string | null;
+}
+
+export interface CreateCheckpointPayload {
+  value: number;
+  note?: string;
+}
+
+export interface IncomeCategory {
+  id: number;
+  name: string;
+  icon: string;
+}
+
+export interface Income {
+  id: string;
+  amount: number;
+  note: string | null;
+  incomeCategoryId: number;
+  categoryName: string;
+  categoryIcon: string;
+  accountId: string;
+  accountName: string;
+  incomeDate: string;
+  createdAt: string;
+}
+
+export interface CreateIncomePayload {
+  amount: number;
+  note?: string;
+  incomeCategoryId: number;
+  accountId: string;
+  incomeDate: string;
 }
 
 export type GoalType = "SHORT_TERM" | "LONG_TERM";

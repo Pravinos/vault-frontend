@@ -1,5 +1,5 @@
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-IE", {
+  return new Intl.NumberFormat("el-GR", {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,
@@ -28,6 +28,10 @@ export function getMonthString(date: Date = new Date()): string {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   return `${year}-${month}`;
+}
+
+export function getCurrentTimestamp(): number {
+  return Date.now();
 }
 
 export const categoryColorMap: Record<string, string> = {

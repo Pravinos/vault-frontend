@@ -16,6 +16,12 @@ const focusableSelector =
 export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
 
+  const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -71,15 +77,15 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      onMouseDown={handleBackdropMouseDown}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       <div
         ref={panelRef}
-        className="mx-auto mt-24 w-full max-w-md rounded-xl bg-gray-800 p-6 text-white shadow-xl"
+        className="w-full max-h-[90vh] overflow-y-auto rounded-t-2xl bg-gray-800 p-6 text-white shadow-xl sm:mx-auto sm:w-full sm:max-w-md sm:rounded-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">

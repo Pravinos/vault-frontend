@@ -1,37 +1,20 @@
 "use client";
 
-import { Pencil, PlusCircle, Receipt, Trash2 } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, Wallet } from "lucide-react";
 
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Expense } from "@/types";
+import type { Income } from "@/types";
 
-const categoryColorMap: Record<string, string> = {
-  Food: "bg-orange-900/60 text-orange-300",
-  Transport: "bg-blue-900/60 text-blue-300",
-  Housing: "bg-purple-900/60 text-purple-300",
-  Entertainment: "bg-pink-900/60 text-pink-300",
-  Health: "bg-emerald-900/60 text-emerald-300",
-  Shopping: "bg-yellow-900/60 text-yellow-300",
-  Travel: "bg-sky-900/60 text-sky-300",
-  Other: "bg-gray-700 text-gray-300",
-};
-
-type ExpenseListProps = {
-  expenses: Expense[];
+type IncomeListProps = {
+  income: Income[];
   month: string;
-  onEdit: (expense: Expense) => void;
+  onEdit: (entry: Income) => void;
   onDelete: (id: string) => void;
   onAddClick: () => void;
 };
 
-export default function ExpenseList({
-  expenses,
-  month,
-  onEdit,
-  onDelete,
-  onAddClick,
-}: ExpenseListProps) {
+export default function IncomeList({ income, month, onEdit, onDelete, onAddClick }: IncomeListProps) {
   const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
 
   const monthLabel = month
@@ -41,15 +24,15 @@ export default function ExpenseList({
       })
     : "this period";
 
-  if (expenses.length === 0) {
+  if (income.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-16 text-center">
-        <Receipt className="mb-3 h-10 w-10 text-gray-600" />
+        <Wallet className="mb-3 h-10 w-10 text-gray-600" />
         <p className="text-sm font-medium text-gray-300">
-          No expenses in {monthLabel}
+          No income in {monthLabel}
         </p>
         <p className="mt-1 text-xs text-gray-500">
-          Try a different month or add your first expense
+          Try a different month or add your first income entry
         </p>
         <button
           type="button"
@@ -57,7 +40,7 @@ export default function ExpenseList({
           className="mt-5 flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
         >
           <PlusCircle className="h-4 w-4" />
-          Add Expense
+          Add Income
         </button>
       </div>
     );
@@ -67,15 +50,13 @@ export default function ExpenseList({
     <div className="flex flex-col gap-0 overflow-hidden rounded-xl border border-gray-800">
       {/* Mobile: card layout */}
       <div className="block sm:hidden">
-        {expenses.map((expense, index) => {
-          const noteLabel = expense.note?.trim() || expense.category.name;
-          const pillColor =
-            categoryColorMap[expense.category.name] ?? "bg-gray-700 text-gray-300";
-          const isConfirming = isPendingConfirm(expense.id);
+        {income.map((entry, index) => {
+          const noteLabel = entry.note?.trim() || entry.categoryName;
+          const isConfirming = isPendingConfirm(entry.id);
 
           return (
             <div
-              key={expense.id}
+              key={entry.id}
               className={`border-b border-gray-800 p-4 last:border-b-0 ${
                 index % 2 === 0 ? "bg-gray-900/40" : "bg-gray-900/70"
               }`}
@@ -83,42 +64,37 @@ export default function ExpenseList({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-xl font-semibold tabular-nums text-white">
-                    {formatCurrency(expense.amount)}
+                    {formatCurrency(entry.amount)}
                   </p>
                   <p className="mt-1 text-sm font-medium text-gray-200 truncate">
                     {noteLabel}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${pillColor}`}
-                    >
-                      {expense.category.name}
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs">
+                      {entry.categoryIcon}
                     </span>
-                    <span className="text-xs text-gray-400">
-                      {formatDate(expense.expenseDate)}
-                    </span>
+                    <span className="text-xs text-gray-400">{entry.categoryName}</span>
+                    <span className="text-xs text-gray-500">{formatDate(entry.incomeDate)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => onEdit(expense)}
+                    onClick={() => onEdit(entry)}
                     className="rounded-md p-1.5 text-gray-400 hover:text-white transition-colors"
-                    aria-label="Edit expense"
+                    aria-label="Edit income"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      confirmDelete(expense.id, () => onDelete(expense.id))
-                    }
+                    onClick={() => confirmDelete(entry.id, () => onDelete(entry.id))}
                     className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${
                       isConfirming
                         ? "bg-red-500/20 text-red-300"
                         : "text-gray-400 hover:text-red-300"
                     }`}
-                    aria-label="Delete expense"
+                    aria-label="Delete income"
                   >
                     {isConfirming ? "Confirm?" : <Trash2 className="h-4 w-4" />}
                   </button>
@@ -131,60 +107,54 @@ export default function ExpenseList({
 
       {/* Desktop: table-style rows */}
       <div className="hidden sm:block">
-        {expenses.map((expense, index) => {
-          const noteLabel = expense.note?.trim() || expense.category.name;
-          const pillColor =
-            categoryColorMap[expense.category.name] ?? "bg-gray-700 text-gray-300";
-          const isConfirming = isPendingConfirm(expense.id);
+        {income.map((entry, index) => {
+          const noteLabel = entry.note?.trim() || entry.categoryName;
+          const isConfirming = isPendingConfirm(entry.id);
 
           return (
             <div
-              key={expense.id}
+              key={entry.id}
               className={`flex items-center gap-4 border-b border-gray-800/60 px-4 py-3 last:border-b-0 transition-colors hover:bg-gray-800/40 ${
                 index % 2 === 0 ? "bg-gray-900/30" : "bg-gray-900/60"
               }`}
             >
-              <span
-                className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${pillColor}`}
-              >
-                {expense.category.name}
+              <span className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-700 text-sm">
+                {entry.categoryIcon}
               </span>
 
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {noteLabel}
+                <p className="text-sm font-medium text-white truncate">{noteLabel}</p>
+                <p className="text-xs text-gray-500">
+                  {entry.categoryName} · {entry.accountName}
                 </p>
-                <p className="text-xs text-gray-500">{expense.accountName}</p>
               </div>
 
               <span className="hidden w-32 flex-shrink-0 text-sm text-gray-400 lg:block">
-                {formatDate(expense.expenseDate)}
+                {formatDate(entry.incomeDate)}
               </span>
 
               <span className="w-28 flex-shrink-0 text-right text-sm font-semibold tabular-nums text-emerald-400">
-                {formatCurrency(expense.amount)}
+                {formatCurrency(entry.amount)}
               </span>
 
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => onEdit(expense)}
+                  onClick={() => onEdit(entry)}
                   className="rounded-md p-1 text-gray-400 transition-colors hover:text-white"
-                  aria-label="Edit expense"
+                  aria-label="Edit income"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    confirmDelete(expense.id, () => onDelete(expense.id))
-                  }
+                  onClick={() => confirmDelete(entry.id, () => onDelete(entry.id))}
                   className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${
                     isConfirming
                       ? "bg-red-500/20 text-red-300"
                       : "text-gray-400 hover:text-red-300"
                   }`}
-                  aria-label="Delete expense"
+                  aria-label="Delete income"
                 >
                   {isConfirming ? "Confirm?" : <Trash2 className="h-4 w-4" />}
                 </button>

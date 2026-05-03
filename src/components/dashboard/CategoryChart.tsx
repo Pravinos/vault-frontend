@@ -1,5 +1,7 @@
-"use client";
+﻿"use client";
 
+import Link from "next/link";
+import { PieChart as PieChartIcon } from "lucide-react";
 import {
   Cell,
   Pie,
@@ -28,6 +30,34 @@ const chartColors = [
 
 export default function CategoryChart({ summary }: CategoryChartProps) {
   const total = summary.total;
+
+  if (summary.byCategory.length === 0) {
+    return (
+      <div className="rounded-xl bg-gray-800 p-6">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold text-white">
+            Spending by category
+          </h2>
+          <p className="text-sm text-gray-400">{formatMonth(summary.month)}</p>
+        </div>
+        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-700 py-12 text-center">
+          <PieChartIcon className="mb-3 h-10 w-10 text-gray-600" />
+          <p className="text-sm font-medium text-gray-400">
+            No expenses this month
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Add your first expense to see spending breakdown
+          </p>
+          <Link
+            href="/expenses"
+            className="mt-4 text-xs font-medium text-emerald-400 hover:text-emerald-300"
+          >
+            Add your first expense â†’
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl bg-gray-800 p-6">
@@ -85,7 +115,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
             >
               <div className="flex items-center gap-2">
                 <span
-                  className="h-2 w-2 rounded-full"
+                  className="h-2 w-2 flex-shrink-0 rounded-full"
                   style={{
                     backgroundColor:
                       chartColors[index % chartColors.length],
@@ -94,7 +124,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
                 <span>{item.category}</span>
               </div>
               <div className="flex items-center gap-3 text-xs text-gray-400">
-                <span className="text-gray-200">
+                <span className="tabular-nums text-gray-200">
                   {formatCurrency(item.total)}
                 </span>
                 <span>{percent.toFixed(0)}%</span>

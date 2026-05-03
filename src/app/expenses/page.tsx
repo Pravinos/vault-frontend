@@ -1,32 +1,33 @@
-"use client";
+﻿"use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
 import ExpenseList from "@/components/expenses/ExpenseList";
 import TopBar from "@/components/layout/TopBar";
+import Skeleton from "@/components/ui/Skeleton";
 import {
+  getAccounts,
   deleteExpense,
   getCategories,
   getExpenses,
 } from "@/lib/api";
-import { getMonthString } from "@/lib/utils";
-import type { Category, Expense } from "@/types";
+import { formatCurrency, getMonthString } from "@/lib/utils";
+import type { Account, Category, Expense } from "@/types";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | undefined>(
-    undefined
-  );
+  const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const [hasLoaded, setHasLoaded] = useState<boolean>(false);
   const initialMonthRef = useRef<string>(selectedMonth);
   const initialCategoryRef = useRef<number | null>(selectedCategoryId);
@@ -55,8 +56,9 @@ export default function ExpensesPage() {
       setError(null);
 
       try {
-        const [categoriesData, expensesData] = await Promise.all([
+        const [categoriesData, accountsData, expensesData] = await Promise.all([
           getCategories(),
+          getAccounts(),
           getExpenses({
             month: initialMonthRef.current || undefined,
             categoryId: initialCategoryRef.current ?? undefined,
@@ -64,6 +66,7 @@ export default function ExpensesPage() {
         ]);
 
         setCategories(categoriesData);
+        setAccounts(accountsData);
         setExpenses(expensesData);
         setHasLoaded(true);
       } catch (err) {
@@ -112,6 +115,26 @@ export default function ExpensesPage() {
     await fetchExpenses();
   };
 
+  const filteredExpenses = useMemo(
+    () =>
+      selectedAccountId
+        ? expenses.filter((e) => e.accountId === selectedAccountId)
+        : expenses,
+    [expenses, selectedAccountId]
+  );
+
+  const totalAmount = useMemo(
+    () => filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
+    [filteredExpenses]
+  );
+
+  const monthLabel = selectedMonth
+    ? new Date(`${selectedMonth}-01T00:00:00`).toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      })
+    : "";
+
   return (
     <div className="flex min-h-full flex-col">
       <TopBar
@@ -120,31 +143,55 @@ export default function ExpensesPage() {
           <button
             type="button"
             onClick={handleAddClick}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400"
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
           >
+            <Plus className="h-4 w-4" />
             Add Expense
           </button>
         }
       />
-      <div className="flex-1 space-y-6 px-6 py-6">
+
+      {/* Summary bar */}
+      {!loading && (
+        <div className="border-b border-gray-800 px-4 py-2 sm:px-6">
+          <p className="text-sm text-gray-400">
+            {monthLabel && <span className="font-medium text-gray-300">{monthLabel}</span>}
+            {monthLabel && " â€” "}
+            <span className="tabular-nums">
+              Total: <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
+            </span>
+            {" | "}
+            <span>{filteredExpenses.length} {filteredExpenses.length === 1 ? "entry" : "entries"}</span>
+          </p>
+        </div>
+      )}
+
+      <div className="flex-1 space-y-5 px-4 py-5 sm:px-6">
         <ExpenseFilters
           month={selectedMonth}
           categoryId={selectedCategoryId}
           categories={categories}
+          accountId={selectedAccountId}
+          accounts={accounts}
           onMonthChange={setSelectedMonth}
           onCategoryChange={setSelectedCategoryId}
+          onAccountChange={setSelectedAccountId}
         />
 
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
         {loading ? (
-          <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-6 text-sm text-gray-300">
-            Loading expenses...
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} variant="text" className="h-14 rounded-xl" />
+            ))}
           </div>
         ) : (
           <ExpenseList
-            expenses={expenses}
+            expenses={filteredExpenses}
+            month={selectedMonth}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onAddClick={handleAddClick}
           />
         )}
       </div>
@@ -153,6 +200,7 @@ export default function ExpensesPage() {
         <ExpenseForm
           expense={editingExpense}
           categories={categories}
+          accounts={accounts}
           onSuccess={handleFormSuccess}
           onClose={() => setShowForm(false)}
         />

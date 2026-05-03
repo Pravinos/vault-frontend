@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { createGoal, updateGoal } from "@/lib/api";
 import type { Goal, CreateGoalRequest } from "@/types";
-
-const todayString = () => new Date().toISOString().slice(0, 10);
 
 type GoalFormProps = {
   goal?: Goal;
@@ -22,34 +20,18 @@ type FormErrors = {
 };
 
 export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [targetAmount, setTargetAmount] = useState("");
-  const [goalType, setGoalType] = useState("SHORT_TERM");
-  const [deadline, setDeadline] = useState("");
+  const [name, setName] = useState(goal?.name ?? "");
+  const [description, setDescription] = useState(goal?.description ?? "");
+  const [targetAmount, setTargetAmount] = useState(goal?.targetAmount.toString() ?? "");
+  const [goalType, setGoalType] = useState<"SHORT_TERM" | "LONG_TERM">(
+    goal?.goalType ?? "SHORT_TERM"
+  );
+  const [deadline, setDeadline] = useState(goal?.deadline ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const isEditMode = useMemo(() => Boolean(goal), [goal]);
-
-  useEffect(() => {
-    if (goal) {
-      setName(goal.name);
-      setDescription(goal.description ?? "");
-      setTargetAmount(goal.targetAmount.toString());
-      setGoalType(goal.goalType);
-      setDeadline(goal.deadline ?? "");
-      setErrors({});
-      return;
-    }
-    setName("");
-    setDescription("");
-    setTargetAmount("");
-    setGoalType("SHORT_TERM");
-    setDeadline("");
-    setErrors({});
-  }, [goal]);
 
   const validate = (): boolean => {
     const nextErrors: FormErrors = {};
@@ -136,7 +118,7 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
           <label className="text-sm text-gray-200">Goal type</label>
           <select
             value={goalType}
-            onChange={e => setGoalType(e.target.value)}
+            onChange={e => setGoalType(e.target.value as "SHORT_TERM" | "LONG_TERM")}
             className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
             required
           >

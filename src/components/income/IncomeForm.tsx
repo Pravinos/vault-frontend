@@ -2,65 +2,66 @@
 
 import { useMemo, useState } from "react";
 
-import { createExpense, updateExpense } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
-import { formatCurrency } from "@/lib/utils";
-import type { Account, Category, CreateExpenseRequest, Expense } from "@/types";
+import { createIncome, updateIncome } from "@/lib/api";
+import type { Account, CreateIncomePayload, Income, IncomeCategory } from "@/types";
 
-type ExpenseFormProps = {
-  expense?: Expense;
-  categories: Category[];
+type IncomeFormProps = {
+  income?: Income;
+  categories: IncomeCategory[];
   accounts: Account[];
-  onSuccess: () => void;
+  onSuccess: (message: string) => void;
   onClose: () => void;
 };
 
 type FormErrors = {
   amount?: string;
-  categoryId?: string;
+  incomeCategoryId?: string;
   accountId?: string;
-  expenseDate?: string;
+  incomeDate?: string;
   note?: string;
 };
 
 const todayString = () => new Date().toISOString().slice(0, 10);
 
-export default function ExpenseForm({
-  expense,
+export default function IncomeForm({
+  income,
   categories,
   accounts,
   onSuccess,
   onClose,
-}: ExpenseFormProps) {
-  const [amount, setAmount] = useState<string>(expense?.amount.toString() ?? "");
-  const [categoryId, setCategoryId] = useState<string>(expense?.category.id.toString() ?? "");
-  const [accountId, setAccountId] = useState<string>(expense?.accountId ?? "");
-  const [expenseDate, setExpenseDate] = useState<string>(expense?.expenseDate ?? todayString());
-  const [note, setNote] = useState<string>(expense?.note ?? "");
+}: IncomeFormProps) {
+  const [amount, setAmount] = useState<string>(income?.amount.toString() ?? "");
+  const [incomeCategoryId, setIncomeCategoryId] = useState<string>(
+    income?.incomeCategoryId.toString() ?? ""
+  );
+  const [accountId, setAccountId] = useState<string>(income?.accountId ?? "");
+  const [incomeDate, setIncomeDate] = useState<string>(income?.incomeDate ?? todayString());
+  const [note, setNote] = useState<string>(income?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const isEditMode = useMemo(() => Boolean(expense), [expense]);
+  const isEditMode = useMemo(() => Boolean(income), [income]);
 
   const validate = (): boolean => {
     const nextErrors: FormErrors = {};
     const parsedAmount = Number(amount);
 
     if (!Number.isFinite(parsedAmount) || parsedAmount < 0.01) {
-      nextErrors.amount = "Amount must be at least 0.01";
+      nextErrors.amount = "Amount must be greater than 0";
     }
 
-    if (!categoryId) {
-      nextErrors.categoryId = "Category is required";
+    if (!incomeCategoryId) {
+      nextErrors.incomeCategoryId = "Category is required";
     }
 
     if (!accountId) {
       nextErrors.accountId = "Account is required";
     }
 
-    if (!expenseDate) {
-      nextErrors.expenseDate = "Date is required";
+    if (!incomeDate) {
+      nextErrors.incomeDate = "Date is required";
     }
 
     if (note.length > 255) {
@@ -81,42 +82,40 @@ export default function ExpenseForm({
     setFormError(null);
     setIsSubmitting(true);
 
-    const payload: CreateExpenseRequest = {
+    const payload: CreateIncomePayload = {
       amount: Number(amount),
-      categoryId: Number(categoryId),
+      incomeCategoryId: Number(incomeCategoryId),
       accountId,
-      expenseDate: expenseDate || undefined,
+      incomeDate,
       note: note.trim() ? note.trim() : undefined,
     };
 
     try {
-      if (expense) {
-        await updateExpense(expense.id, payload);
+      if (income) {
+        await updateIncome(income.id, payload);
+        onSuccess("Income updated");
       } else {
-        await createExpense(payload);
+        await createIncome(payload);
+        onSuccess("Income created");
       }
 
-      onSuccess();
       onClose();
     } catch (error) {
-      setFormError("Unable to save expense.");
+      setFormError("Unable to save income.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={isEditMode ? "Edit Expense" : "Add Expense"}
-    >
+    <Modal isOpen={true} onClose={onClose} title={isEditMode ? "Edit Income" : "Add Income"}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {formError ? (
           <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
             {formError}
           </p>
         ) : null}
+
         <div>
           <label className="text-sm text-gray-200">Amount</label>
           <input
@@ -128,16 +127,14 @@ export default function ExpenseForm({
             className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
             required
           />
-          {errors.amount ? (
-            <p className="mt-1 text-xs text-red-400">{errors.amount}</p>
-          ) : null}
+          {errors.amount ? <p className="mt-1 text-xs text-red-400">{errors.amount}</p> : null}
         </div>
 
         <div>
           <label className="text-sm text-gray-200">Category</label>
           <select
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
+            value={incomeCategoryId}
+            onChange={(event) => setIncomeCategoryId(event.target.value)}
             className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
             required
           >
@@ -146,12 +143,12 @@ export default function ExpenseForm({
             </option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
-                {category.name}
+                {category.icon} {category.name}
               </option>
             ))}
           </select>
-          {errors.categoryId ? (
-            <p className="mt-1 text-xs text-red-400">{errors.categoryId}</p>
+          {errors.incomeCategoryId ? (
+            <p className="mt-1 text-xs text-red-400">{errors.incomeCategoryId}</p>
           ) : null}
         </div>
 
@@ -172,23 +169,19 @@ export default function ExpenseForm({
               </option>
             ))}
           </select>
-          {errors.accountId ? (
-            <p className="mt-1 text-xs text-red-400">{errors.accountId}</p>
-          ) : null}
+          {errors.accountId ? <p className="mt-1 text-xs text-red-400">{errors.accountId}</p> : null}
         </div>
 
         <div>
           <label className="text-sm text-gray-200">Date</label>
           <input
             type="date"
-            value={expenseDate}
-            onChange={(event) => setExpenseDate(event.target.value)}
+            value={incomeDate}
+            onChange={(event) => setIncomeDate(event.target.value)}
             className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
             required
           />
-          {errors.expenseDate ? (
-            <p className="mt-1 text-xs text-red-400">{errors.expenseDate}</p>
-          ) : null}
+          {errors.incomeDate ? <p className="mt-1 text-xs text-red-400">{errors.incomeDate}</p> : null}
         </div>
 
         <div>
@@ -201,46 +194,26 @@ export default function ExpenseForm({
             maxLength={255}
             placeholder="Optional"
           />
-          {errors.note ? (
-            <p className="mt-1 text-xs text-red-400">{errors.note}</p>
-          ) : null}
+          {errors.note ? <p className="mt-1 text-xs text-red-400">{errors.note}</p> : null}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-200 transition-all duration-150 hover:border-gray-500 active:scale-95"
+            className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:border-gray-500"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 active:scale-95"
+            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}
           </button>
         </div>
-
-        {(() => {
-          const selectedAccount = accounts.find((a) => a.id === accountId);
-          const parsedAmt = Number(amount);
-          if (!selectedAccount || !Number.isFinite(parsedAmt) || parsedAmt <= 0) return null;
-          const oldAmt = isEditMode ? (expense?.amount ?? 0) : 0;
-          const projected = selectedAccount.calculatedBalance + oldAmt - parsedAmt;
-          return (
-            <p className="mt-1 rounded-lg border border-gray-700/60 bg-gray-900/60 px-3 py-2 text-xs text-gray-400">
-              After this expense,{" "}
-              <span className="font-medium text-gray-300">{selectedAccount.name}</span>{" "}
-              calculated balance will be:{" "}
-              <span className={`font-semibold tabular-nums ${projected < 0 ? "text-red-400" : "text-emerald-400"}`}>
-                {formatCurrency(projected)}
-              </span>
-            </p>
-          );
-        })()}
       </form>
     </Modal>
   );
