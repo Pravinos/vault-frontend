@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BotMessageSquare,
   ChevronLeft,
   ChevronRight,
   HandCoins,
   Landmark,
   LayoutDashboard,
   Receipt,
+  Settings2,
   Target,
   Wallet,
 } from "lucide-react";
@@ -20,6 +22,11 @@ const navItems = [
   { href: "/income", label: "Income", icon: HandCoins },
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/goals", label: "Goals", icon: Target },
+  { href: "/chat", label: "Chat", icon: BotMessageSquare },
+];
+
+const secondaryNavItems = [
+  { href: "/settings/ai", label: "AI Settings", icon: Settings2 },
 ];
 
 export default function Sidebar() {
@@ -58,6 +65,40 @@ export default function Sidebar() {
 
       <nav className="mt-4 flex flex-col gap-1 px-2">
         {navItems.map((item) => {
+          const isActive =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed ? item.label : undefined}
+              className={`flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-all duration-150 ${
+                collapsed ? "justify-center px-2" : "px-3"
+              } ${
+                isActive
+                  ? "border-l-[3px] border-emerald-500 bg-gray-800 text-white" +
+                    (collapsed ? "" : " pl-[9px]")
+                  : "text-gray-400 hover:bg-gray-800/70 hover:text-white"
+              }`}
+            >
+              <Icon className="h-5 w-5 flex-shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mx-3 mt-4 border-t border-gray-800" />
+
+      <nav className="mt-2 flex flex-col gap-1 px-2">
+        {!collapsed && (
+          <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-600">
+            Settings
+          </p>
+        )}
+        {secondaryNavItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;

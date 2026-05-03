@@ -2,7 +2,10 @@ import axios from "axios";
 
 import type {
   Account,
+  AiConfig,
   Category,
+  ChatRequest,
+  ChatResponse,
   ContributeRequest,
   CreateAccountPayload,
   CreateCheckpointPayload,
@@ -308,5 +311,35 @@ export async function getAllSummaries(): Promise<WeeklySummary[]> {
 
 export async function generateWeeklySummary(): Promise<WeeklySummary> {
   const response = await api.post<WeeklySummary>("/ai/summaries/generate");
+  return response.data;
+}
+
+// AI Chat & Config
+export async function sendChatMessage(req: ChatRequest): Promise<ChatResponse> {
+  const response = await api.post<ChatResponse>("/ai/chat", req);
+  return response.data;
+}
+
+export async function getAiConfig(): Promise<AiConfig> {
+  const response = await api.get<AiConfig>("/ai/config");
+  return response.data;
+}
+
+export async function updateAiConfig(update: {
+  task: string;
+  provider: string;
+  model: string;
+}): Promise<AiConfig> {
+  const response = await api.patch<AiConfig>("/ai/config", update);
+  return response.data;
+}
+
+export async function getLmStudioModels(): Promise<string[]> {
+  const response = await api.get<string[]>("/ai/models/lmstudio");
+  return response.data;
+}
+
+export async function getGroqModels(): Promise<string[]> {
+  const response = await api.get<string[]>("/ai/models/groq");
   return response.data;
 }

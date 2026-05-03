@@ -157,3 +157,38 @@ export interface WeeklySummary {
   generatedAt: string;
   provider: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  provider?: string;
+  model?: string;
+  timestamp: string;
+}
+
+export interface AiTaskConfig {
+  provider: 'lmstudio' | 'groq';
+  model: string;
+}
+
+export interface AiConfig {
+  chat: AiTaskConfig;
+  summary: AiTaskConfig;
+  availableModels: {
+    lmstudio: string[];
+    groq: string[];
+  };
+}
+
+export interface ChatRequest {
+  message: string;
+  conversationId?: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  provider: string;
+  model: string;
+  functionCallsUsed: string[];
+}

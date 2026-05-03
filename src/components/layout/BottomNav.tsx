@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HandCoins, Landmark, LayoutDashboard, Receipt, Target } from "lucide-react";
+import { BotMessageSquare, HandCoins, Landmark, LayoutDashboard, Receipt, Target } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/income", label: "Income", icon: HandCoins },
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/goals", label: "Goals", icon: Target },
+  { href: "/chat", label: "Chat", icon: BotMessageSquare },
 ];
 
 export default function BottomNav() {
