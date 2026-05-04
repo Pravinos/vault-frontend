@@ -10,11 +10,12 @@ import {
   Landmark,
   LayoutDashboard,
   Receipt,
+  ScrollText,
   Settings2,
   Target,
   Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/chat", label: "Chat", icon: BotMessageSquare },
+  { href: "/ai/summaries", label: "Summaries", icon: ScrollText },
 ];
 
 const secondaryNavItems = [
@@ -31,14 +33,13 @@ const secondaryNavItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
 
-  useEffect(() => {
-    const stored = localStorage.getItem("vault_sidebar_collapsed");
-    if (stored === "true") setCollapsed(true);
-    setMounted(true);
-  }, []);
+    return localStorage.getItem("vault_sidebar_collapsed") === "true";
+  });
 
   const toggleCollapse = () => {
     const next = !collapsed;
@@ -50,7 +51,7 @@ export default function Sidebar() {
     <aside
       className={`hidden md:flex h-screen sticky top-0 flex-col bg-gray-950 transition-all duration-200 flex-shrink-0 ${
         collapsed ? "w-16" : "w-60"
-      } ${mounted ? "" : "w-60"}`}
+      }`}
     >
       <div
         className={`flex items-center gap-2 px-4 py-6 text-white ${

@@ -321,18 +321,30 @@ export async function contributeToGoal(
 }
 
 // Summaries
-export async function getLatestSummary(): Promise<WeeklySummary> {
-  const response = await api.get<WeeklySummary>("/summaries/latest");
+export async function getWeeklySummaries(): Promise<WeeklySummary[]> {
+  const response = await api.get<WeeklySummary[]>("/ai/summaries");
   return response.data;
 }
 
-export async function getAllSummaries(): Promise<WeeklySummary[]> {
-  const response = await api.get<WeeklySummary[]>("/summaries");
-  return response.data;
+export async function getLatestWeeklySummary(): Promise<WeeklySummary | null> {
+  try {
+    const response = await api.get<WeeklySummary>("/ai/summaries/latest");
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function generateWeeklySummary(): Promise<WeeklySummary> {
-  const response = await api.post<WeeklySummary>("/ai/summaries/generate");
+  const response = await api.post<WeeklySummary>(
+    "/ai/summaries/generate",
+    undefined,
+    { timeout: 60000 }
+  );
   return response.data;
 }
 

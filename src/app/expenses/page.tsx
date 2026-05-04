@@ -58,11 +58,21 @@ export default function ExpensesPage() {
           categoryId: selectedCategoryId ?? undefined,
         });
         setExpenses(data);
-      } catch (err) {
-        if (allowRetry && isColdStartError(err)) {
+      } catch (error) {
+        if (allowRetry && isColdStartError(error)) {
           setRetryMessage("Waking up the server... retrying");
           await wait(5000);
-          return fetchExpenses(false);
+          try {
+            const retryData = await getExpenses({
+              month: selectedMonth || undefined,
+              categoryId: selectedCategoryId ?? undefined,
+            });
+            setExpenses(retryData);
+            return;
+          } catch {
+            setError("Unable to load expenses.");
+            return;
+          }
         }
 
         setError("Unable to load expenses.");
@@ -131,7 +141,7 @@ export default function ExpensesPage() {
     try {
       await deleteExpense(id);
       await fetchExpenses();
-    } catch (err) {
+    } catch {
       setError("Unable to delete expense.");
     }
   };

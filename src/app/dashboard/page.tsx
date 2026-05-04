@@ -17,7 +17,7 @@ import {
   getExpenseSummary,
   getGoals,
   getIncomeSummary,
-  getLatestSummary,
+  getLatestWeeklySummary,
 } from "@/lib/api";
 import { formatCurrency, getCurrentTimestamp, getMonthString } from "@/lib/utils";
 import type { Account, ExpenseMonthlySummary, ExpenseStats, Goal, WeeklySummary } from "@/types";
@@ -74,7 +74,7 @@ export default function DashboardPage() {
           await Promise.all([
             getExpenseStats(),
             getExpenseSummary(month),
-            getLatestSummary(),
+            getLatestWeeklySummary(),
             getAccounts(),
             getIncomeSummary(month),
             getGoals(),
@@ -171,7 +171,7 @@ export default function DashboardPage() {
                 <Skeleton variant="chart" />
               </div>
               <div className="lg:col-span-2">
-                <Skeleton variant="card" />
+                <Skeleton variant="card" className="h-[420px] rounded-xl" />
               </div>
             </div>
           </div>
