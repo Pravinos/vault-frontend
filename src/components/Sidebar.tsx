@@ -11,7 +11,6 @@ import {
   MessageSquare,
   Receipt,
   Settings,
-  Target,
   TrendingUp,
   FileText,
   X,
@@ -24,7 +23,6 @@ const navItems = [
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/income", label: "Income", icon: TrendingUp },
   { href: "/accounts", label: "Accounts", icon: Landmark },
-  { href: "/goals", label: "Goals", icon: Target },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/ai/summaries", label: "Summaries", icon: FileText },
 ];

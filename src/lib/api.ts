@@ -22,6 +22,7 @@ import type {
   CreateExpenseRequest,
   CreateGoalRequest,
   CreateIncomePayload,
+  CreateTransferPayload,
   Expense,
   ExpenseMonthlySummary,
   ExpenseStats,
@@ -30,6 +31,7 @@ import type {
   IncomeCategory,
   InvestmentCheckpoint,
   ManualBalancePayload,
+  Transfer,
   WeeklySummary,
 } from "@/types";
 
@@ -292,6 +294,24 @@ export async function updateManualBalance(
   }
 
   throw new Error(`Unable to update manual balance after ${attempts} attempts.`);
+}
+
+// Transfers
+export async function createTransfer(
+  payload: CreateTransferPayload
+): Promise<Transfer> {
+  const response = await api.post<Transfer>("/transfers", payload);
+  return response.data;
+}
+
+export async function getAccountTransfers(accountId: string): Promise<Transfer[]> {
+  const response = await api.get<Transfer[]>(`/accounts/${accountId}/transfers`);
+  return response.data;
+}
+
+export async function revertTransfer(transferId: string): Promise<Transfer> {
+  const response = await api.post<Transfer>(`/transfers/${transferId}/revert`);
+  return response.data;
 }
 
 // Checkpoints

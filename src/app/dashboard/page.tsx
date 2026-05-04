@@ -20,7 +20,6 @@ import {
 import {
   formatCurrency,
   getCurrentTimestamp,
-  getEffectiveAccountBalance,
   getMonthString,
 } from "@/lib/utils";
 import type { Account, ExpenseMonthlySummary, ExpenseStats, Goal, WeeklySummary } from "@/types";
@@ -51,6 +50,23 @@ function getAccountBadgeClass(type: string): string {
     default:
       return "bg-emerald-500/10 text-emerald-400";
   }
+}
+
+function getReturnColor(value: number | null): string {
+  if (value === null || value === 0) {
+    return "text-gray-400";
+  }
+
+  return value > 0 ? "text-emerald-400" : "text-red-400";
+}
+
+function formatReturnPercentage(value: number | null): string {
+  if (value === null || value === 0) {
+    return "0.0%";
+  }
+
+  const fixed = value.toFixed(1);
+  return value > 0 ? `+${fixed}%` : `${fixed}%`;
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -148,8 +164,8 @@ export default function DashboardPage() {
     void fetchDashboard();
   }, []);
 
-  const netWorth = accounts.reduce(
-    (sum, account) => sum + getEffectiveAccountBalance(account),
+  const calculatedNetWorth = accounts.reduce(
+    (sum, account) => sum + account.calculatedBalance,
     0
   );
 
@@ -164,8 +180,8 @@ export default function DashboardPage() {
 
   const balanceChangeMetrics = accounts.reduce(
     (acc, account) => {
-      const current = getEffectiveAccountBalance(account);
-      const baseline = account.manualBalance ?? account.openingBalance;
+      const current = account.calculatedBalance;
+      const baseline = account.openingBalance;
 
       if (!Number.isFinite(current) || !Number.isFinite(baseline)) {
         return acc;
@@ -175,17 +191,12 @@ export default function DashboardPage() {
       acc.baselineTotal += baseline;
       acc.trackedCount += 1;
 
-      if (account.manualBalance !== null) {
-        acc.manualTrackedCount += 1;
-      }
-
       return acc;
     },
     {
       deltaTotal: 0,
       baselineTotal: 0,
       trackedCount: 0,
-      manualTrackedCount: 0,
     }
   );
 
@@ -194,12 +205,7 @@ export default function DashboardPage() {
       ? ((balanceChangeMetrics.deltaTotal / Math.abs(balanceChangeMetrics.baselineTotal)) * 100).toFixed(1)
       : null;
 
-  const balanceTrackingLabel =
-    balanceChangeMetrics.manualTrackedCount === balanceChangeMetrics.trackedCount
-      ? "calculated vs manual"
-      : balanceChangeMetrics.manualTrackedCount > 0
-      ? "calculated vs manual/opening"
-      : "calculated vs opening";
+  const balanceTrackingLabel = "calculated vs opening";
 
   const totalIncomeThisMonth = incomeSummary
     ? Object.values(incomeSummary).reduce((sum, value) => sum + value, 0)
@@ -262,7 +268,7 @@ export default function DashboardPage() {
               </p>
 
               <p className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                {formatCurrency(netWorth)}
+                {formatCurrency(calculatedNetWorth)}
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -271,7 +277,7 @@ export default function DashboardPage() {
                     Calculated
                   </p>
                   <p className="text-base font-bold text-emerald-400">
-                    {formatCurrency(netWorth)}
+                    {formatCurrency(calculatedNetWorth)}
                   </p>
                   <p className="mt-0.5 text-[10px] text-gray-500">From transactions</p>
                 </div>
@@ -323,9 +329,10 @@ export default function DashboardPage() {
             <div className="relative mb-4">
               <div className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2 hide-scrollbar">
                 {accounts.slice(0, 8).map((account) => {
-                  const effectiveBalance = getEffectiveAccountBalance(account);
-                  const delta = effectiveBalance - account.openingBalance;
+                  const calculatedBalance = account.calculatedBalance;
+                  const delta = calculatedBalance - account.openingBalance;
                   const isDeltaUp = delta >= 0;
+                  const isInvestment = account.accountType === "INVESTMENT";
 
                   return (
                     <Link
@@ -337,21 +344,32 @@ export default function DashboardPage() {
                       }}
                     >
                       <p className="truncate text-xs font-medium text-gray-400 mb-1">{account.name}</p>
-                      <p className="text-xl font-bold text-white">{formatCurrency(effectiveBalance)}</p>
+                      <p className="text-xl font-bold text-white">{formatCurrency(calculatedBalance)}</p>
                       <span
                         className={`inline-block mt-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClass(account.accountType)}`}
                       >
                         {account.accountType}
                       </span>
-                      <div className="mt-2 flex items-center gap-1 text-[11px] text-gray-400">
-                        {isDeltaUp ? (
-                          <TrendingUp className="h-3 w-3 text-emerald-400" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 text-red-400" />
-                        )}
-                        {isDeltaUp ? "+" : "-"}
-                        {formatCurrency(Math.abs(delta))} since opening
-                      </div>
+                      {isInvestment ? (
+                        <div className={`mt-2 flex items-center gap-1 text-[11px] ${getReturnColor(account.returnPercentage)}`}>
+                          {(account.returnPercentage ?? 0) >= 0 ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3" />
+                          )}
+                          {formatReturnPercentage(account.returnPercentage)} return
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-center gap-1 text-[11px] text-gray-400">
+                          {isDeltaUp ? (
+                            <TrendingUp className="h-3 w-3 text-emerald-400" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-red-400" />
+                          )}
+                          {isDeltaUp ? "+" : "-"}
+                          {formatCurrency(Math.abs(delta))} since opening
+                        </div>
+                      )}
                     </Link>
                   );
                 })}
