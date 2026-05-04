@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
 
 import { createExpense, updateExpense } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
+import SelectField from "@/components/ui/SelectField";
 import { formatCurrency } from "@/lib/utils";
 import type { Account, Category, CreateExpenseRequest, Expense } from "@/types";
 
@@ -135,12 +135,10 @@ export default function ExpenseForm({
         </div>
 
         <div>
-          <label className="text-sm text-gray-200">Category</label>
-          <div className="relative mt-1">
-          <select
+          <SelectField
+            label="Category"
             value={categoryId}
             onChange={(event) => setCategoryId(event.target.value)}
-            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-base text-white"
             required
           >
             <option value="" disabled>
@@ -151,21 +149,17 @@ export default function ExpenseForm({
                 {category.name}
               </option>
             ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
+          </SelectField>
           {errors.categoryId ? (
             <p className="mt-1 text-xs text-red-400">{errors.categoryId}</p>
           ) : null}
         </div>
 
         <div>
-          <label className="text-sm text-gray-200">Account</label>
-          <div className="relative mt-1">
-          <select
+          <SelectField
+            label="Account"
             value={accountId}
             onChange={(event) => setAccountId(event.target.value)}
-            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-base text-white"
             required
           >
             <option value="" disabled>
@@ -176,9 +170,7 @@ export default function ExpenseForm({
                 {account.name}
               </option>
             ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
+          </SelectField>
           {errors.accountId ? (
             <p className="mt-1 text-xs text-red-400">{errors.accountId}</p>
           ) : null}

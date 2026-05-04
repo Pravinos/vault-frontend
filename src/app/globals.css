@@ -64,3 +64,8 @@ input[type="time"] {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+select option {
+  background-color: #1a2332;
+  color: #ffffff;
+}

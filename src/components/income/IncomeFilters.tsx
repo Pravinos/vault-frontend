@@ -1,5 +1,6 @@
 "use client";
 
+import SelectField from "@/components/ui/SelectField";
 import type { Account } from "@/types";
 
 type IncomeFiltersProps = {
@@ -18,20 +19,20 @@ export default function IncomeFilters({
   onAccountChange,
 }: IncomeFiltersProps) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <input
         type="month"
         value={month}
         onChange={(event) => onMonthChange(event.target.value)}
         className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-base text-white sm:w-48"
       />
-      <select
+      <SelectField
         value={accountId ?? ""}
         onChange={(event) => {
           const value = event.target.value;
           onAccountChange(value || null);
         }}
-        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-base text-white sm:w-56"
+        className="sm:w-56"
       >
         <option value="">All accounts</option>
         {accounts.map((account) => (
@@ -39,7 +40,7 @@ export default function IncomeFilters({
             {account.name}
           </option>
         ))}
-      </select>
+      </SelectField>
     </div>
   );
 }

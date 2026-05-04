@@ -155,13 +155,7 @@ export default function DashboardPage() {
   );
 
   const accountsWithManual = accounts.filter((a) => a.manualBalance !== null);
-  const manualLabel = accountsWithManual.length > 0
-    ? formatCurrency(totalManualBalance)
-    : "—";
-  const trendDelta =
-    accountsWithManual.length > 0 && totalManualBalance !== 0
-      ? ((netWorth - totalManualBalance) / Math.abs(totalManualBalance)) * 100
-      : null;
+  const manualNetWorth = accountsWithManual.length > 0 ? totalManualBalance : null;
 
   const totalIncomeThisMonth = incomeSummary
     ? Object.values(incomeSummary).reduce((sum, value) => sum + value, 0)
@@ -219,26 +213,61 @@ export default function DashboardPage() {
         ) : stats && summary ? (
           <div className="space-y-6">
             <div className="mb-4 rounded-2xl bg-gradient-to-br from-[#1a2f2a] to-[#1a2332] p-5">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Net Worth
               </p>
-              <p className="text-4xl font-bold tracking-tight text-white">
+
+              <p className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
                 {formatCurrency(netWorth)}
               </p>
-              <div className="mt-2 flex gap-4 text-sm text-gray-400">
-                <span>{formatCurrency(netWorth)} calculated</span>
-                <span>{accountsWithManual.length > 0 ? formatCurrency(totalManualBalance) : "-"} manual</span>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-white/5 p-3">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                    Calculated
+                  </p>
+                  <p className="text-base font-bold text-emerald-400">
+                    {formatCurrency(netWorth)}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-gray-500">From transactions</p>
+                </div>
+
+                <div className="rounded-xl bg-white/5 p-3">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                    Manual
+                  </p>
+                  <p className={`text-base font-bold ${manualNetWorth !== null ? "text-blue-400" : "text-gray-600"}`}>
+                    {manualNetWorth !== null ? formatCurrency(manualNetWorth) : "Not set"}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-gray-500">User snapshot</p>
+                </div>
               </div>
-              {trendDelta !== null ? (
-                <p
-                  className={`mt-2 flex items-center gap-1 text-xs font-semibold ${
-                    trendDelta >= 0 ? "text-emerald-400" : "text-red-400"
-                  }`}
-                >
-                  {trendDelta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {trendDelta >= 0 ? "+" : ""}
-                  {trendDelta.toFixed(1)}% vs manual
-                </p>
+
+              {manualNetWorth !== null ? (
+                <div className="mt-3 flex items-center gap-2 border-t border-white/5 pt-3">
+                  {(() => {
+                    const diff = netWorth - manualNetWorth;
+                    const pct =
+                      manualNetWorth !== 0
+                        ? ((diff / Math.abs(manualNetWorth)) * 100).toFixed(1)
+                        : null;
+                    const positive = diff >= 0;
+
+                    return (
+                      <>
+                        <span className={`text-xs font-semibold ${positive ? "text-emerald-400" : "text-red-400"}`}>
+                          {positive ? "▲" : "▼"} {formatCurrency(Math.abs(diff))}
+                        </span>
+                        {pct !== null ? (
+                          <span className={`text-xs ${positive ? "text-emerald-400/70" : "text-red-400/70"}`}>
+                            ({positive ? "+" : ""}{pct}% vs manual)
+                          </span>
+                        ) : null}
+                        <span className="ml-auto text-xs text-gray-500">calculated vs manual</span>
+                      </>
+                    );
+                  })()}
+                </div>
               ) : null}
             </div>
 

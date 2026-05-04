@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import Modal from "@/components/ui/Modal";
+import SelectField from "@/components/ui/SelectField";
 import { createAccount, updateAccount } from "@/lib/api";
 import type { Account, AccountType, CreateAccountPayload } from "@/types";
 
@@ -110,28 +111,22 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
         </div>
 
         <div>
-          <label className="text-sm text-gray-200">Account Type</label>
-          <div className="mt-1 grid grid-cols-3 gap-2">
+          <SelectField
+            label="Account Type"
+            value={accountType}
+            onChange={(event) => setAccountType(event.target.value as AccountType)}
+          >
             {(["CHECKING", "SAVINGS", "INVESTMENT"] as AccountType[]).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setAccountType(type)}
-                className={
-                  accountType === type
-                    ? "rounded-lg border border-emerald-500 bg-emerald-500/15 px-3 py-2 text-base font-semibold text-emerald-300 sm:text-xs"
-                    : "rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-gray-300 hover:border-gray-500 sm:text-xs"
-                }
-              >
+              <option key={type} value={type}>
                 {type}
-              </button>
+              </option>
             ))}
-          </div>
+          </SelectField>
         </div>
 
         {!isEditMode ? (
           <div>
-            <label className="text-sm text-gray-200">Opening Balance</label>
+            <label className="text-sm text-gray-200">Opening Balance (EUR)</label>
             <input
               type="number"
               min="0"
@@ -141,6 +136,9 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
               className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
               required
             />
+            <p className="mt-1.5 text-xs text-gray-500">
+              This will also be set as your initial manual balance snapshot.
+            </p>
             {errors.openingBalance ? (
               <p className="mt-1 text-xs text-red-400">{errors.openingBalance}</p>
             ) : null}
