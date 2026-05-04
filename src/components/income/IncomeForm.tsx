@@ -125,7 +125,7 @@ export default function IncomeForm({
             step="0.01"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
             required
           />
           {errors.amount ? <p className="mt-1 text-xs text-red-400">{errors.amount}</p> : null}
@@ -137,7 +137,7 @@ export default function IncomeForm({
           <select
             value={incomeCategoryId}
             onChange={(event) => setIncomeCategoryId(event.target.value)}
-            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-white"
+            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-base text-white"
             required
           >
             <option value="" disabled>
@@ -162,7 +162,7 @@ export default function IncomeForm({
           <select
             value={accountId}
             onChange={(event) => setAccountId(event.target.value)}
-            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-white"
+            className="w-full appearance-none rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 pr-9 text-base text-white"
             required
           >
             <option value="" disabled>
@@ -185,7 +185,7 @@ export default function IncomeForm({
             type="date"
             value={incomeDate}
             onChange={(event) => setIncomeDate(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
             required
           />
           {errors.incomeDate ? <p className="mt-1 text-xs text-red-400">{errors.incomeDate}</p> : null}
@@ -197,25 +197,25 @@ export default function IncomeForm({
             type="text"
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
             maxLength={255}
             placeholder="Optional"
           />
           {errors.note ? <p className="mt-1 text-xs text-red-400">{errors.note}</p> : null}
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:border-gray-500"
+            className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}

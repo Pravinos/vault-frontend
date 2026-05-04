@@ -7,7 +7,6 @@ import axios from "axios";
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
 import ExpenseList from "@/components/expenses/ExpenseList";
-import TopBar from "@/components/layout/TopBar";
 import Skeleton from "@/components/ui/Skeleton";
 import {
   getAccounts,
@@ -176,24 +175,22 @@ export default function ExpensesPage() {
     : "";
 
   return (
-    <div className="flex min-h-full flex-col">
-      <TopBar
-        title="Expenses"
-        action={
-          <button
-            type="button"
-            onClick={handleAddClick}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Add Expense
-          </button>
-        }
-      />
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">Expenses</h1>
+        <button
+          type="button"
+          onClick={handleAddClick}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
+        >
+          <Plus className="h-4 w-4" />
+          Add Expense
+        </button>
+      </div>
 
       {/* Summary bar */}
       {!loading && (
-        <div className="border-b border-gray-800 px-4 py-2 sm:px-6">
+        <div className="border-b border-gray-800 px-0 py-2">
           <p className="text-sm text-gray-400">
             {monthLabel && <span className="font-medium text-gray-300">{monthLabel}</span>}
             {monthLabel && " — "}
@@ -206,7 +203,7 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      <div className="flex-1 space-y-5 px-4 py-5 sm:px-6">
+      <div className="space-y-5">
         <ExpenseFilters
           month={selectedMonth}
           categoryId={selectedCategoryId}

@@ -45,7 +45,9 @@ export async function middleware(req: NextRequest) {
 
   if (!authenticated) {
     if (pathname === "/login") return NextResponse.next();
-    return NextResponse.redirect(new URL("/login", req.url));
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("reason", "expired");
+    return NextResponse.redirect(loginUrl);
   }
 
   // Authenticated - don't let them see login/setup pages

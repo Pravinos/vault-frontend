@@ -30,6 +30,12 @@ body {
   color: var(--foreground);
 }
 
+html,
+body {
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
 /* Touch-friendly input heights */
 input,
 select,
@@ -48,4 +54,13 @@ input[type="time"] {
 /* Tabular numbers for monetary values */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Clock, Plus } from "lucide-react";
+import { Clock, MoreHorizontal, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AccountForm from "@/components/accounts/AccountForm";
 import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
-import TopBar from "@/components/layout/TopBar";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
@@ -17,17 +16,31 @@ import type { Account } from "@/types";
 
 const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
 
-const typeBadgeClasses: Record<Account["accountType"], string> = {
-  CHECKING: "bg-emerald-900/60 text-emerald-300",
-  SAVINGS: "bg-blue-900/60 text-blue-300",
-  INVESTMENT: "bg-purple-900/60 text-purple-300",
-};
+function getAccountColor(type: string): string {
+  switch (type) {
+    case "CHECKING":
+      return "#10b981";
+    case "SAVINGS":
+      return "#3b82f6";
+    case "INVESTMENT":
+      return "#8b5cf6";
+    default:
+      return "#10b981";
+  }
+}
 
-const typeTopBorderClasses: Record<Account["accountType"], string> = {
-  CHECKING: "border-t-emerald-500",
-  SAVINGS: "border-t-blue-500",
-  INVESTMENT: "border-t-purple-500",
-};
+function getAccountBadgeClass(type: string): string {
+  switch (type) {
+    case "CHECKING":
+      return "bg-emerald-500/10 text-emerald-400";
+    case "SAVINGS":
+      return "bg-blue-500/10 text-blue-400";
+    case "INVESTMENT":
+      return "bg-violet-500/10 text-violet-400";
+    default:
+      return "bg-emerald-500/10 text-emerald-400";
+  }
+}
 
 function formatManualTimestamp(value: string | null): string {
   if (!value) {
@@ -64,6 +77,7 @@ export default function AccountsPage() {
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingAccount, setEditingAccount] = useState<Account | undefined>(undefined);
   const [manualBalanceAccount, setManualBalanceAccount] = useState<Account | undefined>(undefined);
+  const [mobileMenuAccountId, setMobileMenuAccountId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
@@ -138,22 +152,22 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <TopBar
-        title={`Accounts${accounts.length > 0 ? ` (${accounts.length})` : ""}`}
-        action={
-          <button
-            type="button"
-            onClick={openCreate}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Add Account
-          </button>
-        }
-      />
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">
+          Accounts{accounts.length > 0 ? ` (${accounts.length})` : ""}
+        </h1>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
+        >
+          <Plus className="h-4 w-4" />
+          Add Account
+        </button>
+      </div>
 
-      <div className="flex-1 space-y-6 px-4 py-6 sm:px-6">
+      <div className="space-y-6">
         {staleAccounts.length > 0 ? (
           <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
             <p className="text-sm font-medium text-amber-200">Weekly update reminder</p>
@@ -206,14 +220,17 @@ export default function AccountsPage() {
               return (
                 <div
                   key={account.id}
-                  className={`rounded-xl border-t-4 border border-gray-800 bg-gray-900/60 p-5 text-sm text-gray-200 ${typeTopBorderClasses[account.accountType]}`}
+                  className="rounded-2xl border border-gray-800 border-l-4 bg-[#1a2332] p-5 text-sm text-gray-200 transition-colors"
+                  style={{
+                    borderLeftColor: getAccountColor(account.accountType),
+                  }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-base font-semibold text-white">{account.name}</p>
                       <div className="mt-2 flex items-center gap-2">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${typeBadgeClasses[account.accountType]}`}
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getAccountBadgeClass(account.accountType)}`}
                         >
                           {account.accountType}
                         </span>
@@ -239,7 +256,7 @@ export default function AccountsPage() {
                     </p>
                   </div>
 
-                  <div className="mt-4 rounded-lg border border-gray-800 bg-gray-950/60 p-3">
+                  <div className="mt-4 rounded-xl border border-gray-800 bg-[#0f1923] p-3">
                     <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
                       Manual balance
                     </p>
@@ -253,7 +270,7 @@ export default function AccountsPage() {
                   </div>
 
                   {account.accountType === "INVESTMENT" ? (
-                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-lg border border-gray-800 bg-gray-950/60 p-3 text-xs">
+                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-gray-800 bg-[#0f1923] p-3 text-xs">
                       <div>
                         <p className="font-medium uppercase tracking-wider text-gray-500">Value</p>
                         <p className="mt-1 tabular-nums text-gray-100">{formatCurrency(account.currentValue ?? 0)}</p>
@@ -271,7 +288,68 @@ export default function AccountsPage() {
                     </div>
                   ) : null}
 
-                  <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                  <div className="mt-5 sm:hidden">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setManualBalanceAccount(account)}
+                        className="flex-1 rounded-lg bg-emerald-600/20 px-3 py-2 text-sm font-medium text-emerald-400 transition-all duration-150 hover:bg-emerald-600/30 active:scale-95"
+                      >
+                        Update Balance
+                      </button>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMobileMenuAccountId((prev) =>
+                              prev === account.id ? null : account.id
+                            )
+                          }
+                          className="cursor-pointer rounded-lg bg-white/5 p-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
+                          aria-label="Open account actions"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                        {mobileMenuAccountId === account.id ? (
+                          <div className="absolute right-0 z-10 mt-2 min-w-40 rounded-lg border border-gray-700 bg-gray-900 p-1 shadow-lg">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openEdit(account);
+                                setMobileMenuAccountId(null);
+                              }}
+                              className="block w-full rounded-md px-3 py-2 text-left text-xs text-gray-200 hover:bg-gray-800"
+                            >
+                              Edit
+                            </button>
+                            <Link
+                              href={account.accountType === "INVESTMENT" ? `/accounts/${account.id}` : "/expenses"}
+                              className="block rounded-md px-3 py-2 text-left text-xs text-gray-200 hover:bg-gray-800"
+                              onClick={() => setMobileMenuAccountId(null)}
+                            >
+                              View details
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleDeleteAccount(account);
+                                setMobileMenuAccountId(null);
+                              }}
+                              className={`block w-full rounded-md px-3 py-2 text-left text-xs ${
+                                isPendingConfirm(account.id)
+                                  ? "bg-red-500/20 text-red-300"
+                                  : "text-red-400 hover:bg-gray-800"
+                              }`}
+                            >
+                              {isPendingConfirm(account.id) ? "Confirm?" : "Delete"}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 hidden gap-2 sm:flex sm:flex-row">
                     <button
                       type="button"
                       onClick={() => setManualBalanceAccount(account)}

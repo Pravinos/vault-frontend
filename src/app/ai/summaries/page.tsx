@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronDown, ChevronUp, RefreshCw, ScrollText } from "lucide-react";
 
-import TopBar from "@/components/layout/TopBar";
 import ProviderBadge from "@/components/ui/ProviderBadge";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
@@ -150,23 +149,21 @@ export default function WeeklySummariesPage() {
   const hasSummaries = useMemo(() => summaries.length > 0, [summaries]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <TopBar
-        title="Weekly Summaries"
-        action={
-          <button
-            type="button"
-            onClick={generate}
-            disabled={isGenerating}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-200 transition-all duration-150 hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-            {isGenerating ? "Generating..." : "Generate now"}
-          </button>
-        }
-      />
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">Weekly Summaries</h1>
+        <button
+          type="button"
+          onClick={generate}
+          disabled={isGenerating}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-base font-medium text-gray-200 transition-all duration-150 hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-xs"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+          {isGenerating ? "Generating..." : "Generate now"}
+        </button>
+      </div>
 
-      <div className="flex-1 space-y-4 px-4 py-6 sm:px-6">
+      <div className="space-y-4">
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton variant="card" className="h-44 rounded-xl" />

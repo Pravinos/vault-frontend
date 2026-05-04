@@ -56,7 +56,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
   if (!summary) {
     return (
       <>
-        <div className="flex h-full flex-col rounded-xl border-l-4 border-emerald-500/60 bg-gray-800 p-6">
+        <div className="flex h-full flex-col rounded-2xl border-l-4 border-emerald-500/60 bg-[#1a2332] p-5">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-white">Weekly Summary</h2>
@@ -85,7 +85,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
 
   return (
     <>
-      <div className="flex h-full flex-col rounded-xl border-l-4 border-emerald-500/60 bg-gray-800 p-6">
+      <div className="flex h-full flex-col rounded-2xl border-l-4 border-emerald-500/60 bg-[#1a2332] p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />

@@ -6,7 +6,6 @@ import axios from "axios";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalForm from "@/components/goals/GoalForm";
 import ContributeModal from "@/components/goals/ContributeModal";
-import TopBar from "@/components/layout/TopBar";
 import Skeleton from "@/components/ui/Skeleton";
 import { deactivateGoal, getGoals } from "@/lib/api";
 import type { Goal } from "@/types";
@@ -92,21 +91,19 @@ export default function GoalsPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <TopBar
-        title="Goals"
-        action={
-          <button
-            type="button"
-            onClick={handleAddClick}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Add Goal
-          </button>
-        }
-      />
-      <div className="flex-1 space-y-6 px-4 py-6 sm:px-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">Goals</h1>
+        <button
+          type="button"
+          onClick={handleAddClick}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
+        >
+          <Plus className="h-4 w-4" />
+          Add Goal
+        </button>
+      </div>
+      <div className="space-y-6">
         {retryMessage ? (
           <p className="text-xs font-medium text-amber-300">{retryMessage}</p>
         ) : null}

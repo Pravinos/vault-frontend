@@ -46,7 +46,7 @@ export default function ChatInput({ value, onChange, onSend, disabled }: ChatInp
   };
 
   return (
-    <div className="border-t border-gray-800 bg-gray-950 px-4 py-3">
+    <div className="px-4 py-3">
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}

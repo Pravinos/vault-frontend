@@ -33,7 +33,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
 
   if (summary.byCategory.length === 0) {
     return (
-      <div className="rounded-xl bg-gray-800 p-6 h-full">
+      <div className="h-full rounded-2xl bg-[#1a2332] p-5">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-white">
             Spending by category
@@ -60,7 +60,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
   }
 
   return (
-    <div className="rounded-xl bg-gray-800 p-6 h-full">
+    <div className="h-full rounded-2xl bg-[#1a2332] p-5">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-white">
           Spending by category

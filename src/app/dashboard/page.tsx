@@ -6,11 +6,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 import CategoryChart from "@/components/dashboard/CategoryChart";
-import StatsBar from "@/components/dashboard/StatsBar";
-import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
+import WeeklySummaryCard from "../../components/dashboard/WeeklySummaryCard";
 import Skeleton from "@/components/ui/Skeleton";
 import ErrorMessage from "@/components/ui/ErrorMessage";
-import TopBar from "@/components/layout/TopBar";
 import {
   getAccounts,
   getExpenseStats,
@@ -24,17 +22,31 @@ import type { Account, ExpenseMonthlySummary, ExpenseStats, Goal, WeeklySummary 
 
 const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
 
-const accountTypeBorderColor: Record<string, string> = {
-  CHECKING: "border-l-emerald-500",
-  SAVINGS: "border-l-blue-500",
-  INVESTMENT: "border-l-purple-500",
-};
+function getAccountColor(type: string): string {
+  switch (type) {
+    case "CHECKING":
+      return "#10b981";
+    case "SAVINGS":
+      return "#3b82f6";
+    case "INVESTMENT":
+      return "#8b5cf6";
+    default:
+      return "#10b981";
+  }
+}
 
-const accountTypeBadgeColor: Record<string, string> = {
-  CHECKING: "bg-emerald-900/60 text-emerald-300",
-  SAVINGS: "bg-blue-900/60 text-blue-300",
-  INVESTMENT: "bg-purple-900/60 text-purple-300",
-};
+function getAccountBadgeClass(type: string): string {
+  switch (type) {
+    case "CHECKING":
+      return "bg-emerald-500/10 text-emerald-400";
+    case "SAVINGS":
+      return "bg-blue-500/10 text-blue-400";
+    case "INVESTMENT":
+      return "bg-violet-500/10 text-violet-400";
+    default:
+      return "bg-emerald-500/10 text-emerald-400";
+  }
+}
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -46,6 +58,35 @@ const isColdStartError = (error: unknown) => {
   const status = error.response?.status;
   return status === 502 || status === 504 || error.code === "ECONNABORTED";
 };
+
+function StatCard({
+  label,
+  value,
+  color,
+  isText,
+}: {
+  label: string;
+  value: string | number | null;
+  color?: "emerald" | "red";
+  isText?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl bg-[#1a2332] p-4">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+        {label}
+      </p>
+      <p
+        className={`truncate font-bold ${
+          isText ? "text-base text-white" : "text-lg text-white"
+        } ${color === "emerald" ? "text-emerald-400" : ""} ${
+          color === "red" ? "text-red-400" : ""
+        }`}
+      >
+        {value ?? "-"}
+      </p>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<ExpenseStats | null>(null);
@@ -143,9 +184,9 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="flex min-h-full flex-col">
-      <TopBar title="Dashboard" />
-      <div className="flex-1 space-y-6 px-4 py-6 sm:px-6">
+    <div className="space-y-4 sm:space-y-6">
+      <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+      <div className="space-y-4 sm:space-y-6">
         {error ? (
           <ErrorMessage message={error} onRetry={() => window.location.reload()} />
         ) : loading ? (
@@ -161,7 +202,7 @@ export default function DashboardPage() {
                 <Skeleton key={`account-${index}`} variant="card" className="h-24 min-w-[160px] rounded-xl flex-shrink-0" />
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               {Array.from({ length: 4 }).map((_, index) => (
                 <Skeleton key={index} variant="stat" />
               ))}
@@ -177,47 +218,32 @@ export default function DashboardPage() {
           </div>
         ) : stats && summary ? (
           <div className="space-y-6">
-            {/* Net Worth */}
-            <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+            <div className="mb-4 rounded-2xl bg-gradient-to-br from-[#1a2f2a] to-[#1a2332] p-5">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Net Worth
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Calculated vs manual balances
+              <p className="text-4xl font-bold tracking-tight text-white">
+                {formatCurrency(netWorth)}
               </p>
-              <div className="mt-3 flex items-end gap-4">
-                <p className="text-5xl font-semibold tabular-nums text-white drop-shadow-[0_0_12px_rgba(52,211,153,0.25)]">
-                  {formatCurrency(netWorth)}
+              <div className="mt-2 flex gap-4 text-sm text-gray-400">
+                <span>{formatCurrency(netWorth)} calculated</span>
+                <span>{accountsWithManual.length > 0 ? formatCurrency(totalManualBalance) : "-"} manual</span>
+              </div>
+              {trendDelta !== null ? (
+                <p
+                  className={`mt-2 flex items-center gap-1 text-xs font-semibold ${
+                    trendDelta >= 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {trendDelta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {trendDelta >= 0 ? "+" : ""}
+                  {trendDelta.toFixed(1)}% vs manual
                 </p>
-                {trendDelta !== null ? (
-                  <span
-                    className={`mb-1 flex items-center gap-1 text-sm font-medium ${
-                      trendDelta >= 0 ? "text-emerald-400" : "text-red-400"
-                    }`}
-                  >
-                    {trendDelta >= 0 ? (
-                      <TrendingUp className="h-4 w-4" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4" />
-                    )}
-                    {trendDelta >= 0 ? "+" : ""}
-                    {trendDelta.toFixed(1)}% vs manual
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-6 text-xs text-gray-400">
-                <span className="tabular-nums text-gray-200">
-                  {formatCurrency(netWorth)} <span className="text-gray-500">(calculated)</span>
-                </span>
-                <span className="tabular-nums text-gray-200">
-                  {manualLabel} <span className="text-gray-500">(manual)</span>
-                </span>
-              </div>
-              <div className="mt-3 h-0.5 w-40 rounded-full bg-emerald-500/60" />
+              ) : null}
             </div>
 
             {staleAccounts.length > 0 ? (
-              <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
+              <div className="rounded-2xl border border-amber-500/50 bg-amber-500/10 p-4">
                 <p className="text-sm font-medium text-amber-200">Manual balance update reminder</p>
                 <p className="mt-1 text-xs text-amber-100/90">
                   {staleAccounts.map((account) => account.name).join(", ")} need updates this week.
@@ -225,97 +251,89 @@ export default function DashboardPage() {
               </div>
             ) : null}
 
-            {/* Account strip */}
-            <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-4">
-              {accounts.slice(0, 8).map((account) => {
-                const delta = account.calculatedBalance - account.openingBalance;
-                const isDeltaUp = delta >= 0;
-                const deltaLabel = `${isDeltaUp ? "+" : "-"}${formatCurrency(
-                  Math.abs(delta)
-                )}`;
+            <div className="relative mb-4">
+              <div className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2 hide-scrollbar">
+                {accounts.slice(0, 8).map((account) => {
+                  const delta = account.calculatedBalance - account.openingBalance;
+                  const isDeltaUp = delta >= 0;
 
-                return (
-                  <Link
-                    key={account.id}
-                    href={`/accounts/${account.id}`}
-                    className={`flex-shrink-0 min-w-[160px] cursor-pointer rounded-xl border-l-4 border border-gray-800 bg-gray-900/60 p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/40 md:min-w-0 ${
-                      accountTypeBorderColor[account.accountType] ?? "border-l-gray-600"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-white truncate">{account.name}</p>
-                      <div className="flex items-center gap-2">
-                        {account.accountType === "INVESTMENT" &&
-                        account.returnPercentage !== null ? (
-                          <span className="rounded-full bg-emerald-900/60 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
-                            +{account.returnPercentage.toFixed(2)}%
-                          </span>
-                        ) : null}
-                        <span
-                          className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                            accountTypeBadgeColor[account.accountType] ??
-                              "bg-gray-700 text-gray-300"
-                          }`}
-                        >
-                          {account.accountType}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold tabular-nums text-emerald-300">
-                      {formatCurrency(account.calculatedBalance)}
-                    </p>
-                    <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
-                      {isDeltaUp ? (
-                        <TrendingUp className="h-3 w-3 text-emerald-400" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3 text-red-400" />
-                      )}
-                      <span className="tabular-nums">
-                        {deltaLabel} since opening
+                  return (
+                    <Link
+                      key={account.id}
+                      href={`/accounts/${account.id}`}
+                      className="w-[200px] sm:w-56 shrink-0 snap-start rounded-2xl bg-[#1a2332] p-4 border-l-4 transition-colors border-emerald-500"
+                      style={{
+                        borderLeftColor: getAccountColor(account.accountType),
+                      }}
+                    >
+                      <p className="truncate text-xs font-medium text-gray-400 mb-1">{account.name}</p>
+                      <p className="text-xl font-bold text-white">{formatCurrency(account.calculatedBalance)}</p>
+                      <span
+                        className={`inline-block mt-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClass(account.accountType)}`}
+                      >
+                        {account.accountType}
                       </span>
-                    </div>
-                  </Link>
-                );
-              })}
+                      <div className="mt-2 flex items-center gap-1 text-[11px] text-gray-400">
+                        {isDeltaUp ? (
+                          <TrendingUp className="h-3 w-3 text-emerald-400" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 text-red-400" />
+                        )}
+                        {isDeltaUp ? "+" : "-"}
+                        {formatCurrency(Math.abs(delta))} since opening
+                      </div>
+                    </Link>
+                  );
+                })}
+
+                <div className="w-1 shrink-0 sm:hidden" />
+              </div>
+
+              <div className="pointer-events-none absolute bottom-2 right-0 top-0 w-8 bg-gradient-to-l from-[#0d1520] to-transparent sm:hidden" />
             </div>
 
-            <div className="border-t border-gray-800" />
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <StatCard
+                label="Income This Month"
+                value={formatCurrency(totalIncomeThisMonth)}
+                color="emerald"
+              />
+              <StatCard
+                label="Expenses This Month"
+                value={formatCurrency(stats.totalThisMonth)}
+                color="red"
+              />
+            </div>
 
-            <StatsBar stats={stats} />
+            <div className="mb-3 rounded-2xl bg-[#1a2332] p-4">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                Net Cash Flow
+              </p>
+              <p
+                className={`text-xl font-bold ${
+                  netCashFlow > 0
+                    ? "text-emerald-400"
+                    : netCashFlow < 0
+                    ? "text-red-400"
+                    : "text-white"
+                }`}
+              >
+                {formatCurrency(netCashFlow)}
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-xl bg-gray-800 p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-                  Income this month
-                </p>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-white">
-                  {formatCurrency(totalIncomeThisMonth)}
-                </p>
-              </div>
-              <div className="rounded-xl bg-gray-800 p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-                  Expenses this month
-                </p>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-white">
-                  {formatCurrency(stats.totalThisMonth)}
-                </p>
-              </div>
-              <div className="rounded-xl bg-gray-800 p-4">
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-                  Net cash flow
-                </p>
-                <p
-                  className={`mt-2 text-xl font-semibold tabular-nums ${
-                    netCashFlow >= 0 ? "text-emerald-400" : "text-red-400"
-                  }`}
-                >
-                  {formatCurrency(netCashFlow)}
-                </p>
-              </div>
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <StatCard label="This Month" value={formatCurrency(stats.totalThisMonth)} />
+              <StatCard label="Last Month" value={formatCurrency(stats.totalLastMonth)} />
+            </div>
+
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <StatCard label="Daily Average" value={formatCurrency(stats.averagePerDay)} />
+              <StatCard label="Top Category" value={stats.topCategory || "-"} isText />
             </div>
 
             {activeGoals.length > 0 ? (
-              <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4">
+              <div className="rounded-2xl bg-[#1a2332] p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🎯</span>
@@ -335,9 +353,7 @@ export default function DashboardPage() {
                       <div key={goal.id} className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-300">
                           <span className="font-medium text-white">{goal.name}</span>
-                          <span className="text-gray-400">
-                            {goal.daysRemaining} days left
-                          </span>
+                          <span className="text-gray-400">{goal.daysRemaining} days left</span>
                         </div>
                         <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-800">
                           <div
@@ -345,25 +361,18 @@ export default function DashboardPage() {
                             style={{ width: `${progress}%` }}
                           />
                         </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
-                          <span className="tabular-nums">
-                            {formatCurrency(goal.savedAmount)} / {formatCurrency(goal.targetAmount)}
-                          </span>
-                          <span className="font-medium text-gray-300">
-                            {goal.progressPercentage.toFixed(0)}%
-                          </span>
-                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
             ) : null}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-              <div className="lg:col-span-3 min-h-[420px]">
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-2">
                 <CategoryChart summary={summary} />
               </div>
-              <div className="lg:col-span-2 min-h-[420px]">
+              <div>
                 <WeeklySummaryCard
                   summary={weeklySummary}
                   onGenerated={setWeeklySummary}

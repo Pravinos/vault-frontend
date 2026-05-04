@@ -34,7 +34,7 @@ export default function StatsBar({ stats }: StatsBarProps) {
     : null;
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="rounded-xl bg-gray-800 p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">

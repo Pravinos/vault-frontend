@@ -68,7 +68,7 @@ export default function ContributeModal({ goal, onSuccess, onClose }: Contribute
             step="0.01"
             value={amount}
             onChange={e => setAmount(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
             required
           />
         </div>

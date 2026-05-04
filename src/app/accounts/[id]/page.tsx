@@ -14,7 +14,6 @@ import {
   YAxis,
 } from "recharts";
 
-import TopBar from "@/components/layout/TopBar";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
@@ -130,20 +129,18 @@ export default function InvestmentAccountDetailPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <TopBar
-        title="Investment Details"
-        action={
-          <Link
-            href="/accounts"
-            className="rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-200 hover:border-gray-500"
-          >
-            Back to Accounts
-          </Link>
-        }
-      />
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">Investment Details</h1>
+        <Link
+          href="/accounts"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-gray-700 px-3 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+        >
+          Back to Accounts
+        </Link>
+      </div>
 
-      <div className="flex-1 space-y-6 px-6 py-6">
+      <div className="space-y-6">
         {error ? (
           <ErrorMessage message={error} onRetry={fetchData} />
         ) : loading ? (

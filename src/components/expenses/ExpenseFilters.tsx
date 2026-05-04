@@ -29,7 +29,7 @@ export default function ExpenseFilters({
         type="month"
         value={month}
         onChange={(event) => onMonthChange(event.target.value)}
-        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none sm:w-48"
+        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-base text-white focus:border-emerald-500 focus:outline-none sm:w-48"
       />
       <select
         value={categoryId ?? ""}
@@ -37,7 +37,7 @@ export default function ExpenseFilters({
           const value = event.target.value;
           onCategoryChange(value ? Number(value) : null);
         }}
-        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none sm:w-52"
+        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-base text-white focus:border-emerald-500 focus:outline-none sm:w-52"
       >
         <option value="">All categories</option>
         {categories.map((category) => (
@@ -52,7 +52,7 @@ export default function ExpenseFilters({
           const value = event.target.value;
           onAccountChange(value || null);
         }}
-        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none sm:w-52"
+        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-base text-white focus:border-emerald-500 focus:outline-none sm:w-52"
       >
         <option value="">All accounts</option>
         {accounts.map((account) => (
