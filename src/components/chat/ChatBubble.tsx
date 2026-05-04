@@ -45,7 +45,7 @@ function renderInline(text: string): ReactNode {
       parts.push(
         <code
           key={k++}
-          className="rounded bg-gray-700 px-1 py-0.5 font-mono text-[11px] text-emerald-300"
+          className="px-0.5 font-mono text-[11px] text-emerald-300"
         >
           {m[2]}
         </code>
@@ -101,19 +101,19 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
     <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} gap-1`}>
       <div className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
         {!isUser && (
-          <div className="mb-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-emerald-900/60 ring-1 ring-emerald-700/50">
+          <div className="mb-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center">
             <Bot className="h-4 w-4 text-emerald-400" />
           </div>
         )}
-        <div
-          className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words ${
-            isUser
-              ? "bg-emerald-600 text-white rounded-br-sm"
-              : "bg-slate-800 text-gray-100 rounded-bl-sm"
-          }`}
-        >
-          {isUser ? message.content : renderMarkdown(message.content)}
-        </div>
+        {isUser ? (
+          <div className="max-w-[70%] rounded-2xl rounded-br-sm bg-emerald-600 px-4 py-2.5 text-sm leading-relaxed break-words text-white">
+            {message.content}
+          </div>
+        ) : (
+          <div className="max-w-[70%] text-sm leading-relaxed break-words text-gray-100">
+            {renderMarkdown(message.content)}
+          </div>
+        )}
       </div>
       {!isUser && (message.provider || message.model) && (
         <span className="ml-9 text-xs text-gray-500">

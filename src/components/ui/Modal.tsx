@@ -85,9 +85,10 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
     >
       <div
         ref={panelRef}
-        className="w-full max-h-[90vh] overflow-y-auto rounded-t-2xl bg-gray-800 p-6 text-white shadow-xl sm:mx-auto sm:w-full sm:max-w-md sm:rounded-xl"
+        className="w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[#1a2332] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white shadow-xl sm:mx-auto sm:w-full sm:max-w-md sm:rounded-2xl"
         onClick={(event) => event.stopPropagation()}
       >
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button

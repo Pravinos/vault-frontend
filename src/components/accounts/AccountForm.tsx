@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import Modal from "@/components/ui/Modal";
+import SelectField from "@/components/ui/SelectField";
 import { createAccount, updateAccount } from "@/lib/api";
 import type { Account, AccountType, CreateAccountPayload } from "@/types";
 
@@ -103,44 +104,41 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
             required
           />
           {errors.name ? <p className="mt-1 text-xs text-red-400">{errors.name}</p> : null}
         </div>
 
         <div>
-          <label className="text-sm text-gray-200">Account Type</label>
-          <div className="mt-1 grid grid-cols-3 gap-2">
+          <SelectField
+            label="Account Type"
+            value={accountType}
+            onChange={(event) => setAccountType(event.target.value as AccountType)}
+          >
             {(["CHECKING", "SAVINGS", "INVESTMENT"] as AccountType[]).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setAccountType(type)}
-                className={
-                  accountType === type
-                    ? "rounded-lg border border-emerald-500 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300"
-                    : "rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-300 hover:border-gray-500"
-                }
-              >
+              <option key={type} value={type}>
                 {type}
-              </button>
+              </option>
             ))}
-          </div>
+          </SelectField>
         </div>
 
         {!isEditMode ? (
           <div>
-            <label className="text-sm text-gray-200">Opening Balance</label>
+            <label className="text-sm text-gray-200">Opening Balance (EUR)</label>
             <input
               type="number"
               min="0"
               step="0.01"
               value={openingBalance}
               onChange={(event) => setOpeningBalance(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+              className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
               required
             />
+            <p className="mt-1.5 text-xs text-gray-500">
+              This will also be set as your initial manual balance snapshot.
+            </p>
             {errors.openingBalance ? (
               <p className="mt-1 text-xs text-red-400">{errors.openingBalance}</p>
             ) : null}
@@ -155,7 +153,7 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
                 type="text"
                 value={platform}
                 onChange={(event) => setPlatform(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
                 placeholder="Optional"
               />
             </div>
@@ -165,7 +163,7 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
                 type="text"
                 value={instrument}
                 onChange={(event) => setInstrument(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
                 placeholder="Optional"
               />
             </div>
@@ -175,25 +173,25 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
                 type="text"
                 value={assetType}
                 onChange={(event) => setAssetType(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-white"
+                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
                 placeholder="Optional"
               />
             </div>
           </>
         ) : null}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-200 hover:border-gray-500"
+            className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}

@@ -5,7 +5,6 @@ import { getAiConfig } from "@/lib/api";
 import type { AiConfig } from "@/types";
 import AiProviderCard from "@/components/settings/AiProviderCard";
 import Toast from "@/components/ui/Toast";
-import TopBar from "@/components/layout/TopBar";
 
 const DEFAULT_CONFIG: AiConfig = {
   chat: { provider: "lmstudio", model: "" },
@@ -39,10 +38,13 @@ export default function AiSettingsPage() {
   };
 
   return (
-    <div className="flex flex-col">
-      <TopBar title="AI Settings" subtitle="Configure providers and models for each AI task" />
+    <div className="space-y-4 sm:space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-white sm:text-2xl">AI Settings</h1>
+        <p className="mt-1 text-sm text-gray-400">Configure providers and models for each AI task</p>
+      </div>
 
-      <div className="p-6">
+      <div>
         {loading ? (
           <p className="text-sm text-gray-400">Loading configuration…</p>
         ) : (

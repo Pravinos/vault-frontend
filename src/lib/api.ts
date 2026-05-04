@@ -4,8 +4,8 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
  * API base config:
  * Local dev URL: http://localhost:8080
  * Production URL: https://vault-api-0uue.onrender.com
- * CORS is currently open (*) with no credentials.
- * If the backend enables credentials, update CORS to explicit origins and coordinate withCredentials.
+ * Auth uses HttpOnly cookies with credentials enabled.
+ * Backend CORS must allow credentials for the configured frontend origin.
  */
 
 import type {
@@ -31,6 +31,34 @@ import type {
   WeeklySummary,
 } from "@/types";
 
+export function fetchOptions(extra?: RequestInit): RequestInit {
+  return {
+    ...extra,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(extra?.headers ?? {}),
+    },
+  };
+}
+
+export async function apiFetch(url: string, options?: RequestInit) {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}${url}`,
+    fetchOptions(options)
+  );
+
+  if (res.status === 401) {
+    window.location.href = "/login";
+    return null;
+  }
+
+  if (res.status === 429) {
+    throw new Error("Too many requests. Please wait 15 minutes and try again.");
+  }
+
+  return res;
+}
 
 if (!process.env.NEXT_PUBLIC_API_URL) {
   throw new Error(
@@ -42,6 +70,7 @@ const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const api = axios.create({
   baseURL: `${apiBaseUrl}/api/v1`,
   timeout: 30000,
+  withCredentials: true,
 });
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -53,6 +82,21 @@ api.interceptors.response.use(
       | (InternalAxiosRequestConfig & { __retry?: boolean })
       | undefined;
     const status = error.response?.status;
+
+    if (typeof window !== "undefined") {
+      const pathname = window.location.pathname;
+
+      if (status === 401 && pathname !== "/login") {
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      if (status === 403 && pathname !== "/setup") {
+        window.location.href = "/setup";
+        return Promise.reject(error);
+      }
+    }
+
     const shouldRetry =
       (status === 502 || status === 504) && config && !config.__retry;
 
@@ -62,7 +106,10 @@ api.interceptors.response.use(
       return api.request(config);
     }
 
-    if (process.env.NODE_ENV === "development") {
+    const isExpectedNotFound =
+      status === 404 && config?.url === "/ai/summaries/latest";
+
+    if (process.env.NODE_ENV === "development" && !isExpectedNotFound) {
       console.error("API error:", error);
     }
 
@@ -321,18 +368,30 @@ export async function contributeToGoal(
 }
 
 // Summaries
-export async function getLatestSummary(): Promise<WeeklySummary> {
-  const response = await api.get<WeeklySummary>("/summaries/latest");
+export async function getWeeklySummaries(): Promise<WeeklySummary[]> {
+  const response = await api.get<WeeklySummary[]>("/ai/summaries");
   return response.data;
 }
 
-export async function getAllSummaries(): Promise<WeeklySummary[]> {
-  const response = await api.get<WeeklySummary[]>("/summaries");
-  return response.data;
+export async function getLatestWeeklySummary(): Promise<WeeklySummary | null> {
+  try {
+    const response = await api.get<WeeklySummary>("/ai/summaries/latest");
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export async function generateWeeklySummary(): Promise<WeeklySummary> {
-  const response = await api.post<WeeklySummary>("/ai/summaries/generate");
+  const response = await api.post<WeeklySummary>(
+    "/ai/summaries/generate",
+    undefined,
+    { timeout: 60000 }
+  );
   return response.data;
 }
 

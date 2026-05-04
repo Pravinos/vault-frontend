@@ -1,9 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
-import BottomNav from "@/components/layout/BottomNav";
-import PageTransition from "@/components/layout/PageTransition";
-import Sidebar from "@/components/layout/Sidebar";
+import TokenRefresher from "@/components/TokenRefresher";
+import AppLayout from "@/components/AppLayout";
 import "./globals.css";
 
 const inter = Inter({
@@ -16,6 +15,12 @@ export const metadata: Metadata = {
   description: "Personal finance dashboard",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,14 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full bg-gray-900 text-gray-100">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 bg-gray-900 pb-20 md:pb-0">
-            <PageTransition>{children}</PageTransition>
-          </main>
-        </div>
-        <BottomNav />
+      <body className="min-h-full bg-[#0d1520] text-gray-100">
+        <TokenRefresher />
+        <AppLayout>{children}</AppLayout>
       </body>
     </html>
   );
