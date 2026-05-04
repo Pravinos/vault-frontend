@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 
-import TokenRefresher from "@/components/TokenRefresher";
 import AppLayout from "@/components/AppLayout";
 import "./globals.css";
 
@@ -29,7 +28,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full bg-[#0d1520] text-gray-100">
-        <TokenRefresher />
         <AppLayout>{children}</AppLayout>
       </body>
     </html>

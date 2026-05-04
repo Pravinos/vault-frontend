@@ -1,11 +1,13 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 
+import { clearToken } from "@/lib/auth";
+
 /**
  * API base config:
  * Local dev URL: http://localhost:8080
  * Production URL: https://vault-api-0uue.onrender.com
- * Auth uses HttpOnly cookies with credentials enabled.
- * Backend CORS must allow credentials for the configured frontend origin.
+ * Data API auth uses Bearer token from localStorage.
+ * HttpOnly cookies are only used by Next.js middleware for page guarding.
  */
 
 import type {
@@ -34,7 +36,6 @@ import type {
 export function fetchOptions(extra?: RequestInit): RequestInit {
   return {
     ...extra,
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(extra?.headers ?? {}),
@@ -43,14 +44,11 @@ export function fetchOptions(extra?: RequestInit): RequestInit {
 }
 
 export async function apiFetch(url: string, options?: RequestInit) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}${url}`,
-    fetchOptions(options)
-  );
+  const normalizedUrl = url.startsWith("/") ? url : `/${url}`;
+  const res = await fetch(`/api/v1${normalizedUrl}`, fetchOptions(options));
 
   if (res.status === 401) {
-    window.location.href = "/login";
-    return null;
+    return handleAuthFailure();
   }
 
   if (res.status === 429) {
@@ -60,20 +58,37 @@ export async function apiFetch(url: string, options?: RequestInit) {
   return res;
 }
 
-if (!process.env.NEXT_PUBLIC_API_URL) {
-  throw new Error(
-    "NEXT_PUBLIC_API_URL is not set. Provide it in .env.local (dev) or .env.production (prod)."
-  );
-}
-
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const api = axios.create({
-  baseURL: `${apiBaseUrl}/api/v1`,
+  baseURL: "/api/v1",
   timeout: 30000,
-  withCredentials: true,
 });
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+let authFailureHandling = false;
+
+async function handleAuthFailure(): Promise<null> {
+  if (authFailureHandling) {
+    return null;
+  }
+
+  authFailureHandling = true;
+  clearToken();
+
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Ignore logout network errors. Redirect still recovers client state.
+  }
+
+  if (typeof window !== "undefined") {
+    const target = "/login?reason=expired";
+    if (`${window.location.pathname}${window.location.search}` !== target) {
+      window.location.replace(target);
+    }
+  }
+
+  return null;
+}
 
 api.interceptors.response.use(
   (response) => response,
@@ -87,12 +102,16 @@ api.interceptors.response.use(
       const pathname = window.location.pathname;
 
       if (status === 401 && pathname !== "/login") {
-        window.location.href = "/login";
+        await handleAuthFailure();
         return Promise.reject(error);
       }
 
-      if (status === 403 && pathname !== "/setup") {
-        window.location.href = "/setup";
+      if (status === 401 && pathname === "/login") {
+        return Promise.reject(error);
+      }
+
+      if (status === 403 && pathname !== "/login") {
+        await handleAuthFailure();
         return Promise.reject(error);
       }
     }
@@ -116,6 +135,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+api.interceptors.request.use((config) => {
+  authFailureHandling = false;
+  return config;
+});
 
 // Categories
 export async function getCategories(): Promise<Category[]> {

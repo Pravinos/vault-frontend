@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import PageTransition from "@/components/layout/PageTransition";
 import Sidebar, { SidebarMenuButton } from "@/components/Sidebar";
+import TokenRefresher from "@/components/TokenRefresher";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,6 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#0d1520] text-white">
+      <TokenRefresher />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
       <div className="min-h-screen lg:ml-[220px]">

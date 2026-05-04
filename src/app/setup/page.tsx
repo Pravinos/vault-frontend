@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+import { setToken } from "@/lib/auth";
+
 const WHY_ITEMS = [
   {
     icon: "🌐",
@@ -49,18 +51,18 @@ export default function SetupPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/setup`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password }),
-        }
-      );
+      const res = await fetch("/api/auth/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
 
       if (res.ok) {
-        router.push("/dashboard");
+        const data = (await res.json().catch(() => ({}))) as { token?: string };
+        if (data.token) {
+          setToken(data.token);
+        }
+        window.location.assign("/dashboard");
         return;
       }
 
@@ -74,6 +76,19 @@ export default function SetupPage() {
 
       if (res.status === 429) {
         setError("Too many attempts. Please wait 15 minutes.");
+        return;
+      }
+
+      if (res.status === 400) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setError(body.error ?? "Invalid password.");
+        return;
+      }
+
+      if (res.status === 503) {
+        setError("Cannot reach the server. Please try again shortly.");
         return;
       }
 

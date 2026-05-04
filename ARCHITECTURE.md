@@ -1196,7 +1196,7 @@ vault/
    VAULT_JWT_SECRET=<use `openssl rand -base64 32`>
    VAULT_COOKIE_SECURE=true
    VAULT_COOKIE_SAME_SITE=None
-   FRONTEND_URL=https://your-app.vercel.app
+  FRONTEND_URL=https://vault-frontend-lake.vercel.app/
    GROQ_API_KEY=<your-groq-api-key>
    ```
 3. **Build Command:** `mvn clean package -DskipTests`
@@ -1208,7 +1208,9 @@ vault/
 1. **Deploy Next.js to Vercel** (connect GitHub repo)
 2. **Set Environment Variables:**
    ```
-   NEXT_PUBLIC_API_URL=https://your-render-backend.onrender.com
+  API_URL=https://vault-api-0uue.onrender.com
+  NEXT_PUBLIC_API_URL=https://vault-api-0uue.onrender.com
+  NEXT_PUBLIC_APP_URL=https://vault-frontend-lake.vercel.app/
    ```
 3. **Vercel will auto-detect Next.js** and build/deploy on push
 

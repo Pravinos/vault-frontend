@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 
+import { setToken } from "@/lib/auth";
+
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
   const [password, setPassword] = useState("");
@@ -19,18 +20,18 @@ function LoginForm() {
     setError("");
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password }),
-        }
-      );
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
 
       if (res.ok) {
-        router.push("/dashboard");
+        const data = (await res.json().catch(() => ({}))) as { token?: string };
+        if (data.token) {
+          setToken(data.token);
+        }
+        window.location.assign("/dashboard");
         return;
       }
 
@@ -46,6 +47,11 @@ function LoginForm() {
 
       if (res.status === 429) {
         setError("Too many attempts. Please wait 15 minutes and try again.");
+        return;
+      }
+
+      if (res.status === 503) {
+        setError("Cannot reach the server. Please try again shortly.");
         return;
       }
 

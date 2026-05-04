@@ -73,7 +73,7 @@ export default function Sidebar({
 
   const handleLogout = async () => {
     await logout();
-    router.push("/login?reason=logout");
+    router.push("/login");
   };
 
   const sidebarContent = (
