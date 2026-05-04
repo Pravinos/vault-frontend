@@ -215,7 +215,7 @@ export async function updateAccount(
   return response.data;
 }
 
-export async function deactivateAccount(id: string): Promise<void> {
+export async function deleteAccount(id: string): Promise<void> {
   await api.delete<void>(`/accounts/${id}`);
 }
 

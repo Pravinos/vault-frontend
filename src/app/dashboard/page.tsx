@@ -17,7 +17,12 @@ import {
   getIncomeSummary,
   getLatestWeeklySummary,
 } from "@/lib/api";
-import { formatCurrency, getCurrentTimestamp, getMonthString } from "@/lib/utils";
+import {
+  formatCurrency,
+  getCurrentTimestamp,
+  getEffectiveAccountBalance,
+  getMonthString,
+} from "@/lib/utils";
 import type { Account, ExpenseMonthlySummary, ExpenseStats, Goal, WeeklySummary } from "@/types";
 
 const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
@@ -144,7 +149,7 @@ export default function DashboardPage() {
   }, []);
 
   const netWorth = accounts.reduce(
-    (sum, account) => sum + account.calculatedBalance,
+    (sum, account) => sum + getEffectiveAccountBalance(account),
     0
   );
 
@@ -156,6 +161,45 @@ export default function DashboardPage() {
 
   const accountsWithManual = accounts.filter((a) => a.manualBalance !== null);
   const manualNetWorth = accountsWithManual.length > 0 ? totalManualBalance : null;
+
+  const balanceChangeMetrics = accounts.reduce(
+    (acc, account) => {
+      const current = getEffectiveAccountBalance(account);
+      const baseline = account.manualBalance ?? account.openingBalance;
+
+      if (!Number.isFinite(current) || !Number.isFinite(baseline)) {
+        return acc;
+      }
+
+      acc.deltaTotal += current - baseline;
+      acc.baselineTotal += baseline;
+      acc.trackedCount += 1;
+
+      if (account.manualBalance !== null) {
+        acc.manualTrackedCount += 1;
+      }
+
+      return acc;
+    },
+    {
+      deltaTotal: 0,
+      baselineTotal: 0,
+      trackedCount: 0,
+      manualTrackedCount: 0,
+    }
+  );
+
+  const balanceChangePct =
+    balanceChangeMetrics.baselineTotal !== 0
+      ? ((balanceChangeMetrics.deltaTotal / Math.abs(balanceChangeMetrics.baselineTotal)) * 100).toFixed(1)
+      : null;
+
+  const balanceTrackingLabel =
+    balanceChangeMetrics.manualTrackedCount === balanceChangeMetrics.trackedCount
+      ? "calculated vs manual"
+      : balanceChangeMetrics.manualTrackedCount > 0
+      ? "calculated vs manual/opening"
+      : "calculated vs opening";
 
   const totalIncomeThisMonth = incomeSummary
     ? Object.values(incomeSummary).reduce((sum, value) => sum + value, 0)
@@ -243,14 +287,10 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {manualNetWorth !== null ? (
+              {balanceChangeMetrics.trackedCount > 0 ? (
                 <div className="mt-3 flex items-center gap-2 border-t border-white/5 pt-3">
                   {(() => {
-                    const diff = netWorth - manualNetWorth;
-                    const pct =
-                      manualNetWorth !== 0
-                        ? ((diff / Math.abs(manualNetWorth)) * 100).toFixed(1)
-                        : null;
+                    const diff = balanceChangeMetrics.deltaTotal;
                     const positive = diff >= 0;
 
                     return (
@@ -258,12 +298,12 @@ export default function DashboardPage() {
                         <span className={`text-xs font-semibold ${positive ? "text-emerald-400" : "text-red-400"}`}>
                           {positive ? "▲" : "▼"} {formatCurrency(Math.abs(diff))}
                         </span>
-                        {pct !== null ? (
+                        {balanceChangePct !== null ? (
                           <span className={`text-xs ${positive ? "text-emerald-400/70" : "text-red-400/70"}`}>
-                            ({positive ? "+" : ""}{pct}% vs manual)
+                            ({positive ? "+" : ""}{balanceChangePct}%)
                           </span>
                         ) : null}
-                        <span className="ml-auto text-xs text-gray-500">calculated vs manual</span>
+                        <span className="ml-auto text-xs text-gray-500">{balanceTrackingLabel}</span>
                       </>
                     );
                   })()}
@@ -283,7 +323,8 @@ export default function DashboardPage() {
             <div className="relative mb-4">
               <div className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2 hide-scrollbar">
                 {accounts.slice(0, 8).map((account) => {
-                  const delta = account.calculatedBalance - account.openingBalance;
+                  const effectiveBalance = getEffectiveAccountBalance(account);
+                  const delta = effectiveBalance - account.openingBalance;
                   const isDeltaUp = delta >= 0;
 
                   return (
@@ -296,7 +337,7 @@ export default function DashboardPage() {
                       }}
                     >
                       <p className="truncate text-xs font-medium text-gray-400 mb-1">{account.name}</p>
-                      <p className="text-xl font-bold text-white">{formatCurrency(account.calculatedBalance)}</p>
+                      <p className="text-xl font-bold text-white">{formatCurrency(effectiveBalance)}</p>
                       <span
                         className={`inline-block mt-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClass(account.accountType)}`}
                       >

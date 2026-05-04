@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { Clock, MoreHorizontal, Plus } from "lucide-react";
+import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AccountForm from "@/components/accounts/AccountForm";
 import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
+import Modal from "@/components/ui/Modal";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
-import { deactivateAccount, getAccounts } from "@/lib/api";
-import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
-import { formatCurrency, getCurrentTimestamp } from "@/lib/utils";
+import { deleteAccount, getAccounts } from "@/lib/api";
+import { formatCurrency, getCurrentTimestamp, getEffectiveAccountBalance } from "@/lib/utils";
 import type { Account } from "@/types";
 
 const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
@@ -79,8 +80,10 @@ export default function AccountsPage() {
   const [manualBalanceAccount, setManualBalanceAccount] = useState<Account | undefined>(undefined);
   const [mobileMenuAccountId, setMobileMenuAccountId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
+  const [deleteTargetAccount, setDeleteTargetAccount] = useState<Account | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState<string>("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
@@ -121,16 +124,71 @@ export default function AccountsPage() {
     });
   }, [accounts]);
 
-  const handleDeleteAccount = (account: Account) => {
-    confirmDelete(account.id, async () => {
-      try {
-        await deactivateAccount(account.id);
-        setToast({ message: "Account deleted", type: "success" });
-        await fetchAccounts();
-      } catch (deleteError) {
-        setToast({ message: "Unable to delete account", type: "error" });
+  const getDeleteErrorMessage = (deleteErrorValue: unknown): string => {
+    if (!axios.isAxiosError(deleteErrorValue)) {
+      return "Unable to delete account.";
+    }
+
+    const status = deleteErrorValue.response?.status;
+    const data = deleteErrorValue.response?.data;
+
+    if (status === 400) {
+      if (typeof data === "string" && data.trim()) {
+        return data;
       }
-    });
+
+      if (typeof data === "object" && data !== null) {
+        const message = "message" in data ? data.message : undefined;
+        if (typeof message === "string" && message.trim()) {
+          return message;
+        }
+      }
+    }
+
+    if (deleteErrorValue instanceof Error && deleteErrorValue.message.trim()) {
+      return deleteErrorValue.message;
+    }
+
+    return "Unable to delete account.";
+  };
+
+  const openDeleteDialog = (account: Account) => {
+    setDeleteTargetAccount(account);
+    setDeleteConfirmInput("");
+    setDeleteError(null);
+  };
+
+  const closeDeleteDialog = () => {
+    if (isDeletingAccount) {
+      return;
+    }
+
+    setDeleteTargetAccount(null);
+    setDeleteConfirmInput("");
+    setDeleteError(null);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deleteTargetAccount) {
+      return;
+    }
+
+    setDeleteError(null);
+    setIsDeletingAccount(true);
+
+    try {
+      await deleteAccount(deleteTargetAccount.id);
+      setAccounts((current) => current.filter((account) => account.id !== deleteTargetAccount.id));
+      setToast({ message: "Account permanently deleted", type: "success" });
+      setDeleteTargetAccount(null);
+      setDeleteConfirmInput("");
+    } catch (deleteErrorValue) {
+      const message = getDeleteErrorMessage(deleteErrorValue);
+      setDeleteError(message);
+      setToast({ message, type: "error" });
+    } finally {
+      setIsDeletingAccount(false);
+    }
   };
 
   const openCreate = () => {
@@ -252,7 +310,7 @@ export default function AccountsPage() {
                       Calculated balance
                     </p>
                     <p className="mt-1 text-2xl font-semibold tabular-nums text-white">
-                      {formatCurrency(account.calculatedBalance)}
+                      {formatCurrency(getEffectiveAccountBalance(account))}
                     </p>
                   </div>
 
@@ -332,16 +390,12 @@ export default function AccountsPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                handleDeleteAccount(account);
+                                openDeleteDialog(account);
                                 setMobileMenuAccountId(null);
                               }}
-                              className={`block w-full rounded-md px-3 py-2 text-left text-xs ${
-                                isPendingConfirm(account.id)
-                                  ? "bg-red-500/20 text-red-300"
-                                  : "text-red-400 hover:bg-gray-800"
-                              }`}
+                              className="block w-full rounded-md px-3 py-2 text-left text-xs text-red-400 hover:bg-gray-800"
                             >
-                              {isPendingConfirm(account.id) ? "Confirm?" : "Delete"}
+                              Delete permanently
                             </button>
                           </div>
                         ) : null}
@@ -366,20 +420,16 @@ export default function AccountsPage() {
                     </button>
                     <Link
                       href={account.accountType === "INVESTMENT" ? `/accounts/${account.id}` : "/expenses"}
-                      className="flex-1 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-center text-xs font-medium text-gray-200 transition-all duration-150 hover:bg-gray-700"
+                      className="flex flex-1 items-center justify-center rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-center text-xs font-medium text-gray-200 transition-all duration-150 hover:bg-gray-700"
                     >
                       View details
                     </Link>
                     <button
                       type="button"
-                      onClick={() => handleDeleteAccount(account)}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all duration-150 active:scale-95 ${
-                        isPendingConfirm(account.id)
-                          ? "border-red-500 bg-red-900/40 text-red-300"
-                          : "border-gray-700 bg-gray-800/60 text-gray-400 hover:bg-red-900/20 hover:text-red-300"
-                      }`}
+                      onClick={() => openDeleteDialog(account)}
+                      className="flex-1 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-xs font-medium text-gray-400 transition-all duration-150 hover:bg-red-900/20 hover:text-red-300 active:scale-95"
                     >
-                      {isPendingConfirm(account.id) ? "Confirm?" : "Delete"}
+                      Delete permanently
                     </button>
                   </div>
                 </div>
@@ -409,6 +459,61 @@ export default function AccountsPage() {
           }}
           onClose={() => setManualBalanceAccount(undefined)}
         />
+      ) : null}
+
+      {deleteTargetAccount ? (
+        <Modal
+          isOpen={true}
+          onClose={closeDeleteDialog}
+          title="Permanently delete account"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-300">
+              This action permanently deletes <span className="font-semibold text-white">{deleteTargetAccount.name}</span>.
+              This cannot be undone.
+            </p>
+            <p className="text-xs text-gray-400">
+              To confirm, type the account name exactly: <span className="font-semibold text-gray-200">{deleteTargetAccount.name}</span>
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmInput}
+              onChange={(event) => setDeleteConfirmInput(event.target.value)}
+              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
+              placeholder={deleteTargetAccount.name}
+              autoFocus
+              disabled={isDeletingAccount}
+            />
+
+            {deleteError ? (
+              <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {deleteError}
+              </p>
+            ) : null}
+
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeDeleteDialog}
+                className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+                disabled={isDeletingAccount}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDeleteAccount()}
+                className="w-full rounded-lg bg-red-600 px-4 py-2 text-base font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+                disabled={
+                  isDeletingAccount ||
+                  deleteConfirmInput.trim() !== deleteTargetAccount.name
+                }
+              >
+                {isDeletingAccount ? "Deleting..." : "Delete permanently"}
+              </button>
+            </div>
+          </div>
+        </Modal>
       ) : null}
 
       {toast ? (
