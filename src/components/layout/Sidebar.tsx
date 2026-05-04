@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BotMessageSquare,
   ChevronLeft,
@@ -9,6 +9,7 @@ import {
   HandCoins,
   Landmark,
   LayoutDashboard,
+  LogOut,
   Receipt,
   ScrollText,
   Settings2,
@@ -16,6 +17,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { useState } from "react";
+
+import { logout } from "@/lib/auth";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -33,6 +36,7 @@ const secondaryNavItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") {
       return false;
@@ -45,6 +49,11 @@ export default function Sidebar() {
     const next = !collapsed;
     setCollapsed(next);
     localStorage.setItem("vault_sidebar_collapsed", String(next));
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
   };
 
   return (
@@ -127,7 +136,19 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto px-2 pb-4">
+      <div className="mt-auto space-y-2 px-2 pb-4">
+        <button
+          type="button"
+          onClick={handleLogout}
+          title={collapsed ? "Logout" : undefined}
+          className={`flex w-full items-center rounded-md p-2 text-gray-400 transition-colors duration-150 hover:bg-gray-800 hover:text-white ${
+            collapsed ? "justify-center" : "gap-3 px-3"
+          }`}
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span className="text-sm font-medium">Logout</span>}
+        </button>
+
         <button
           type="button"
           onClick={toggleCollapse}
