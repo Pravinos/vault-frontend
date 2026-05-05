@@ -5,12 +5,13 @@
 
 ## Table of Contents
 1. [Tech Stack](#tech-stack)
-2. [Authentication Architecture](#authentication-architecture)
-3. [System Architecture Overview](#system-architecture-overview)
-4. [Database Schema](#database-schema)
-5. [API Endpoints](#api-endpoints)
-6. [AI Integration](#ai-integration)
-7. [Implementation Phases](#implementation-phases)
+2. [Frontend Behavior Notes (May 2026)](#frontend-behavior-notes-may-2026)
+3. [Authentication Architecture](#authentication-architecture)
+4. [System Architecture Overview](#system-architecture-overview)
+5. [Database Schema](#database-schema)
+6. [API Endpoints](#api-endpoints)
+7. [AI Integration](#ai-integration)
+8. [Implementation Phases](#implementation-phases)
 
 ---
 
@@ -27,6 +28,24 @@
 | Database | PostgreSQL 17 |
 | Frontend | Next.js (App Router) |
 | Build | Maven |
+
+---
+
+## Frontend Behavior Notes (May 2026)
+
+These notes capture current frontend behavior so product docs and architecture stay aligned.
+
+- Accounts card actions use a two-tier layout for responsive stability:
+  - Primary full-width `Update Balance` action
+  - Secondary three-button row: `Edit`, `Details`, `Delete`
+- Accounts grid is responsive at `1/2/3` columns for `base/sm/xl` breakpoints.
+- Transfer history revert behavior:
+  - `Revert` is shown only for normal transfers.
+  - If a transfer entry is itself a revert/reversal record, the UI hides the revert action.
+- Investment account details page displays `Asset Type` when available.
+- Dashboard category insight is de-duplicated:
+  - Category details are centralized in a single `Category focus` block.
+  - The older duplicated top-category presentation was removed from secondary metric cards.
 
 ---
 
@@ -1196,7 +1215,7 @@ vault/
    VAULT_JWT_SECRET=<use `openssl rand -base64 32`>
    VAULT_COOKIE_SECURE=true
    VAULT_COOKIE_SAME_SITE=None
-   FRONTEND_URL=https://your-app.vercel.app
+  FRONTEND_URL=https://vault-frontend-lake.vercel.app/
    GROQ_API_KEY=<your-groq-api-key>
    ```
 3. **Build Command:** `mvn clean package -DskipTests`
@@ -1208,7 +1227,9 @@ vault/
 1. **Deploy Next.js to Vercel** (connect GitHub repo)
 2. **Set Environment Variables:**
    ```
-   NEXT_PUBLIC_API_URL=https://your-render-backend.onrender.com
+  API_URL=https://vault-api-0uue.onrender.com
+  NEXT_PUBLIC_API_URL=https://vault-api-0uue.onrender.com
+  NEXT_PUBLIC_APP_URL=https://vault-frontend-lake.vercel.app/
    ```
 3. **Vercel will auto-detect Next.js** and build/deploy on push
 

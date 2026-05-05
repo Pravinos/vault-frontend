@@ -2,13 +2,33 @@
 
 import { useEffect } from "react";
 
-import { refreshToken } from "@/lib/auth";
+import { getToken, setToken } from "@/lib/auth";
 
 export default function TokenRefresher() {
   useEffect(() => {
-    // Refresh the token once on mount - resets the 24h expiry window
-    // If it fails (token already expired) the next API call will handle the redirect
-    refreshToken().catch(() => {});
+    const token = getToken();
+    if (!token) return;
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        if (!res.ok) return;
+
+        const data = (await res.json().catch(() => ({}))) as { token?: string };
+        if (!data.token) return;
+
+        setToken(data.token);
+        await fetch("/api/auth/refresh-cookie", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: data.token }),
+        });
+      })
+      .catch(() => {
+        // Silent fail - next API call handles redirects if auth is invalid.
+      });
   }, []);
 
   return null;

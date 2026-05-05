@@ -1,11 +1,13 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 
+import { clearToken, getToken } from "@/lib/auth";
+
 /**
  * API base config:
  * Local dev URL: http://localhost:8080
  * Production URL: https://vault-api-0uue.onrender.com
- * Auth uses HttpOnly cookies with credentials enabled.
- * Backend CORS must allow credentials for the configured frontend origin.
+ * Data API auth uses Bearer token from localStorage.
+ * HttpOnly cookies are only used by Next.js middleware for page guarding.
  */
 
 import type {
@@ -20,6 +22,7 @@ import type {
   CreateExpenseRequest,
   CreateGoalRequest,
   CreateIncomePayload,
+  CreateTransferPayload,
   Expense,
   ExpenseMonthlySummary,
   ExpenseStats,
@@ -28,29 +31,42 @@ import type {
   IncomeCategory,
   InvestmentCheckpoint,
   ManualBalancePayload,
+  Transfer,
   WeeklySummary,
 } from "@/types";
+import type { DashboardData } from "@/types/dashboard";
 
 export function fetchOptions(extra?: RequestInit): RequestInit {
+  const headers = new Headers(extra?.headers ?? {});
+  const method = (extra?.method ?? "GET").toUpperCase();
+  const hasBody = extra?.body !== undefined && extra?.body !== null;
+
+  if (!headers.has("Content-Type") && method !== "GET" && method !== "HEAD" && hasBody) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (typeof window !== "undefined" && !headers.has("Authorization")) {
+    const token = getToken();
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
   return {
     ...extra,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(extra?.headers ?? {}),
-    },
+    headers,
   };
 }
 
 export async function apiFetch(url: string, options?: RequestInit) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}${url}`,
-    fetchOptions(options)
-  );
+  const normalizedUrl = url.startsWith("/") ? url : `/${url}`;
+  const targetUrl = normalizedUrl.startsWith("/api/v1/")
+    ? normalizedUrl
+    : `/api/v1${normalizedUrl}`;
+  const res = await fetch(targetUrl, fetchOptions(options));
 
   if (res.status === 401) {
-    window.location.href = "/login";
-    return null;
+    return handleAuthFailure();
   }
 
   if (res.status === 429) {
@@ -60,20 +76,57 @@ export async function apiFetch(url: string, options?: RequestInit) {
   return res;
 }
 
-if (!process.env.NEXT_PUBLIC_API_URL) {
-  throw new Error(
-    "NEXT_PUBLIC_API_URL is not set. Provide it in .env.local (dev) or .env.production (prod)."
-  );
+export async function fetchDashboard(): Promise<DashboardData> {
+  const res = await apiFetch("/api/v1/dashboard");
+  if (!res) {
+    throw new Error("Not authenticated");
+  }
+  if (!res.ok) {
+    let details = "";
+    try {
+      const payload = (await res.json()) as { message?: string; error?: string };
+      details = payload.message ?? payload.error ?? JSON.stringify(payload);
+    } catch {
+      details = await res.text().catch(() => "");
+    }
+
+    const suffix = details ? `: ${details}` : "";
+    throw new Error(`Failed to load dashboard (${res.status})${suffix}`);
+  }
+  return res.json();
 }
 
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 const api = axios.create({
-  baseURL: `${apiBaseUrl}/api/v1`,
+  baseURL: "/api/v1",
   timeout: 30000,
-  withCredentials: true,
 });
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+let authFailureHandling = false;
+
+async function handleAuthFailure(): Promise<null> {
+  if (authFailureHandling) {
+    return null;
+  }
+
+  authFailureHandling = true;
+  clearToken();
+
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Ignore logout network errors. Redirect still recovers client state.
+  }
+
+  if (typeof window !== "undefined") {
+    const target = "/login?reason=expired";
+    if (`${window.location.pathname}${window.location.search}` !== target) {
+      window.location.replace(target);
+    }
+  }
+
+  return null;
+}
 
 api.interceptors.response.use(
   (response) => response,
@@ -87,12 +140,16 @@ api.interceptors.response.use(
       const pathname = window.location.pathname;
 
       if (status === 401 && pathname !== "/login") {
-        window.location.href = "/login";
+        await handleAuthFailure();
         return Promise.reject(error);
       }
 
-      if (status === 403 && pathname !== "/setup") {
-        window.location.href = "/setup";
+      if (status === 401 && pathname === "/login") {
+        return Promise.reject(error);
+      }
+
+      if (status === 403 && pathname !== "/login") {
+        await handleAuthFailure();
         return Promise.reject(error);
       }
     }
@@ -116,6 +173,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+api.interceptors.request.use((config) => {
+  authFailureHandling = false;
+  return config;
+});
 
 // Categories
 export async function getCategories(): Promise<Category[]> {
@@ -191,7 +253,7 @@ export async function updateAccount(
   return response.data;
 }
 
-export async function deactivateAccount(id: string): Promise<void> {
+export async function deleteAccount(id: string): Promise<void> {
   await api.delete<void>(`/accounts/${id}`);
 }
 
@@ -268,6 +330,24 @@ export async function updateManualBalance(
   }
 
   throw new Error(`Unable to update manual balance after ${attempts} attempts.`);
+}
+
+// Transfers
+export async function createTransfer(
+  payload: CreateTransferPayload
+): Promise<Transfer> {
+  const response = await api.post<Transfer>("/transfers", payload);
+  return response.data;
+}
+
+export async function getAccountTransfers(accountId: string): Promise<Transfer[]> {
+  const response = await api.get<Transfer[]>(`/accounts/${accountId}/transfers`);
+  return response.data;
+}
+
+export async function revertTransfer(transferId: string): Promise<Transfer> {
+  const response = await api.post<Transfer>(`/transfers/${transferId}/revert`);
+  return response.data;
 }
 
 // Checkpoints
@@ -393,6 +473,10 @@ export async function generateWeeklySummary(): Promise<WeeklySummary> {
     { timeout: 60000 }
   );
   return response.data;
+}
+
+export async function deleteWeeklySummary(id: string): Promise<void> {
+  await api.delete<void>(`/ai/summaries/${id}`);
 }
 
 // AI Chat & Config

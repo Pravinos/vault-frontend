@@ -99,7 +99,7 @@ export default function ExpenseForm({
 
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch {
       setFormError("Unable to save expense.");
     } finally {
       setIsSubmitting(false);

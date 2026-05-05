@@ -6,10 +6,12 @@ This repository is the frontend application.
 
 ## What You Can Do In Vault
 
-- See your financial snapshot on the dashboard (net worth, cash flow, category trends)
+- See your financial snapshot on the dashboard (net worth, cash flow, category focus, monthly comparisons)
 - Track expenses by category, account, and month
 - Track income entries by category and account
 - Manage accounts (checking, savings, investment) with calculated and manual balances
+- Update account balances quickly from a primary card action, with compact secondary actions (edit/details/delete)
+- Review transfer history per account and revert transfers (revert action is hidden for entries that are already reverts)
 - Create goals and add contributions over time
 - Use Vault AI chat and weekly AI summaries
 
@@ -74,13 +76,18 @@ When you open the app:
 
 ## Main Pages
 
-- Dashboard: net worth, spending trends, cash flow, goals snapshot, weekly summary
-- Accounts: account balances, manual snapshots, investment checkpoints
+- Dashboard: net worth, account strip, income/expense trends, category focus, weekly summary
+- Accounts: account balances, manual snapshots, transfer history with revert flow, investment checkpoints
 - Expenses: create/edit/delete expenses and filter by month/category/account
 - Income: create/edit/delete income and filter by month/account
 - Goals: create goals and contribute progress
 - Chat: ask AI about your financial data
 - AI Settings: pick provider and model for chat and summary tasks
+
+## Current UI Notes
+
+- The dashboard avoids duplicated category metrics: category details are centralized in the Category focus card instead of repeating the same "top category" logic in multiple places.
+- Investment details show Asset Type when it exists for that account.
 
 ## Scripts
 

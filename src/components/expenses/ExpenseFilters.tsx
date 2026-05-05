@@ -25,12 +25,12 @@ export default function ExpenseFilters({
   onAccountChange,
 }: ExpenseFiltersProps) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row">
       <input
         type="month"
         value={month}
         onChange={(event) => onMonthChange(event.target.value)}
-        className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-base text-white focus:border-emerald-500 focus:outline-none sm:w-48"
+        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-base text-white transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50 sm:w-auto"
       />
       <SelectField
         value={categoryId ?? ""}
@@ -43,7 +43,7 @@ export default function ExpenseFilters({
         <option value="">All categories</option>
         {categories.map((category) => (
           <option key={category.id} value={category.id}>
-            {category.name}
+            {category.icon} {category.name}
           </option>
         ))}
       </SelectField>

@@ -13,9 +13,10 @@ import {
   deleteExpense,
   getCategories,
   getExpenses,
+  getExpenseSummary,
 } from "@/lib/api";
-import { formatCurrency, getMonthString } from "@/lib/utils";
-import type { Account, Category, Expense } from "@/types";
+import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
+import type { Account, Category, Expense, ExpenseMonthlySummary } from "@/types";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -32,6 +33,7 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [summary, setSummary] = useState<ExpenseMonthlySummary | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
@@ -52,21 +54,29 @@ export default function ExpensesPage() {
       setRetryMessage(null);
 
       try {
-        const data = await getExpenses({
-          month: selectedMonth || undefined,
-          categoryId: selectedCategoryId ?? undefined,
-        });
+        const [data, summaryData] = await Promise.all([
+          getExpenses({
+            month: selectedMonth || undefined,
+            categoryId: selectedCategoryId ?? undefined,
+          }),
+          getExpenseSummary(selectedMonth || undefined),
+        ]);
         setExpenses(data);
+        setSummary(summaryData);
       } catch (error) {
         if (allowRetry && isColdStartError(error)) {
           setRetryMessage("Waking up the server... retrying");
           await wait(5000);
           try {
-            const retryData = await getExpenses({
-              month: selectedMonth || undefined,
-              categoryId: selectedCategoryId ?? undefined,
-            });
+            const [retryData, retrySummary] = await Promise.all([
+              getExpenses({
+                month: selectedMonth || undefined,
+                categoryId: selectedCategoryId ?? undefined,
+              }),
+              getExpenseSummary(selectedMonth || undefined),
+            ]);
             setExpenses(retryData);
+            setSummary(retrySummary);
             return;
           } catch {
             setError("Unable to load expenses.");
@@ -89,18 +99,20 @@ export default function ExpensesPage() {
       setRetryMessage(null);
 
       try {
-        const [categoriesData, accountsData, expensesData] = await Promise.all([
+        const [categoriesData, accountsData, expensesData, summaryData] = await Promise.all([
           getCategories(),
           getAccounts(),
           getExpenses({
             month: initialMonthRef.current || undefined,
             categoryId: initialCategoryRef.current ?? undefined,
           }),
+          getExpenseSummary(initialMonthRef.current || undefined),
         ]);
 
         setCategories(categoriesData);
         setAccounts(accountsData);
         setExpenses(expensesData);
+        setSummary(summaryData);
         setHasLoaded(true);
       } catch (err) {
         if (allowRetry && isColdStartError(err)) {
@@ -167,12 +179,38 @@ export default function ExpensesPage() {
     [filteredExpenses]
   );
 
-  const monthLabel = selectedMonth
-    ? new Date(`${selectedMonth}-01T00:00:00`).toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      })
-    : "";
+  const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
+
+  const categorySummary = useMemo(
+    () =>
+      (summary?.byCategory ?? [])
+        .map((item) => {
+          const category = categories.find((c) => c.name === item.category);
+          return {
+            categoryId: category?.id,
+            categoryName: item.category,
+            icon: category?.icon ?? "🧾",
+            total: item.total,
+          };
+        })
+        .sort((a, b) => b.total - a.total),
+    [categories, summary]
+  );
+
+  const hasActiveFilters = selectedCategoryId !== null || selectedAccountId !== null;
+
+  const clearFilters = () => {
+    setSelectedCategoryId(null);
+    setSelectedAccountId(null);
+  };
+
+  const handleCategoryChipClick = (categoryId: number | undefined) => {
+    if (!categoryId) {
+      return;
+    }
+
+    setSelectedCategoryId((prev) => (prev === categoryId ? null : categoryId));
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -191,14 +229,12 @@ export default function ExpensesPage() {
       {/* Summary bar */}
       {!loading && (
         <div className="border-b border-gray-800 px-0 py-2">
-          <p className="text-sm text-gray-400">
-            {monthLabel && <span className="font-medium text-gray-300">{monthLabel}</span>}
-            {monthLabel && " — "}
-            <span className="tabular-nums">
-              Total: <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
+          <p className="mb-4 text-sm text-gray-400">
+            <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
+            {" "}spent in {monthLabel}
+            <span className="text-gray-600">
+              {" "}· {filteredExpenses.length} {filteredExpenses.length === 1 ? "entry" : "entries"}
             </span>
-            {" | "}
-            <span>{filteredExpenses.length} {filteredExpenses.length === 1 ? "entry" : "entries"}</span>
           </p>
         </div>
       )}
@@ -215,6 +251,48 @@ export default function ExpensesPage() {
           onAccountChange={setSelectedAccountId}
         />
 
+        {categorySummary.length > 0 && (
+          <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              {monthLabel} - Breakdown
+            </p>
+
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+              {categorySummary.map(({ categoryId, categoryName, icon, total }) => {
+                const active = categoryId !== undefined && selectedCategoryId === categoryId;
+
+                return (
+                  <button
+                    key={categoryName}
+                    type="button"
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
+                      active
+                        ? "border-red-400/60 bg-red-500/10"
+                        : "border-white/10 bg-white/5 hover:bg-white/10"
+                    }`}
+                    onClick={() => handleCategoryChipClick(categoryId)}
+                    title="Click to filter by this category"
+                    disabled={categoryId === undefined}
+                  >
+                    <span className="text-base">{icon}</span>
+                    <div>
+                      <p className="mb-0.5 text-[10px] font-medium leading-none text-gray-400">
+                        {categoryName}
+                      </p>
+                      <p className="text-sm font-bold text-red-400">{formatCurrency(total)}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
+              <span className="text-xs text-gray-500">Total spent</span>
+              <span className="text-sm font-bold text-white">{formatCurrency(totalAmount)}</span>
+            </div>
+          </div>
+        )}
+
         {retryMessage ? (
           <p className="text-xs font-medium text-amber-300">{retryMessage}</p>
         ) : null}
@@ -228,10 +306,11 @@ export default function ExpensesPage() {
         ) : (
           <ExpenseList
             expenses={filteredExpenses}
-            month={selectedMonth}
+            monthLabel={monthLabel}
+            hasActiveFilters={hasActiveFilters}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onAddClick={handleAddClick}
+            onClearFilters={clearFilters}
           />
         )}
       </div>

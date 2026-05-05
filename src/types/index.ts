@@ -81,6 +81,24 @@ export interface ManualBalancePayload {
   alsoSetAsOpeningBalance?: boolean;
 }
 
+export interface CreateTransferPayload {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  transferDate: string;
+  note?: string;
+}
+
+export interface Transfer {
+  id: string;
+  fromAccountName: string;
+  toAccountName: string;
+  amount: number;
+  note?: string;
+  transferDate: string;
+  createdAt: string;
+}
+
 export interface InvestmentCheckpoint {
   id: string;
   value: number;
