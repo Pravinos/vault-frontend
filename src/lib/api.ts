@@ -1,6 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 
-import { clearToken } from "@/lib/auth";
+import { clearToken, getToken } from "@/lib/auth";
 
 /**
  * API base config:
@@ -34,20 +34,36 @@ import type {
   Transfer,
   WeeklySummary,
 } from "@/types";
+import type { DashboardData } from "@/types/dashboard";
 
 export function fetchOptions(extra?: RequestInit): RequestInit {
+  const headers = new Headers(extra?.headers ?? {});
+  const method = (extra?.method ?? "GET").toUpperCase();
+  const hasBody = extra?.body !== undefined && extra?.body !== null;
+
+  if (!headers.has("Content-Type") && method !== "GET" && method !== "HEAD" && hasBody) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (typeof window !== "undefined" && !headers.has("Authorization")) {
+    const token = getToken();
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
+
   return {
     ...extra,
-    headers: {
-      "Content-Type": "application/json",
-      ...(extra?.headers ?? {}),
-    },
+    headers,
   };
 }
 
 export async function apiFetch(url: string, options?: RequestInit) {
   const normalizedUrl = url.startsWith("/") ? url : `/${url}`;
-  const res = await fetch(`/api/v1${normalizedUrl}`, fetchOptions(options));
+  const targetUrl = normalizedUrl.startsWith("/api/v1/")
+    ? normalizedUrl
+    : `/api/v1${normalizedUrl}`;
+  const res = await fetch(targetUrl, fetchOptions(options));
 
   if (res.status === 401) {
     return handleAuthFailure();
@@ -58,6 +74,26 @@ export async function apiFetch(url: string, options?: RequestInit) {
   }
 
   return res;
+}
+
+export async function fetchDashboard(): Promise<DashboardData> {
+  const res = await apiFetch("/api/v1/dashboard");
+  if (!res) {
+    throw new Error("Not authenticated");
+  }
+  if (!res.ok) {
+    let details = "";
+    try {
+      const payload = (await res.json()) as { message?: string; error?: string };
+      details = payload.message ?? payload.error ?? JSON.stringify(payload);
+    } catch {
+      details = await res.text().catch(() => "");
+    }
+
+    const suffix = details ? `: ${details}` : "";
+    throw new Error(`Failed to load dashboard (${res.status})${suffix}`);
+  }
+  return res.json();
 }
 
 const api = axios.create({
@@ -437,6 +473,10 @@ export async function generateWeeklySummary(): Promise<WeeklySummary> {
     { timeout: 60000 }
   );
   return response.data;
+}
+
+export async function deleteWeeklySummary(id: string): Promise<void> {
+  await api.delete<void>(`/ai/summaries/${id}`);
 }
 
 // AI Chat & Config

@@ -1,5 +1,3 @@
-import type { Account } from "@/types";
-
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("el-GR", {
     style: "currency",
@@ -34,16 +32,6 @@ export function getMonthString(date: Date = new Date()): string {
 
 export function getCurrentTimestamp(): number {
   return Date.now();
-}
-
-export function getEffectiveAccountBalance(
-  account: Pick<Account, "accountType" | "manualBalance" | "calculatedBalance">
-): number {
-  if (account.accountType === "INVESTMENT" && account.manualBalance !== null) {
-    return account.manualBalance;
-  }
-
-  return account.calculatedBalance;
 }
 
 export const categoryColorMap: Record<string, string> = {

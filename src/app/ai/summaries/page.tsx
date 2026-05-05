@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, ChevronUp, RefreshCw, ScrollText } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  ScrollText,
+  Trash2,
+} from "lucide-react";
 
 import ProviderBadge from "@/components/ui/ProviderBadge";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
-import { getWeeklySummaries } from "@/lib/api";
+import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
+import { deleteWeeklySummary, getWeeklySummaries } from "@/lib/api";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
 import { formatCurrency } from "@/lib/utils";
 import type { WeeklySummary } from "@/types";
@@ -55,16 +63,36 @@ function sortSummaries(items: WeeklySummary[]): WeeklySummary[] {
 
 type SummaryItemProps = {
   summary: WeeklySummary;
+  isDeleting: boolean;
+  isPendingConfirm: boolean;
+  onDeleteClick: (id: string) => void;
 };
 
-function SummaryItem({ summary }: SummaryItemProps) {
+function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick }: SummaryItemProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <article className="rounded-xl border border-gray-800 bg-gray-900/60 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <h2 className="text-base font-semibold text-white">{formatWeekRange(summary.weekStart, summary.weekEnd)}</h2>
-        <p className="text-xs text-gray-400">Generated {formatGeneratedDate(summary.generatedAt)}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-gray-400">Generated {formatGeneratedDate(summary.generatedAt)}</p>
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={() => onDeleteClick(summary.id)}
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              isPendingConfirm
+                ? "bg-red-500/20 text-red-300"
+                : "text-gray-400 hover:bg-red-500/10 hover:text-red-300"
+            } disabled:cursor-not-allowed disabled:opacity-60`}
+            title={isPendingConfirm ? "Click again to confirm delete" : "Delete summary"}
+            aria-label="Delete weekly summary"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {isDeleting ? "Deleting..." : isPendingConfirm ? "Confirm" : "Delete"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-2">
@@ -109,6 +137,9 @@ export default function WeeklySummariesPage() {
   const [summaries, setSummaries] = useState<WeeklySummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteToast, setDeleteToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
 
   const { generate, isGenerating, toast, clearToast } = useGenerateSummary((summary) => {
     setSummaries((prev) => sortSummaries([summary, ...prev.filter((item) => item.id !== summary.id)]));
@@ -148,6 +179,22 @@ export default function WeeklySummariesPage() {
 
   const hasSummaries = useMemo(() => summaries.length > 0, [summaries]);
 
+  const handleDeleteSummary = (id: string) => {
+    confirmDelete(id, async () => {
+      setDeletingId(id);
+
+      try {
+        await deleteWeeklySummary(id);
+        setSummaries((prev) => prev.filter((summary) => summary.id !== id));
+        setDeleteToast({ message: "Weekly summary deleted", type: "success" });
+      } catch {
+        setDeleteToast({ message: "Unable to delete weekly summary", type: "error" });
+      } finally {
+        setDeletingId(null);
+      }
+    });
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -175,7 +222,13 @@ export default function WeeklySummariesPage() {
         ) : hasSummaries ? (
           <div className="space-y-4">
             {summaries.map((summary) => (
-              <SummaryItem key={summary.id} summary={summary} />
+              <SummaryItem
+                key={summary.id}
+                summary={summary}
+                isDeleting={deletingId === summary.id}
+                isPendingConfirm={isPendingConfirm(summary.id)}
+                onDeleteClick={handleDeleteSummary}
+              />
             ))}
           </div>
         ) : (
@@ -198,6 +251,13 @@ export default function WeeklySummariesPage() {
         )}
       </div>
 
+      {deleteToast ? (
+        <Toast
+          message={deleteToast.message}
+          type={deleteToast.type}
+          onClose={() => setDeleteToast(null)}
+        />
+      ) : null}
       {toast ? <Toast message={toast.message} type={toast.type} onClose={clearToast} /> : null}
     </div>
   );

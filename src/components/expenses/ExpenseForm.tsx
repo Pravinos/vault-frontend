@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { createExpense, updateExpense } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
-import { formatCurrency, getEffectiveAccountBalance } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import type { Account, Category, CreateExpenseRequest, Expense } from "@/types";
 
 type ExpenseFormProps = {
@@ -99,7 +99,7 @@ export default function ExpenseForm({
 
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch {
       setFormError("Unable to save expense.");
     } finally {
       setIsSubmitting(false);
@@ -228,7 +228,7 @@ export default function ExpenseForm({
           const parsedAmt = Number(amount);
           if (!selectedAccount || !Number.isFinite(parsedAmt) || parsedAmt <= 0) return null;
           const oldAmt = isEditMode ? (expense?.amount ?? 0) : 0;
-          const projected = getEffectiveAccountBalance(selectedAccount) + oldAmt - parsedAmt;
+          const projected = selectedAccount.calculatedBalance + oldAmt - parsedAmt;
           return (
             <p className="mt-1 rounded-lg border border-gray-700/60 bg-gray-900/60 px-3 py-2 text-xs text-gray-400">
               After this expense,{" "}

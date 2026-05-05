@@ -20,8 +20,16 @@ async function forward(req: NextRequest, path: string[]) {
 
   const headers = new Headers();
   const contentType = req.headers.get("content-type");
+  const accept = req.headers.get("accept");
+  const authorization = req.headers.get("authorization");
   if (contentType) {
     headers.set("content-type", contentType);
+  }
+  if (accept) {
+    headers.set("accept", accept);
+  }
+  if (authorization) {
+    headers.set("authorization", authorization);
   }
   if (token) {
     headers.set("cookie", `vault_token=${encodeURIComponent(token)}`);

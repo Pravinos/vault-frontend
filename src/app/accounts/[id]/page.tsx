@@ -160,7 +160,11 @@ export default function InvestmentAccountDetailPage() {
           <>
             <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
               <h2 className="text-lg font-semibold text-white">{account.name}</h2>
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+              <div
+                className={`mt-4 grid grid-cols-1 gap-3 ${
+                  account.assetType?.trim() ? "md:grid-cols-5" : "md:grid-cols-4"
+                }`}
+              >
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Contributed</p>
                   <p className="mt-1 text-sm font-semibold text-white">
@@ -185,6 +189,12 @@ export default function InvestmentAccountDetailPage() {
                     {formatReturnPercentage(account.returnPercentage)}
                   </p>
                 </div>
+                {account.assetType?.trim() ? (
+                  <div className="rounded-lg bg-gray-800/70 p-3">
+                    <p className="text-xs text-gray-400">Asset Type</p>
+                    <p className="mt-1 text-sm font-semibold text-white">{account.assetType}</p>
+                  </div>
+                ) : null}
               </div>
             </div>
 

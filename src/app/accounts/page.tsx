@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeftRight, Clock, MoreHorizontal, Plus } from "lucide-react";
+import { ArrowLeftRight, Clock, Eye, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -22,7 +22,6 @@ import {
 import {
   formatCurrency,
   getCurrentTimestamp,
-  getEffectiveAccountBalance,
 } from "@/lib/utils";
 import type { Account, Transfer } from "@/types";
 
@@ -107,6 +106,40 @@ function formatCreatedAt(timestamp: string): string {
   });
 }
 
+function isRevertTransfer(transfer: Transfer): boolean {
+  const transferWithMeta = transfer as Transfer & {
+    isRevert?: boolean | null;
+    isReversal?: boolean | null;
+    originalTransferId?: string | null;
+    reversalOfTransferId?: string | null;
+    revertedTransferId?: string | null;
+    transferType?: string | null;
+    type?: string | null;
+    kind?: string | null;
+  };
+
+  if (transferWithMeta.isRevert || transferWithMeta.isReversal) {
+    return true;
+  }
+
+  if (
+    transferWithMeta.originalTransferId ||
+    transferWithMeta.reversalOfTransferId ||
+    transferWithMeta.revertedTransferId
+  ) {
+    return true;
+  }
+
+  const marker =
+    transferWithMeta.transferType ?? transferWithMeta.type ?? transferWithMeta.kind ?? "";
+  if (/revert|reversal/i.test(marker)) {
+    return true;
+  }
+
+  const note = transfer.note?.trim() ?? "";
+  return /^revert(?:ed)?\b|^reversal\b/i.test(note);
+}
+
 function getApiErrorMessage(error: unknown, fallback: string): string {
   if (!axios.isAxiosError(error)) {
     return fallback;
@@ -144,7 +177,6 @@ export default function AccountsPage() {
   const [editingAccount, setEditingAccount] = useState<Account | undefined>(undefined);
   const [manualBalanceAccount, setManualBalanceAccount] = useState<Account | undefined>(undefined);
 
-  const [mobileMenuAccountId, setMobileMenuAccountId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [deleteTargetAccount, setDeleteTargetAccount] = useState<Account | null>(null);
@@ -424,7 +456,7 @@ export default function AccountsPage() {
           {error ? (
             <ErrorMessage message={error} onRetry={fetchAccounts} />
           ) : loading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
                 <Skeleton key={index} variant="card" className="h-52 rounded-xl" />
               ))}
@@ -446,7 +478,7 @@ export default function AccountsPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {accounts.map((account) => {
                 const sync = syncStatus(account);
                 return (
@@ -484,7 +516,7 @@ export default function AccountsPage() {
                         Calculated balance
                       </p>
                       <p className="mt-1 text-2xl font-semibold tabular-nums text-white">
-                        {formatCurrency(getEffectiveAccountBalance(account))}
+                        {formatCurrency(account.calculatedBalance)}
                       </p>
                     </div>
 
@@ -526,99 +558,45 @@ export default function AccountsPage() {
                       </div>
                     ) : null}
 
-                    <div className="mt-5 sm:hidden">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setManualBalanceAccount(account)}
-                          className="flex-1 rounded-lg bg-emerald-600/20 px-3 py-2 text-sm font-medium text-emerald-400 transition-all duration-150 hover:bg-emerald-600/30 active:scale-95"
-                        >
-                          Update Balance
-                        </button>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMobileMenuAccountId((prev) =>
-                                prev === account.id ? null : account.id
-                              )
-                            }
-                            className="cursor-pointer rounded-lg bg-white/5 p-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
-                            aria-label="Open account actions"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                          {mobileMenuAccountId === account.id ? (
-                            <div className="absolute right-0 z-10 mt-2 min-w-40 rounded-lg border border-gray-700 bg-gray-900 p-1 shadow-lg">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  openEdit(account);
-                                  setMobileMenuAccountId(null);
-                                }}
-                                className="block w-full rounded-md px-3 py-2 text-left text-xs text-gray-200 hover:bg-gray-800"
-                              >
-                                Edit
-                              </button>
-                              <Link
-                                href={
-                                  account.accountType === "INVESTMENT"
-                                    ? `/accounts/${account.id}`
-                                    : "/expenses"
-                                }
-                                className="block rounded-md px-3 py-2 text-left text-xs text-gray-200 hover:bg-gray-800"
-                                onClick={() => setMobileMenuAccountId(null)}
-                              >
-                                View details
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  openDeleteDialog(account);
-                                  setMobileMenuAccountId(null);
-                                }}
-                                className="block w-full rounded-md px-3 py-2 text-left text-xs text-red-400 hover:bg-gray-800"
-                              >
-                                Delete permanently
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 hidden gap-2 sm:flex sm:flex-row">
+                    <div className="mt-4 space-y-2">
                       <button
                         type="button"
                         onClick={() => setManualBalanceAccount(account)}
-                        className="flex-1 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-xs font-medium text-gray-200 transition-all duration-150 hover:bg-gray-700 active:scale-95"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10 active:bg-white/15"
                       >
+                        <RefreshCw className="h-3.5 w-3.5 text-emerald-400" />
                         Update Balance
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(account)}
-                        className="flex-1 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-xs font-medium text-gray-200 transition-all duration-150 hover:bg-gray-700 active:scale-95"
-                      >
-                        Edit
-                      </button>
-                      <Link
-                        href={
-                          account.accountType === "INVESTMENT"
-                            ? `/accounts/${account.id}`
-                            : "/expenses"
-                        }
-                        className="flex flex-1 items-center justify-center rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-center text-xs font-medium text-gray-200 transition-all duration-150 hover:bg-gray-700"
-                      >
-                        View details
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => openDeleteDialog(account)}
-                        className="flex-1 rounded-lg border border-gray-700 bg-gray-800/60 px-3 py-2 text-xs font-medium text-gray-400 transition-all duration-150 hover:bg-red-900/20 hover:text-red-300 active:scale-95"
-                      >
-                        Delete permanently
-                      </button>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(account)}
+                          className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                        <Link
+                          href={
+                            account.accountType === "INVESTMENT"
+                              ? `/accounts/${account.id}`
+                              : "/expenses"
+                          }
+                          className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Details
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => openDeleteDialog(account)}
+                          className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -708,7 +686,10 @@ export default function AccountsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800 bg-[#1a2332] text-gray-200">
-                        {transfers.map((transfer) => (
+                        {transfers.map((transfer) => {
+                          const canRevert = !isRevertTransfer(transfer);
+
+                          return (
                           <tr key={transfer.id}>
                             <td className="px-4 py-3">{formatTransferDate(transfer.transferDate)}</td>
                             <td className="px-4 py-3">{transfer.fromAccountName}</td>
@@ -721,22 +702,28 @@ export default function AccountsPage() {
                             </td>
                             <td className="px-4 py-3 text-gray-300">{formatCreatedAt(transfer.createdAt)}</td>
                             <td className="px-4 py-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() => setRevertTargetTransfer(transfer)}
-                                className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/10"
-                              >
-                                Revert
-                              </button>
+                              {canRevert ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRevertTargetTransfer(transfer)}
+                                  className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/10"
+                                >
+                                  Revert
+                                </button>
+                              ) : null}
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
 
                   <div className="space-y-3 md:hidden">
-                    {transfers.map((transfer) => (
+                    {transfers.map((transfer) => {
+                      const canRevert = !isRevertTransfer(transfer);
+
+                      return (
                       <div
                         key={transfer.id}
                         className="rounded-xl border border-gray-800 bg-[#1a2332] p-4"
@@ -760,15 +747,18 @@ export default function AccountsPage() {
                           <p>Created: {formatCreatedAt(transfer.createdAt)}</p>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => setRevertTargetTransfer(transfer)}
-                          className="mt-4 w-full rounded-lg border border-red-500/40 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
-                        >
-                          Revert transfer
-                        </button>
+                        {canRevert ? (
+                          <button
+                            type="button"
+                            onClick={() => setRevertTargetTransfer(transfer)}
+                            className="mt-4 w-full rounded-lg border border-red-500/40 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
+                          >
+                            Revert transfer
+                          </button>
+                        ) : null}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
