@@ -572,29 +572,22 @@ export default function AccountsPage() {
                         <button
                           type="button"
                           onClick={() => openEdit(account)}
-                          className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                          className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
+                          <Pencil className="h-4 w-4" />
                         </button>
                         <Link
-                          href={
-                            account.accountType === "INVESTMENT"
-                              ? `/accounts/${account.id}`
-                              : "/expenses"
-                          }
-                          className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                          href={account.accountType === "INVESTMENT" ? `/accounts/${account.id}` : "/expenses"}
+                          className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
                         >
-                          <Eye className="h-3.5 w-3.5" />
-                          Details
+                          <Eye className="h-4 w-4" />
                         </Link>
                         <button
                           type="button"
                           onClick={() => openDeleteDialog(account)}
-                          className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
+                          className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
@@ -799,9 +792,13 @@ export default function AccountsPage() {
       {manualBalanceAccount ? (
         <ManualBalanceModal
           account={manualBalanceAccount}
-          onSuccess={() => {
+          onSuccess={(updatedAccount) => {
             setManualBalanceAccount(undefined);
-            void fetchAccounts();
+            setAccounts((prev) =>
+              prev.map((acc) =>
+                acc.id === updatedAccount.id ? updatedAccount : acc
+              )
+            );
           }}
           onClose={() => setManualBalanceAccount(undefined)}
         />

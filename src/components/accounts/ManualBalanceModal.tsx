@@ -10,7 +10,7 @@ import type { Account } from "@/types";
 
 type ManualBalanceModalProps = {
   account: Account;
-  onSuccess: () => void | Promise<void>;
+  onSuccess: (updatedAccount: Account) => void | Promise<void>;
   onClose: () => void;
 };
 
@@ -75,8 +75,8 @@ export default function ManualBalanceModal({
           : {}),
       };
 
-      await updateManualBalance(account.id, payload);
-      await onSuccess();
+      const updatedAccount = await updateManualBalance(account.id, payload);
+      await onSuccess(updatedAccount);
       onClose();
     } catch (apiError) {
       setError(getApiErrorMessage(apiError));
