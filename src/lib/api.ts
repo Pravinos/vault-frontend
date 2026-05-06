@@ -261,75 +261,22 @@ export async function updateManualBalance(
   id: string,
   payload: ManualBalancePayload
 ): Promise<Account> {
-  const endpoints = [
-    `/accounts/${id}/manual-balance`,
-    `/accounts/${id}/manual-balance/update`,
-    `/accounts/${id}/balance`,
-    `/accounts/${id}/manualBalance`,
-  ];
   const openingBalanceFlag = payload.alsoSetAsOpeningBalance;
   const optionalOpeningBalance =
     openingBalanceFlag === true
       ? { alsoSetAsOpeningBalance: true }
       : {};
 
-  const payloadVariants = [
-    {
-      manualBalance: payload.manualBalance,
-      ...optionalOpeningBalance,
-    },
-    {
-      balance: payload.manualBalance,
-      ...optionalOpeningBalance,
-    },
-    {
-      balance: payload.manualBalance,
-      ...(openingBalanceFlag === true ? { alsoSetOpeningBalance: true } : {}),
-    },
-    {
-      amount: payload.manualBalance,
-      ...optionalOpeningBalance,
-    },
-    {
-      manualBalance: payload.manualBalance.toString(),
-      ...optionalOpeningBalance,
-    },
-  ];
+  const requestPayload = {
+    manualBalance: payload.manualBalance,
+    ...optionalOpeningBalance,
+  };
 
-  const methods: Array<"patch" | "put" | "post"> = ["patch", "put", "post"];
-  let lastError: unknown;
-  let attempts = 0;
-
-  for (const endpoint of endpoints) {
-    for (const variant of payloadVariants) {
-      for (const method of methods) {
-        attempts += 1;
-        try {
-          const response = await api.request<Account>({
-            method,
-            url: endpoint,
-            data: variant,
-          });
-
-          if (response.data) {
-            return response.data;
-          }
-
-          return getAccount(id);
-        } catch (requestError) {
-          lastError = requestError;
-        }
-      }
-    }
-  }
-
-  if (axios.isAxiosError(lastError)) {
-    const status = lastError.response?.status;
-    const statusText = status ? `status ${status}` : "no status";
-    throw new Error(`Unable to update manual balance (${statusText}) after ${attempts} attempts.`);
-  }
-
-  throw new Error(`Unable to update manual balance after ${attempts} attempts.`);
+  const response = await api.patch<Account>(
+    `/accounts/${id}/manual-balance`,
+    requestPayload
+  );
+  return response.data;
 }
 
 // Transfers

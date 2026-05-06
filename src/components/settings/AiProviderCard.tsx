@@ -30,6 +30,7 @@ export default function AiProviderCard({
   const [lmModels, setLmModels] = useState<string[]>([]);
   const [groqModels, setGroqModels] = useState<string[]>([]);
   const [lmStatus, setLmStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [groqStatus, setGroqStatus] = useState<"idle" | "ok" | "error">("idle");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -43,8 +44,13 @@ export default function AiProviderCard({
       });
 
     getGroqModels()
-      .then(setGroqModels)
-      .catch(() => {});
+      .then((models) => {
+        setGroqModels(models);
+        setGroqStatus("ok");
+      })
+      .catch(() => {
+        setGroqStatus("error");
+      });
   }, []);
 
   const activeModels = provider === "lmstudio" ? lmModels : groqModels;
@@ -72,6 +78,7 @@ export default function AiProviderCard({
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-semibold text-white">{title}</h3>
         {provider === "lmstudio" && <ConnectivityIndicator status={lmStatus} />}
+        {provider === "groq" && <ConnectivityIndicator status={groqStatus} />}
       </div>
 
       <div className="flex flex-col gap-4">
