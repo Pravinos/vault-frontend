@@ -7,9 +7,10 @@ import { useEffect, useState } from "react";
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
-import { fetchDashboard } from "@/lib/api";
+import { fetchDashboard, getLatestWeeklySummary } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type { AccountDashboardData, DashboardData } from "@/types/dashboard";
+import type { WeeklySummary } from "@/types";
 
 function getAccountColor(type: AccountDashboardData["accountType"]): string {
   switch (type) {
@@ -289,12 +290,19 @@ function CategoryFocusCard({
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [summary, setSummary] = useState<WeeklySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchDashboard()
-      .then(setData)
+    Promise.all([
+      fetchDashboard(),
+      getLatestWeeklySummary(),
+    ])
+      .then(([dashboardData, weeklySummary]) => {
+        setData(dashboardData);
+        setSummary(weeklySummary);
+      })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : "Failed to load dashboard";
         console.error("Dashboard fetch failed:", err);
@@ -372,7 +380,10 @@ export default function DashboardPage() {
             total={data.expensesThisMonth}
             monthLabel={data.currentMonthLabel}
           />
-          <WeeklySummaryCard summary={null} />
+          <WeeklySummaryCard 
+            summary={summary}
+            onGenerated={(newSummary) => setSummary(newSummary)}
+          />
         </div>
       </div>
     </div>
