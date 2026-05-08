@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Calendar, RefreshCw } from "lucide-react";
 
 import ProviderBadge from "@/components/ui/ProviderBadge";
+import { useState } from "react";
 import Toast from "@/components/ui/Toast";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
 import type { WeeklySummary } from "@/types";
@@ -83,9 +84,11 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
     );
   }
 
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <>
-      <div className="flex h-full flex-col rounded-2xl border-l-4 border-emerald-500/60 bg-[#1a2332] p-5">
+      <div className="flex flex-col rounded-2xl border-l-4 border-emerald-500/60 bg-[#1a2332] p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
@@ -104,13 +107,35 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
           </button>
         </div>
 
-        <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-gray-200">
-          {summary.summaryText}
+        <div className="mt-4 text-sm leading-relaxed text-gray-200">
+          <p
+            className="whitespace-normal text-sm leading-relaxed text-gray-200"
+            style={
+              expanded
+                ? undefined
+                : {
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }
+            }
+          >
+            {summary.summaryText?.trim()}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setExpanded((s) => !s)}
+            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
+          >
+            {expanded ? "Read less" : "Read more"}
+          </button>
         </div>
 
-        <div className="mt-4 text-sm text-gray-400">{formatWeekRange(summary.weekStart, summary.weekEnd)}</div>
+        <div className="mt-3 text-sm text-gray-400">{formatWeekRange(summary.weekStart, summary.weekEnd)}</div>
 
-        <div className="mt-auto flex items-end justify-between pt-5">
+        <div className="flex items-center justify-between pt-3">
           <Link
             href="/ai/summaries"
             className="text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"

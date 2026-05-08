@@ -3,6 +3,7 @@
 import { CalendarDays, CalendarCheck, TrendingDown, TrendingUp, Tag, BarChart2 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/utils";
+import { useCountUp } from "@/lib/hooks/useCountUp";
 import type { ExpenseStats } from "@/types";
 
 type StatsBarProps = {
@@ -32,6 +33,8 @@ export default function StatsBar({ stats }: StatsBarProps) {
           100
       ).toFixed(1)
     : null;
+
+  const averageAnimated = useCountUp(stats.averagePerDay);
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -89,7 +92,11 @@ export default function StatsBar({ stats }: StatsBarProps) {
           </p>
         </div>
         <p className="mt-2 text-xl font-semibold tabular-nums text-white">
-          {displayAmount(stats.averagePerDay)}
+          {stats.averagePerDay === 0 ? (
+            <span className="text-gray-500">—</span>
+          ) : (
+            formatCurrency(averageAnimated)
+          )}
         </p>
         <p className="mt-1 text-[10px] text-gray-500">{getMonthLabel(0)}</p>
       </div>

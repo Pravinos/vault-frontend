@@ -18,11 +18,10 @@ function generateUUID(): string {
 
 const SUGGESTED_PROMPTS = [
   { emoji: "💸", text: "How much did I spend this month?" },
-  { emoji: "📊", text: "Show my spending breakdown by category" },
-  { emoji: "🎯", text: "How are my goals progressing?" },
-  { emoji: "📈", text: "How is my Revolut investment performing?" },
-  { emoji: "💰", text: "What's my net cash flow this month?" },
-  { emoji: "🔍", text: "What's my top expense category?" },
+  { emoji: "🔎", text: "Identify unusual or one-off transactions from the last 90 days" },
+  { emoji: "🏷️", text: "Which merchants did I spend the most at this month?" },
+  { emoji: "🔮", text: "Predict next month's cash flow based on recurring income and bills" },
+  { emoji: "💡", text: "Recommend 3 ways to reduce my monthly expenses by ~15%" },
 ];
 
 export default function ChatPage() {
@@ -104,6 +103,12 @@ export default function ChatPage() {
     });
   };
 
+  const [vaultIconPulse, setVaultIconPulse] = useState(false);
+  const onVaultEntranceEnd = (e: any) => {
+    if (e.animationName === "vaultIconEntrance") {
+      setVaultIconPulse(true);
+    }
+  };
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -129,22 +134,40 @@ export default function ChatPage() {
             <div>
               <p className="text-lg font-semibold text-white">Vault AI</p>
               <p className="mt-1 text-sm text-gray-400">
-                Ask about your finances, spending, goals...
+                What do you want to know about your finances?
               </p>
             </div>
 
             {messages.length === 0 ? (
               <div className="flex flex-col items-center pb-4 pt-6 text-center">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-900/40 ring-2 ring-emerald-700/40">
+                <div
+                  className={`mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-900/40 ring-2 ring-emerald-700/40 ${
+                    vaultIconPulse ? "vault-icon-pulse" : "vault-icon-entrance"
+                  }`}
+                  onAnimationEnd={onVaultEntranceEnd}
+                >
                   <span className="text-2xl">🏦</span>
                 </div>
                 <div className="mt-6 grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-                  {SUGGESTED_PROMPTS.map((prompt) => (
+                  {/* Primary chip (first prompt) */}
+                  {SUGGESTED_PROMPTS.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handlePromptClick(SUGGESTED_PROMPTS[0].text)}
+                      className="col-span-full flex items-start gap-2 rounded-xl border-[1px] border-[rgba(29,158,117,0.6)] bg-[rgba(29,158,117,0.08)] px-4 py-3 text-left text-sm text-white transition-all active:scale-[0.98]"
+                    >
+                      <span className="mt-0.5 text-base leading-none">{SUGGESTED_PROMPTS[0].emoji}</span>
+                      <span className="leading-snug">{SUGGESTED_PROMPTS[0].text}</span>
+                    </button>
+                  )}
+
+                  {/* Secondary chips (remaining prompts) */}
+                  {SUGGESTED_PROMPTS.slice(1).map((prompt) => (
                     <button
                       key={prompt.text}
                       type="button"
                       onClick={() => handlePromptClick(prompt.text)}
-                      className="flex items-start gap-2 rounded-xl border border-gray-700 bg-[#0f1923] px-4 py-3 text-left text-sm text-gray-200 transition-all hover:border-emerald-700/60 hover:text-white active:scale-[0.98]"
+                      className="flex items-start gap-2 rounded-xl border border-gray-700 bg-[#0f1923] px-4 py-3 text-left text-sm text-gray-200 transition-all hover:border-emerald-700/60 hover:text-white hover:bg-[#0f2430] active:scale-[0.98]"
                     >
                       <span className="mt-0.5 text-base leading-none">{prompt.emoji}</span>
                       <span className="leading-snug">{prompt.text}</span>

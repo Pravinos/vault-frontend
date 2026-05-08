@@ -15,32 +15,20 @@ export function formatDate(dateStr: string): string {
     year: "numeric",
   });
 }
-
 export function formatMonth(monthStr: string): string {
-  const date = new Date(`${monthStr}-01T00:00:00`);
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  if (!monthStr) return "";
+  const parts = monthStr.split("-");
+  if (parts.length !== 2) return monthStr;
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return monthStr;
+
+  const d = new Date(year, month - 1, 1);
+  return d.toLocaleString("en-US", { month: "short", year: "numeric" });
 }
 
-export function getMonthString(date: Date = new Date()): string {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  return `${year}-${month}`;
+export function getMonthString(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
-
-export function getCurrentTimestamp(): number {
-  return Date.now();
-}
-
-export const categoryColorMap: Record<string, string> = {
-  Food: "bg-orange-100 text-orange-700",
-  Transport: "bg-blue-100 text-blue-700",
-  Housing: "bg-purple-100 text-purple-700",
-  Entertainment: "bg-pink-100 text-pink-700",
-  Health: "bg-green-100 text-green-700",
-  Shopping: "bg-yellow-100 text-yellow-700",
-  Travel: "bg-sky-100 text-sky-700",
-  Other: "bg-gray-100 text-gray-700",
-};

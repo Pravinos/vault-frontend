@@ -91,14 +91,16 @@ export default function Sidebar({
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
+          const base =
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]";
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`${base} ${
                 active
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "text-gray-400 hover:bg-white/5 hover:text-white"
+                  ? "border-l-[#1D9E75] text-[#1D9E75] bg-[rgba(29,158,117,0.08)]"
+                  : "border-l-transparent text-gray-400 hover:bg-white/4 hover:text-white"
               }`}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -115,14 +117,16 @@ export default function Sidebar({
 
         {settingsItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
+          const base =
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]";
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`${base} ${
                 active
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "text-gray-400 hover:bg-white/5 hover:text-white"
+                  ? "border-l-[#1D9E75] text-[#1D9E75] bg-[rgba(29,158,117,0.08)]"
+                  : "border-l-transparent text-gray-400 hover:bg-white/4 hover:text-white"
               }`}
             >
               <Icon className="h-4 w-4 shrink-0" />

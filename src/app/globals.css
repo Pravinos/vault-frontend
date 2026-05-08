@@ -69,3 +69,36 @@ select option {
   background-color: #1a2332;
   color: #ffffff;
 }
+
+/* Vault icon entrance + pulse animations (respect prefers-reduced-motion) */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes vaultIconEntrance {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes vaultIconPulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.04);
+    }
+  }
+
+  .vault-icon-entrance {
+    animation: vaultIconEntrance 0.4s ease-out 1 both;
+    transform-origin: center;
+  }
+
+  .vault-icon-pulse {
+    animation: vaultIconPulse 3s ease-in-out infinite;
+    transform-origin: center;
+  }
+}

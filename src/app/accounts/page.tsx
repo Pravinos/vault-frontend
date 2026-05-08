@@ -6,6 +6,7 @@ import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AccountForm from "@/components/accounts/AccountForm";
+import AccountCard from "@/components/accounts/AccountCard";
 import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
 import TransferForm from "@/components/accounts/TransferForm";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -29,32 +30,6 @@ const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
 
 type AccountsTab = "accounts" | "transfer";
 
-function getAccountColor(type: string): string {
-  switch (type) {
-    case "CHECKING":
-      return "#10b981";
-    case "SAVINGS":
-      return "#3b82f6";
-    case "INVESTMENT":
-      return "#8b5cf6";
-    default:
-      return "#10b981";
-  }
-}
-
-function getAccountBadgeClass(type: string): string {
-  switch (type) {
-    case "CHECKING":
-      return "bg-emerald-500/10 text-emerald-400";
-    case "SAVINGS":
-      return "bg-blue-500/10 text-blue-400";
-    case "INVESTMENT":
-      return "bg-violet-500/10 text-violet-400";
-    default:
-      return "bg-emerald-500/10 text-emerald-400";
-  }
-}
-
 function formatManualTimestamp(value: string | null): string {
   if (!value) {
     return "Not set";
@@ -65,22 +40,6 @@ function formatManualTimestamp(value: string | null): string {
     day: "2-digit",
     year: "numeric",
   });
-}
-
-function getReturnColor(value: number | null): string {
-  if (value === null || value === 0) {
-    return "text-gray-300";
-  }
-  return value > 0 ? "text-green-400" : "text-red-400";
-}
-
-function formatReturnPercentage(value: number | null): string {
-  if (value === null || value === 0) {
-    return "0.00%";
-  }
-
-  const fixed = value.toFixed(2);
-  return value > 0 ? `+${fixed}%` : `${fixed}%`;
 }
 
 function formatTransferDate(dateValue: string): string {
@@ -310,13 +269,7 @@ export default function AccountsPage() {
     setShowForm(true);
   };
 
-  const syncStatus = (account: Account): "synced" | "unsynced" | null => {
-    if (account.accountType === "INVESTMENT") return null;
-    if (account.manualBalance === null) return null;
-    const diff = Math.abs(account.calculatedBalance - account.manualBalance);
-    const threshold = Math.abs(account.calculatedBalance) * 0.01;
-    return diff <= threshold ? "synced" : "unsynced";
-  };
+  // sync status removed — no longer displaying sync indicators on account cards
 
   const handleRevertTransfer = async () => {
     if (!revertTargetTransfer) {
@@ -480,118 +433,66 @@ export default function AccountsPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {accounts.map((account) => {
-                const sync = syncStatus(account);
                 return (
-                  <div
+                  <AccountCard
                     key={account.id}
-                    className="rounded-2xl border border-gray-800 border-l-4 bg-[#1a2332] p-5 text-sm text-gray-200 transition-colors"
-                    style={{
-                      borderLeftColor: getAccountColor(account.accountType),
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-white">{account.name}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getAccountBadgeClass(account.accountType)}`}
+                    account={account}
+                    details={
+                      <>
+                        <div className="rounded-xl border border-gray-800 bg-[#0f1923] p-3">
+                          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Manual balance
+                          </p>
+                          <p className="mt-1 font-medium tabular-nums text-gray-100">
+                            {account.manualBalance === null
+                              ? "Not set"
+                              : formatCurrency(account.manualBalance)}
+                          </p>
+                          <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                            <Clock className="h-3 w-3" />
+                            Last updated: {formatManualTimestamp(account.manualBalanceUpdatedAt)}
+                          </p>
+                        </div>
+
+                        <div className="mt-3 space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => setManualBalanceAccount(account)}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10 active:bg-white/15"
                           >
-                            {account.accountType}
-                          </span>
-                          {sync === "synced" ? (
-                            <span className="inline-flex rounded-full bg-emerald-900/40 px-2 py-0.5 text-xs text-emerald-400">
-                              Synced
-                            </span>
-                          ) : sync === "unsynced" ? (
-                            <span className="inline-flex rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-400">
-                              Out of sync
-                            </span>
-                          ) : null}
+                            <RefreshCw className="h-3.5 w-3.5 text-emerald-400" />
+                            Update Balance
+                          </button>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(account)}
+                              className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                              title="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <Link
+                              href={account.accountType === "INVESTMENT" ? `/accounts/${account.id}` : "/expenses"}
+                              className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                              title="Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => openDeleteDialog(account)}
+                              className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Calculated balance
-                      </p>
-                      <p className="mt-1 text-2xl font-semibold tabular-nums text-white">
-                        {formatCurrency(account.calculatedBalance)}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 rounded-xl border border-gray-800 bg-[#0f1923] p-3">
-                      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Manual balance
-                      </p>
-                      <p className="mt-1 font-medium tabular-nums text-gray-100">
-                        {account.manualBalance === null
-                          ? "Not set"
-                          : formatCurrency(account.manualBalance)}
-                      </p>
-                      <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        Last updated: {formatManualTimestamp(account.manualBalanceUpdatedAt)}
-                      </p>
-                    </div>
-
-                    {account.accountType === "INVESTMENT" ? (
-                      <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-gray-800 bg-[#0f1923] p-3 text-xs">
-                        <div>
-                          <p className="font-medium uppercase tracking-wider text-gray-500">Value</p>
-                          <p className="mt-1 tabular-nums text-gray-100">
-                            {formatCurrency(account.currentValue ?? 0)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-medium uppercase tracking-wider text-gray-500">Contributed</p>
-                          <p className="mt-1 tabular-nums text-gray-100">
-                            {formatCurrency(account.contributedAmount ?? 0)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-medium uppercase tracking-wider text-gray-500">Return</p>
-                          <p className={`mt-1 tabular-nums ${getReturnColor(account.returnAmount)}`}>
-                            {formatReturnPercentage(account.returnPercentage)}
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div className="mt-4 space-y-2">
-                      <button
-                        type="button"
-                        onClick={() => setManualBalanceAccount(account)}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10 active:bg-white/15"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5 text-emerald-400" />
-                        Update Balance
-                      </button>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(account)}
-                          className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <Link
-                          href={account.accountType === "INVESTMENT" ? `/accounts/${account.id}` : "/expenses"}
-                          className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteDialog(account)}
-                          className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                      </>
+                    }
+                  />
                 );
               })}
             </div>

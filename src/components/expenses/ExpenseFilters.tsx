@@ -1,6 +1,7 @@
 "use client";
 
 import SelectField from "@/components/ui/SelectField";
+import MonthNavigator from "@/components/ui/MonthNavigator";
 import type { Account, Category } from "@/types";
 
 type ExpenseFiltersProps = {
@@ -26,12 +27,9 @@ export default function ExpenseFilters({
 }: ExpenseFiltersProps) {
   return (
     <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-      <input
-        type="month"
-        value={month}
-        onChange={(event) => onMonthChange(event.target.value)}
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-base text-white transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50 sm:w-auto"
-      />
+      <div className="w-full sm:w-auto">
+        <MonthNavigator value={month} onChange={onMonthChange} />
+      </div>
       <SelectField
         value={categoryId ?? ""}
         onChange={(event) => {

@@ -8,16 +8,18 @@ import {
   RefreshCw,
   ScrollText,
   Trash2,
+  Lightbulb,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
-
-import ProviderBadge from "@/components/ui/ProviderBadge";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
-import { deleteWeeklySummary, getWeeklySummaries } from "@/lib/api";
+import { deleteWeeklySummary, getWeeklySummaries, fetchDashboard, getAccounts } from "@/lib/api";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
 import { formatCurrency } from "@/lib/utils";
-import type { WeeklySummary } from "@/types";
+import type { WeeklySummary, Account } from "@/types";
+import type { DashboardData } from "@/types/dashboard";
 
 function formatWeekRange(start: string, end: string): string {
   const startDate = new Date(`${start}T00:00:00`);
@@ -66,10 +68,20 @@ type SummaryItemProps = {
   isDeleting: boolean;
   isPendingConfirm: boolean;
   onDeleteClick: (id: string) => void;
+  dashboard?: DashboardData | null;
+  accounts?: Account[] | null;
 };
 
-function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick }: SummaryItemProps) {
+function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick, dashboard, accounts }: SummaryItemProps) {
   const [expanded, setExpanded] = useState(false);
+
+  // Prefer authoritative values from dashboard when available.
+  const metrics = [
+    { key: "totalSpent", label: "Total Spent", value: summary.totalSpent },
+    { key: "totalIncome", label: "Total Income", value: dashboard?.incomeThisMonth },
+    { key: "netCashFlow", label: "Net Cash Flow", value: dashboard?.netCashFlow },
+    { key: "topCategory", label: "Top Category", value: dashboard?.topExpenseCategory },
+  ];
 
   return (
     <article className="rounded-xl border border-gray-800 bg-gray-900/60 p-5">
@@ -95,13 +107,55 @@ function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick }: S
         </div>
       </div>
 
-      <div className="mt-2">
-        <ProviderBadge provider={summary.provider} model={summary.model} />
+      {/* Key metrics row */}
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {metrics.map((m) => {
+          const isNumber = typeof m.value === "number";
+          const display = isNumber ? formatCurrency(m.value as number) : m.value ? String(m.value) : "—";
+          const labelClass = "text-[12px] text-gray-400 uppercase tracking-[0.05em]";
+          const valueBase = "mt-1 text-[20px] font-semibold";
+          const valueClass =
+            m.key === "netCashFlow" && isNumber
+              ? (Number(m.value) >= 0 ? `${valueBase} text-emerald-400` : `${valueBase} text-red-400`)
+              : `${valueBase} text-white`;
+
+          return (
+            <div key={m.key} className="flex flex-col">
+              <span className={labelClass}>{m.label}</span>
+              <span className={valueClass}>{display}</span>
+            </div>
+          );
+        })}
       </div>
+
+      {/* Account / investment returns: show account name · assetType with context label */}
+      {accounts && accounts.length > 0 ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {accounts
+            .filter((a) => typeof a.returnPercentage === "number")
+            .slice(0, 2)
+            .map((a) => (
+              <div key={a.id} className="rounded-md border border-white/6 bg-[#0f1720] p-2 text-sm text-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-white">
+                      {a.name}{a.assetType ? ` · ${a.assetType}` : ""}
+                    </div>
+                    <div className="text-xs text-gray-400">Investment return this week</div>
+                  </div>
+                  <div className={`flex items-center gap-2 ${a.returnPercentage! >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                    {a.returnPercentage! >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                    <div className="font-semibold">{a.returnPercentage!.toFixed(2)}%</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      ) : null}
 
       <div className="mt-4">
         <p
-          className="whitespace-pre-wrap text-sm leading-relaxed text-gray-200"
+          className="whitespace-normal text-sm leading-relaxed text-gray-200"
           style={
             expanded
               ? undefined
@@ -113,7 +167,7 @@ function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick }: S
                 }
           }
         >
-          {summary.summaryText}
+          {summary.summaryText?.trim()}
         </p>
 
         <button
@@ -125,16 +179,39 @@ function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick }: S
           {expanded ? "Read less" : "Read more"}
         </button>
       </div>
+      {/* Highlighted insight (takeaway) moved after the narrative */}
+      {(() => {
+        const text = summary.summaryText ?? "";
+        const sentences = text.replace(/\n+/g, " ").split(".");
+        const keywords = ["practical tip", "allocate", "recommend", "suggestion"];
+        const found = sentences.map((s) => s.trim()).find((s) => keywords.some((k) => s.toLowerCase().includes(k)));
+        return found ? (
+          <div className="mt-3 rounded-md border border-white/6 bg-white/3 p-3 text-sm text-gray-100">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 text-emerald-300">
+                <Lightbulb className="h-4 w-4" />
+              </div>
+              <div className="text-sm leading-tight">{found}</div>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
-      <p className="mt-4 text-sm text-gray-300">
-        Total spent that week: <span className="font-medium text-white">{formatCurrency(summary.totalSpent)}</span>
-      </p>
+      <div className="mt-4 flex items-center justify-end">
+        <div className="ml-4 flex-shrink-0">
+          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/3 px-2 py-0.5 text-[11px] font-medium text-gray-300">
+            {summary.provider} / {summary.model}
+          </span>
+        </div>
+      </div>
     </article>
   );
 }
 
 export default function WeeklySummariesPage() {
   const [summaries, setSummaries] = useState<WeeklySummary[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -153,11 +230,28 @@ export default function WeeklySummariesPage() {
       setError(null);
 
       try {
-        const data = await getWeeklySummaries();
-        if (!mounted) {
-          return;
+        // Load summaries and dashboard in parallel; treat dashboard as optional
+        const [summariesRes, dashboardRes, accountsRes] = await Promise.allSettled([
+          getWeeklySummaries(),
+          fetchDashboard(),
+          getAccounts(),
+        ]);
+
+        if (!mounted) return;
+
+        if (summariesRes.status === "fulfilled") {
+          setSummaries(sortSummaries(summariesRes.value));
+        } else {
+          throw new Error("Unable to load weekly summaries.");
         }
-        setSummaries(sortSummaries(data));
+
+        if (dashboardRes.status === "fulfilled") {
+          setDashboard(dashboardRes.value);
+        }
+
+        if (accountsRes.status === "fulfilled") {
+          setAccounts(accountsRes.value);
+        }
       } catch {
         if (!mounted) {
           return;
@@ -228,6 +322,8 @@ export default function WeeklySummariesPage() {
                 isDeleting={deletingId === summary.id}
                 isPendingConfirm={isPendingConfirm(summary.id)}
                 onDeleteClick={handleDeleteSummary}
+                dashboard={dashboard}
+                accounts={accounts}
               />
             ))}
           </div>

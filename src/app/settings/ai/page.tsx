@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getAiConfig } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { getAiConfig, updateAiConfig } from "@/lib/api";
 import type { AiConfig } from "@/types";
 import AiProviderCard from "@/components/settings/AiProviderCard";
 import Toast from "@/components/ui/Toast";
@@ -16,6 +16,10 @@ export default function AiSettingsPage() {
   const [config, setConfig] = useState<AiConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [localChat, setLocalChat] = useState(DEFAULT_CONFIG.chat);
+  const [localSummary, setLocalSummary] = useState(DEFAULT_CONFIG.summary);
+  const [savedConfig, setSavedConfig] = useState<AiConfig | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
 
   useEffect(() => {
     getAiConfig()
@@ -23,6 +27,14 @@ export default function AiSettingsPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      setLocalChat(config.chat);
+      setLocalSummary(config.summary);
+      setSavedConfig(config);
+    }
+  }, [loading, config]);
 
   const refreshConfig = () => {
     getAiConfig().then(setConfig).catch(() => {});
@@ -35,6 +47,53 @@ export default function AiSettingsPage() {
 
   const handleError = () => {
     setToast({ message: "Failed to save settings.", type: "error" });
+  };
+
+  const isDirty = useMemo(() => {
+    if (!savedConfig) return false;
+    return (
+      savedConfig.chat.provider !== localChat.provider ||
+      savedConfig.chat.model !== localChat.model ||
+      savedConfig.summary.provider !== localSummary.provider ||
+      savedConfig.summary.model !== localSummary.model
+    );
+  }, [savedConfig, localChat, localSummary]);
+
+  const handleSaveAll = async () => {
+    setSavingAll(true);
+    setToast(null);
+    const ops = [
+      updateAiConfig({ task: "chat", provider: localChat.provider, model: localChat.model }),
+      updateAiConfig({ task: "summary", provider: localSummary.provider, model: localSummary.model }),
+    ];
+
+    const results = await Promise.allSettled(ops);
+    const [chatRes, summaryRes] = results;
+
+    let hadError = false;
+    if (chatRes.status === "rejected") {
+      setToast({ message: "Failed to save Chat settings", type: "error" });
+      hadError = true;
+    }
+
+    if (summaryRes.status === "rejected") {
+      setToast({ message: "Failed to save Summary settings", type: "error" });
+      hadError = true;
+    }
+
+    if (!hadError) {
+      setToast({ message: "AI settings saved", type: "success" });
+      // refresh saved config
+      try {
+        const fresh = await getAiConfig();
+        setConfig(fresh);
+        setSavedConfig(fresh);
+        setLocalChat(fresh.chat);
+        setLocalSummary(fresh.summary);
+      } catch {}
+    }
+
+    setSavingAll(false);
   };
 
   return (
@@ -52,18 +111,27 @@ export default function AiSettingsPage() {
             <AiProviderCard
               title="Chat"
               task="chat"
-              initialConfig={config.chat}
-              onSaved={handleSaved}
-              onError={handleError}
+              initialConfig={localChat}
+              onChange={(next) => setLocalChat({ provider: next.provider, model: next.model })}
             />
             <AiProviderCard
               title="Weekly Summary"
               task="summary"
-              initialConfig={config.summary}
+              initialConfig={localSummary}
               note="Groq (llama3-70b-8192) is recommended for the best summary quality."
-              onSaved={handleSaved}
-              onError={handleError}
+              onChange={(next) => setLocalSummary({ provider: next.provider, model: next.model })}
             />
+
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveAll}
+                disabled={!isDirty || savingAll}
+                className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+              >
+                {savingAll ? "Saving…" : "Save all settings"}
+              </button>
+            </div>
           </div>
         )}
       </div>
