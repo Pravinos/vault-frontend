@@ -1,41 +1,69 @@
 "use client";
 
 import Link from "next/link";
-import { TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
+import AccountCard from "@/components/accounts/AccountCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
-import { fetchDashboard, getLatestWeeklySummary } from "@/lib/api";
+import { fetchDashboard, getExpenseSummary, getIncomeSummary, getLatestWeeklySummary } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import { useCountUp } from "@/lib/hooks/useCountUp";
 import type { AccountDashboardData, DashboardData } from "@/types/dashboard";
 import type { WeeklySummary } from "@/types";
 
-function getAccountColor(type: AccountDashboardData["accountType"]): string {
-  switch (type) {
-    case "CHECKING":
-      return "#10b981";
-    case "SAVINGS":
-      return "#3b82f6";
-    case "INVESTMENT":
-      return "#8b5cf6";
-    default:
-      return "#10b981";
-  }
+const CHART_COLORS = ["#10b981", "#3b82f6", "#f43f5e", "#64748b", "#34d399", "#60a5fa"];
+
+type DonutSlice = {
+  category: string;
+  total: number;
+};
+
+type CashFlowBarDatum = {
+  month: string;
+  income: number;
+  expenses: number;
+  net: number;
+};
+
+// sync status removed — account cards no longer show sync indicators
+
+function toYearMonth(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
 }
 
-function getAccountBadgeClass(type: AccountDashboardData["accountType"]): string {
-  switch (type) {
-    case "CHECKING":
-      return "bg-emerald-500/10 text-emerald-400";
-    case "SAVINGS":
-      return "bg-blue-500/10 text-blue-400";
-    case "INVESTMENT":
-      return "bg-violet-500/10 text-violet-400";
-    default:
-      return "bg-emerald-500/10 text-emerald-400";
+function getLastNMonths(count: number): string[] {
+  const months: string[] = [];
+  const now = new Date();
+  for (let index = count - 1; index >= 0; index -= 1) {
+    months.push(toYearMonth(new Date(now.getFullYear(), now.getMonth() - index, 1)));
   }
+  return months;
+}
+
+function formatShortMonth(yearMonth: string): string {
+  const [yearString, monthString] = yearMonth.split("-");
+  const year = Number(yearString);
+  const month = Number(monthString);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    return yearMonth;
+  }
+  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: "short" });
 }
 
 function DashboardSkeleton() {
@@ -82,12 +110,19 @@ function NetWorthCard({
   calculated,
   manual,
   drift,
+  calculatedAnimated,
+  manualAnimated,
 }: {
   calculated: number;
   manual: number | null;
   drift: number | null;
+  calculatedAnimated?: number;
+  manualAnimated?: number;
 }) {
   const driftPositive = (drift ?? 0) >= 0;
+  const headlineValue = typeof calculatedAnimated === "number" ? calculatedAnimated : calculated;
+  const smallCalculated = headlineValue;
+  const smallManual = typeof manualAnimated === "number" ? manualAnimated : manual ?? 0;
 
   return (
     <div className="rounded-2xl bg-gradient-to-br from-[#1a2f2a] to-[#1a2332] p-5">
@@ -96,7 +131,7 @@ function NetWorthCard({
       </p>
 
       <p className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-        {formatCurrency(calculated)}
+        {formatCurrency(headlineValue)}
       </p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -104,7 +139,7 @@ function NetWorthCard({
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
             Calculated
           </p>
-          <p className="text-base font-bold text-emerald-400">{formatCurrency(calculated)}</p>
+          <p className="text-base font-bold text-emerald-400">{formatCurrency(smallCalculated)}</p>
         </div>
 
         <div className="rounded-xl bg-white/5 p-3">
@@ -112,7 +147,7 @@ function NetWorthCard({
             Manual
           </p>
           <p className={`text-base font-bold ${manual !== null ? "text-blue-400" : "text-gray-600"}`}>
-            {manual !== null ? formatCurrency(manual) : "Not set"}
+            {manual !== null ? formatCurrency(smallManual) : "Not set"}
           </p>
         </div>
       </div>
@@ -137,28 +172,13 @@ function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
           <Link
             key={account.id}
             href={`/accounts/${account.id}`}
-            className="w-[200px] shrink-0 snap-start rounded-2xl border-l-4 bg-[#1a2332] p-4 transition-colors sm:w-56"
-            style={{ borderLeftColor: getAccountColor(account.accountType) }}
+            className="w-[220px] shrink-0 snap-start sm:w-64"
           >
-            <p className="mb-1 truncate text-xs font-medium text-gray-400">{account.name}</p>
-            <p className="text-xl font-bold text-white">{formatCurrency(account.calculatedBalance)}</p>
-            <span
-              className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClass(account.accountType)}`}
-            >
-              {account.accountType}
-            </span>
-            <div
-              className={`mt-2 flex items-center gap-1 text-[11px] ${
-                account.secondaryPositive ? "text-emerald-400" : "text-red-400"
-              }`}
-            >
-              {account.secondaryPositive ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              {account.secondaryLabel}
-            </div>
+            <AccountCard
+              account={account}
+              compact
+              className="h-full transition-colors hover:border-gray-700"
+            />
           </Link>
         ))}
         <div className="w-1 shrink-0 sm:hidden" />
@@ -206,18 +226,75 @@ function StatCard({
   );
 }
 
-function NetCashFlowCard({ value, subtitle }: { value: number; subtitle: string }) {
+function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; animatedValue?: number; subtitle: string }) {
+  const displayValue = typeof animatedValue === "number" ? animatedValue : value;
+  const tintClass =
+    displayValue > 0
+      ? "bg-emerald-900/20 border border-emerald-800/40"
+      : displayValue < 0
+      ? "bg-rose-900/20 border border-rose-800/40"
+      : "bg-[#1a2332] border border-transparent";
+
   return (
-    <div className="rounded-2xl bg-[#1a2332] p-4">
+    <div className={`rounded-2xl p-4 ${tintClass}`}>
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Net Cash Flow</p>
       <p
         className={`text-xl font-bold ${
-          value > 0 ? "text-emerald-400" : value < 0 ? "text-red-400" : "text-white"
+          displayValue > 0 ? "text-emerald-400" : displayValue < 0 ? "text-red-400" : "text-white"
         }`}
       >
-        {formatCurrency(value)}
+        {formatCurrency(displayValue)}
       </p>
       <p className="mt-1 text-xs text-gray-500">{subtitle}</p>
+    </div>
+  );
+}
+
+function MonthlyTrendCard({ data }: { data: CashFlowBarDatum[] }) {
+  const maxAbs = Math.max(1, ...data.map((item) => Math.abs(item.net)));
+
+  return (
+    <div className="rounded-2xl bg-[#1a2332] p-5">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold text-white">Monthly Trend</h2>
+        <span className="text-xs text-gray-500">Last 6 months</span>
+      </div>
+      <div className="h-52">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.5} />
+            <XAxis
+              dataKey="month"
+              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              axisLine={{ stroke: "#334155" }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={38}
+              domain={[-maxAbs, maxAbs]}
+              tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+              className="hidden sm:block"
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#141c2a",
+                border: "1px solid #334155",
+                borderRadius: "8px",
+                color: "#e2e8f0",
+              }}
+              formatter={(value: unknown) => [formatCurrency(Number(value ?? 0)), "Net flow"]}
+            />
+            <Bar dataKey="net" radius={[6, 6, 0, 0]}>
+              {data.map((entry) => (
+                <Cell key={entry.month} fill={entry.net >= 0 ? "#10b981" : "#f43f5e"} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -228,16 +305,25 @@ function CategoryFocusCard({
   amount,
   total,
   monthLabel,
+  donutData,
 }: {
   className?: string;
   category: string;
   amount: number;
   total: number;
   monthLabel: string;
+  donutData: DonutSlice[];
 }) {
   const hasTopCategory = Boolean(category) && amount > 0;
   const share = total > 0 ? (amount / total) * 100 : 0;
   const otherSpend = Math.max(total - amount, 0);
+  const donutSource =
+    donutData.length > 0
+      ? donutData
+      : [
+          { category: category || "Top category", total: amount },
+          { category: "Other", total: otherSpend },
+        ].filter((entry) => entry.total > 0);
 
   return (
     <div className={`rounded-2xl bg-[#1a2332] p-5 ${className ?? ""}`.trim()}>
@@ -246,29 +332,74 @@ function CategoryFocusCard({
 
       {hasTopCategory ? (
         <>
-          <div className="mt-6 rounded-xl border border-gray-700/60 bg-[#141c2a] p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Top category</p>
-            <div className="mt-2 flex items-end justify-between gap-3">
-              <p className="text-xl font-bold text-white">{category}</p>
-              <p className="text-sm font-semibold text-emerald-300">{share.toFixed(1)}%</p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-gray-700/60 bg-[#141c2a] p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Top category</p>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <p className="text-xl font-bold text-white">{category}</p>
+                <p className="text-sm font-semibold text-emerald-300">{share.toFixed(1)}%</p>
+              </div>
+              <p className="mt-1 text-sm text-gray-300">{formatCurrency(amount)}</p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-emerald-400"
+                  style={{ width: `${Math.min(Math.max(share, 0), 100)}%` }}
+                />
+              </div>
             </div>
-            <p className="mt-1 text-sm text-gray-300">{formatCurrency(amount)}</p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-emerald-400"
-                style={{ width: `${Math.min(Math.max(share, 0), 100)}%` }}
-              />
+
+            <div className="hidden rounded-xl border border-gray-700/60 bg-[#141c2a] p-3 sm:block">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Category split</p>
+              <div className="mt-2 h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={donutSource}
+                      dataKey="total"
+                      nameKey="category"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={34}
+                      outerRadius={52}
+                      paddingAngle={2}
+                    >
+                      {donutSource.map((entry, index) => (
+                        <Cell key={entry.category} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#141c2a",
+                        border: "1px solid #334155",
+                        borderRadius: "8px",
+                        color: "#e2e8f0",
+                      }}
+                      formatter={(value) => formatCurrency(Number(value ?? 0))}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-gray-700/60 bg-[#141c2a] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Other categories</p>
-              <p className="mt-1 text-sm font-semibold text-gray-200">{formatCurrency(otherSpend)}</p>
-            </div>
-            <div className="rounded-xl border border-gray-700/60 bg-[#141c2a] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Total expenses</p>
-              <p className="mt-1 text-sm font-semibold text-gray-200">{formatCurrency(total)}</p>
+          <div className="mt-3 rounded-xl border border-gray-700/60 bg-[#141c2a] p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Top categories</p>
+            <div className="mt-2 space-y-2">
+              {donutSource.slice(0, 4).map((entry) => {
+                const entryShare = total > 0 ? (entry.total / total) * 100 : 0;
+                return (
+                  <div key={entry.category} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate text-gray-200">{entry.category}</span>
+                    <span className="whitespace-nowrap text-gray-400">
+                      {formatCurrency(entry.total)} · {entryShare.toFixed(0)}%
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between gap-2 border-t border-gray-700/70 pt-2 text-sm">
+                <span className="text-gray-400">Other categories</span>
+                <span className="text-gray-300">{formatCurrency(otherSpend)}</span>
+              </div>
             </div>
           </div>
         </>
@@ -291,17 +422,53 @@ function CategoryFocusCard({
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [summary, setSummary] = useState<WeeklySummary | null>(null);
+  const [categoryDonutData, setCategoryDonutData] = useState<DonutSlice[]>([]);
+  const [monthlyTrendData, setMonthlyTrendData] = useState<CashFlowBarDatum[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Call count-up hooks unconditionally to preserve Hooks order across renders.
+  const calculatedAnimated = useCountUp(data?.calculatedNetWorth ?? 0, 600);
+  const manualAnimated = useCountUp(data?.manualNetWorth ?? 0);
+  const incomeAnimated = useCountUp(data?.incomeThisMonth ?? 0);
+  const expensesAnimated = useCountUp(data?.expensesThisMonth ?? 0);
+  const netCashAnimated = useCountUp(data?.netCashFlow ?? 0);
+
   useEffect(() => {
+    const monthRange = getLastNMonths(6);
+    const currentMonth = monthRange[monthRange.length - 1];
+
     Promise.all([
       fetchDashboard(),
       getLatestWeeklySummary(),
+      getExpenseSummary(currentMonth),
+      Promise.all(monthRange.map((month) => getExpenseSummary(month))),
+      Promise.all(monthRange.map((month) => getIncomeSummary(month))),
     ])
-      .then(([dashboardData, weeklySummary]) => {
+      .then(([dashboardData, weeklySummary, currentMonthExpenseSummary, expenseSummaries, incomeSummaries]) => {
         setData(dashboardData);
         setSummary(weeklySummary);
+
+        const donutSlices = currentMonthExpenseSummary.byCategory
+          .filter((item) => item.total > 0)
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 6);
+        setCategoryDonutData(donutSlices);
+
+        const trendData = monthRange.map((month, index) => {
+          const incomeTotal = Object.values(incomeSummaries[index] ?? {}).reduce(
+            (sum, amount) => sum + amount,
+            0
+          );
+          const expenseTotal = expenseSummaries[index]?.total ?? 0;
+          return {
+            month: formatShortMonth(month),
+            income: incomeTotal,
+            expenses: expenseTotal,
+            net: incomeTotal - expenseTotal,
+          };
+        });
+        setMonthlyTrendData(trendData);
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : "Failed to load dashboard";
@@ -333,6 +500,8 @@ export default function DashboardPage() {
     return null;
   }
 
+  // (moved earlier) - use the precomputed animated values
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
@@ -342,48 +511,43 @@ export default function DashboardPage() {
           calculated={data.calculatedNetWorth}
           manual={data.manualNetWorth}
           drift={data.netWorthDrift}
+          calculatedAnimated={calculatedAnimated}
+          manualAnimated={data.manualNetWorth !== null ? manualAnimated : undefined}
         />
 
         <AccountsStrip accounts={data.accounts} />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard
             label="Income This Month"
-            value={data.incomeThisMonth}
+            value={incomeAnimated}
             momPercent={data.incomeMoMPercent}
             momPositiveIsGood
             monthLabel={data.currentMonthLabel}
           />
           <StatCard
             label="Expenses This Month"
-            value={data.expensesThisMonth}
+            value={expensesAnimated}
             momPercent={data.expensesMoMPercent}
             momPositiveIsGood={false}
             monthLabel={data.currentMonthLabel}
           />
+          <NetCashFlowCard value={data.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
         </div>
 
-        <NetCashFlowCard value={data.netCashFlow} subtitle="Income - Expenses · transfers excluded" />
-
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Daily Average" value={data.dailyAverageExpense} />
-          <StatCard label={`Expenses ${data.currentMonthLabel}`} value={data.expensesThisMonth} />
-          <StatCard label={`Expenses ${data.lastMonthLabel}`} value={data.expensesLastMonth} />
-          <StatCard label={`Income ${data.lastMonthLabel}`} value={data.incomeLastMonth} />
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
           <CategoryFocusCard
-            className="lg:col-span-2"
+            className="xl:col-span-3"
             category={data.topExpenseCategory}
             amount={data.topExpenseCategoryAmount}
             total={data.expensesThisMonth}
             monthLabel={data.currentMonthLabel}
+            donutData={categoryDonutData}
           />
-          <WeeklySummaryCard 
-            summary={summary}
-            onGenerated={(newSummary) => setSummary(newSummary)}
-          />
+          <div className="space-y-4 xl:col-span-2">
+            <MonthlyTrendCard data={monthlyTrendData} />
+            <WeeklySummaryCard summary={summary} onGenerated={(newSummary) => setSummary(newSummary)} />
+          </div>
         </div>
       </div>
     </div>

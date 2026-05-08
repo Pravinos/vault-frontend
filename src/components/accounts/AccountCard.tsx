@@ -1,0 +1,155 @@
+"use client";
+
+import { ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+
+import { formatCurrency } from "@/lib/utils";
+import type { AccountType } from "@/types";
+
+export interface AccountCardData {
+  id: string;
+  name: string;
+  accountType: AccountType;
+  calculatedBalance: number;
+  openingBalance?: number;
+  sinceOpening?: number;
+  currentValue?: number | null;
+  contributedAmount?: number | null;
+  returnPercentage?: number | null;
+}
+
+interface AccountCardProps {
+  account: AccountCardData;
+  compact?: boolean;
+  className?: string;
+  footer?: ReactNode;
+  details?: ReactNode;
+  detailsDefaultOpen?: boolean;
+}
+
+function getAccentClass(type: AccountType): string {
+  switch (type) {
+    case "CHECKING":
+      return "border-l-emerald-400";
+    case "SAVINGS":
+      return "border-l-blue-400";
+    case "INVESTMENT":
+      return "border-l-violet-400";
+    default:
+      return "border-l-emerald-400";
+  }
+}
+
+function getBadgeClass(type: AccountType): string {
+  switch (type) {
+    case "CHECKING":
+      return "bg-emerald-500/10 text-emerald-400";
+    case "SAVINGS":
+      return "bg-blue-500/10 text-blue-400";
+    case "INVESTMENT":
+      return "bg-violet-500/10 text-violet-400";
+    default:
+      return "bg-emerald-500/10 text-emerald-400";
+  }
+}
+
+// sync status removed — visual indicator handled elsewhere if needed
+
+function getSinceOpening(account: AccountCardData): number {
+  if (typeof account.sinceOpening === "number") {
+    return account.sinceOpening;
+  }
+  const opening = typeof account.openingBalance === "number" ? account.openingBalance : 0;
+  return account.calculatedBalance - opening;
+}
+
+function formatSignedCurrency(value: number): string {
+  const absolute = formatCurrency(Math.abs(value));
+  if (value > 0) return `+${absolute}`;
+  if (value < 0) return `-${absolute}`;
+  return `±${absolute}`;
+}
+
+function formatSignedPercent(value: number | null | undefined): string {
+  const safeValue = value ?? 0;
+  const fixed = Math.abs(safeValue).toFixed(2);
+  if (safeValue > 0) return `+${fixed}%`;
+  if (safeValue < 0) return `-${fixed}%`;
+  return `±${fixed}%`;
+}
+
+export default function AccountCard({
+  account,
+  compact = false,
+  className,
+  footer,
+  details,
+  detailsDefaultOpen = false,
+}: AccountCardProps) {
+  const [detailsOpen, setDetailsOpen] = useState(detailsDefaultOpen);
+  const isInvestment = account.accountType === "INVESTMENT";
+
+  const primaryBalance = isInvestment ? account.currentValue ?? 0 : account.calculatedBalance;
+  const sinceOpening = getSinceOpening(account);
+  const microPositive = isInvestment ? (account.returnPercentage ?? 0) >= 0 : sinceOpening >= 0;
+  const microText = useMemo(() => {
+    if (isInvestment) {
+      return `${formatSignedPercent(account.returnPercentage)} return`;
+    }
+    return `${formatSignedCurrency(sinceOpening)} since opening`;
+  }, [account.returnPercentage, isInvestment, sinceOpening]);
+  const showDetailsToggle = Boolean(details);
+
+  return (
+    <div
+      className={`rounded-2xl border border-gray-800 border-l-4 ${getAccentClass(account.accountType)} bg-[#1a2332] p-4 ${
+        className ?? ""
+      }`.trim()}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="truncate text-sm font-semibold text-white">{account.name}</p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <span
+            className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getBadgeClass(account.accountType)}`}
+          >
+            {account.accountType}
+          </span>
+        </div>
+      </div>
+
+      <div className={compact ? "mt-2" : "mt-3"}>
+        <p className={`font-bold tabular-nums text-white ${compact ? "text-xl" : "text-3xl"}`}>
+          {formatCurrency(primaryBalance)}
+        </p>
+        {isInvestment ? (
+          <p className="mt-1 text-[11px] text-gray-400">
+            Contributed: {formatCurrency(account.contributedAmount ?? 0)}
+          </p>
+        ) : null}
+      </div>
+
+      <div
+        className={`mt-2 flex items-center gap-1.5 text-xs ${microPositive ? "text-emerald-400" : "text-red-400"}`}
+      >
+        {microPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+        <span>{microText}</span>
+      </div>
+
+      {footer ? <div className="mt-3">{footer}</div> : null}
+
+      {showDetailsToggle ? (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <button
+            type="button"
+            onClick={() => setDetailsOpen((current) => !current)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-300 transition-colors hover:text-white"
+          >
+            {detailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {detailsOpen ? "Hide details" : "Show details"}
+          </button>
+          {detailsOpen ? <div className="mt-3">{details}</div> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
