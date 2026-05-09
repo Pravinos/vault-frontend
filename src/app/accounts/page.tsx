@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { ArrowLeftRight, Clock, Eye, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import axios from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import AccountForm from "@/components/accounts/AccountForm";
 import AccountCard from "@/components/accounts/AccountCard";
@@ -15,15 +16,13 @@ import SelectField from "@/components/ui/SelectField";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import {
-  deleteAccount,
-  getAccountTransfers,
-  getAccounts,
-  revertTransfer,
-} from "@/lib/api";
-import {
   formatCurrency,
   getCurrentTimestamp,
 } from "@/lib/utils";
+import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
+import { useDeleteAccount, useRevertTransfer } from "@/lib/hooks/useAccountMutations";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Account, Transfer } from "@/types";
 
 const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
@@ -127,10 +126,6 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
 export default function AccountsPage() {
   const [activeTab, setActiveTab] = useState<AccountsTab>("accounts");
 
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [showForm, setShowForm] = useState<boolean>(false);
   const [showTransferForm, setShowTransferForm] = useState<boolean>(false);
   const [editingAccount, setEditingAccount] = useState<Account | undefined>(undefined);
@@ -141,67 +136,16 @@ export default function AccountsPage() {
   const [deleteTargetAccount, setDeleteTargetAccount] = useState<Account | null>(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState<string>("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
 
   const [selectedTransferAccountId, setSelectedTransferAccountId] = useState<string | null>(null);
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [transfersLoading, setTransfersLoading] = useState<boolean>(false);
-  const [transfersError, setTransfersError] = useState<string | null>(null);
   const [revertTargetTransfer, setRevertTargetTransfer] = useState<Transfer | null>(null);
-  const [isRevertingTransfer, setIsRevertingTransfer] = useState<boolean>(false);
 
-  const fetchAccounts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const qc = useQueryClient();
 
-    try {
-      const data = await getAccounts();
-      setAccounts(data);
-      setSelectedTransferAccountId((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const stillExists = data.some((account) => account.id === current);
-        return stillExists ? current : null;
-      });
-    } catch {
-      setError("Unable to load accounts.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchTransfersForAccount = useCallback(async (accountId: string | null) => {
-    if (!accountId) {
-      setTransfers([]);
-      setTransfersError(null);
-      return;
-    }
-
-    setTransfersLoading(true);
-    setTransfersError(null);
-
-    try {
-      const data = await getAccountTransfers(accountId);
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setTransfers(sorted);
-    } catch {
-      setTransfersError("Unable to load transfer history.");
-    } finally {
-      setTransfersLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void fetchAccounts();
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [fetchAccounts]);
+  const { data: accounts = [], isLoading: loading, error } = useAccounts();
+  const { data: transfers = [], isLoading: transfersLoading, error: transfersError } = useAccountTransfers(selectedTransferAccountId);
+  const deleteAccountMutation = useDeleteAccount();
+  const revertTransferMutation = useRevertTransfer(selectedTransferAccountId);
 
   const staleAccounts = useMemo(() => {
     const staleBefore = getCurrentTimestamp() - staleThresholdMs;
@@ -227,7 +171,7 @@ export default function AccountsPage() {
   };
 
   const closeDeleteDialog = () => {
-    if (isDeletingAccount) {
+    if (deleteAccountMutation.isPending) {
       return;
     }
 
@@ -242,11 +186,9 @@ export default function AccountsPage() {
     }
 
     setDeleteError(null);
-    setIsDeletingAccount(true);
 
     try {
-      await deleteAccount(deleteTargetAccount.id);
-      setAccounts((current) => current.filter((account) => account.id !== deleteTargetAccount.id));
+      await deleteAccountMutation.mutateAsync(deleteTargetAccount.id);
       setToast({ message: "Account permanently deleted", type: "success" });
       setDeleteTargetAccount(null);
       setDeleteConfirmInput("");
@@ -254,8 +196,6 @@ export default function AccountsPage() {
       const message = getApiErrorMessage(deleteErrorValue, "Unable to delete account.");
       setDeleteError(message);
       setToast({ message, type: "error" });
-    } finally {
-      setIsDeletingAccount(false);
     }
   };
 
@@ -276,33 +216,41 @@ export default function AccountsPage() {
       return;
     }
 
-    setIsRevertingTransfer(true);
-
     try {
-      await revertTransfer(revertTargetTransfer.id);
+      await revertTransferMutation.mutateAsync(revertTargetTransfer.id);
       setRevertTargetTransfer(null);
       setToast({ message: "Transfer reverted", type: "success" });
-
-      await Promise.all([
-        fetchAccounts(),
-        selectedTransferAccountId
-          ? fetchTransfersForAccount(selectedTransferAccountId)
-          : Promise.resolve(),
-      ]);
     } catch (revertError) {
       const message = getApiErrorMessage(revertError, "Unable to revert transfer.");
       setToast({ message, type: "error" });
-    } finally {
-      setIsRevertingTransfer(false);
+    }
+  };
+
+  const handleAccountFormSuccess = async (message: string) => {
+    setToast({ message, type: "success" });
+    setShowForm(false);
+    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+  };
+
+  const handleManualBalanceSuccess = async (_updatedAccount: Account) => {
+    setManualBalanceAccount(undefined);
+    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+  };
+
+  const handleTransferSuccess = async () => {
+    setShowTransferForm(false);
+    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    if (selectedTransferAccountId) {
+      await qc.invalidateQueries({ queryKey: queryKeys.accountTransfers(selectedTransferAccountId) });
     }
   };
 
   const canOpenTransferForm = accounts.length >= 2;
   const openTransferTab = () => {
     setActiveTab("transfer");
-    if (selectedTransferAccountId) {
-      void fetchTransfersForAccount(selectedTransferAccountId);
-    }
   };
 
   const openTransferFlow = () => {
@@ -407,7 +355,7 @@ export default function AccountsPage() {
           ) : null}
 
           {error ? (
-            <ErrorMessage message={error} onRetry={fetchAccounts} />
+            <ErrorMessage message={String(error)} onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.accounts })} />
           ) : loading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -519,10 +467,6 @@ export default function AccountsPage() {
                         const value = event.target.value;
                         const nextAccountId = value || null;
                         setSelectedTransferAccountId(nextAccountId);
-
-                        if (activeTab === "transfer") {
-                          void fetchTransfersForAccount(nextAccountId);
-                        }
                       }}
                     >
                       <option value="">Select an account</option>
@@ -548,8 +492,8 @@ export default function AccountsPage() {
                 </div>
               ) : transfersError ? (
                 <ErrorMessage
-                  message={transfersError}
-                  onRetry={() => void fetchTransfersForAccount(selectedTransferAccountId)}
+                  message="Unable to load transfer history."
+                  onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.accountTransfers(selectedTransferAccountId ?? '') })}
                 />
               ) : transfersLoading ? (
                 <div className="space-y-2">
@@ -664,11 +608,7 @@ export default function AccountsPage() {
       {showForm ? (
         <AccountForm
           account={editingAccount}
-          onSuccess={(message) => {
-            setShowForm(false);
-            setToast({ message, type: "success" });
-            void fetchAccounts();
-          }}
+          onSuccess={handleAccountFormSuccess}
           onClose={() => setShowForm(false)}
         />
       ) : null}
@@ -677,15 +617,7 @@ export default function AccountsPage() {
         <TransferForm
           accounts={accounts}
           preselectedAccountId={selectedTransferAccountId}
-          onSuccess={async () => {
-            setToast({ message: "Transfer recorded", type: "success" });
-            await Promise.all([
-              fetchAccounts(),
-              activeTab === "transfer" && selectedTransferAccountId
-                ? fetchTransfersForAccount(selectedTransferAccountId)
-                : Promise.resolve(),
-            ]);
-          }}
+          onSuccess={handleTransferSuccess}
           onClose={() => setShowTransferForm(false)}
         />
       ) : null}
@@ -693,14 +625,7 @@ export default function AccountsPage() {
       {manualBalanceAccount ? (
         <ManualBalanceModal
           account={manualBalanceAccount}
-          onSuccess={(updatedAccount) => {
-            setManualBalanceAccount(undefined);
-            setAccounts((prev) =>
-              prev.map((acc) =>
-                acc.id === updatedAccount.id ? updatedAccount : acc
-              )
-            );
-          }}
+          onSuccess={handleManualBalanceSuccess}
           onClose={() => setManualBalanceAccount(undefined)}
         />
       ) : null}
@@ -724,7 +649,7 @@ export default function AccountsPage() {
               className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
               placeholder={deleteTargetAccount.name}
               autoFocus
-              disabled={isDeletingAccount}
+              disabled={deleteAccountMutation.isPending}
             />
 
             {deleteError ? (
@@ -738,7 +663,7 @@ export default function AccountsPage() {
                 type="button"
                 onClick={closeDeleteDialog}
                 className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
-                disabled={isDeletingAccount}
+                disabled={deleteAccountMutation.isPending}
               >
                 Cancel
               </button>
@@ -747,11 +672,11 @@ export default function AccountsPage() {
                 onClick={() => void handleDeleteAccount()}
                 className="w-full rounded-lg bg-red-600 px-4 py-2 text-base font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
                 disabled={
-                  isDeletingAccount ||
+                  deleteAccountMutation.isPending ||
                   deleteConfirmInput.trim() !== deleteTargetAccount.name
                 }
               >
-                {isDeletingAccount ? "Deleting..." : "Delete permanently"}
+                {deleteAccountMutation.isPending ? "Deleting..." : "Delete permanently"}
               </button>
             </div>
           </div>
@@ -762,7 +687,7 @@ export default function AccountsPage() {
         <Modal
           isOpen={true}
           onClose={() => {
-            if (!isRevertingTransfer) {
+            if (!revertTransferMutation.isPending) {
               setRevertTargetTransfer(null);
             }
           }}
@@ -787,7 +712,7 @@ export default function AccountsPage() {
                 type="button"
                 onClick={() => setRevertTargetTransfer(null)}
                 className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
-                disabled={isRevertingTransfer}
+                disabled={revertTransferMutation.isPending}
               >
                 Cancel
               </button>
@@ -795,9 +720,9 @@ export default function AccountsPage() {
                 type="button"
                 onClick={() => void handleRevertTransfer()}
                 className="w-full rounded-lg bg-red-600 px-4 py-2 text-base font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
-                disabled={isRevertingTransfer}
+                disabled={revertTransferMutation.isPending}
               >
-                {isRevertingTransfer ? "Reverting..." : "Confirm revert"}
+                {revertTransferMutation.isPending ? "Reverting..." : "Confirm revert"}
               </button>
             </div>
           </div>

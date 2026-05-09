@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 
-import { generateWeeklySummary } from "@/lib/api";
+import { useGenerateSummaryMutation } from "@/lib/hooks/useSummaryMutations";
 import type { WeeklySummary } from "@/types";
 
 type GenerateToast = {
@@ -10,30 +10,27 @@ type GenerateToast = {
   type: "success" | "error";
 };
 
-export function useGenerateSummary(onSuccess: (summary: WeeklySummary) => void) {
-  const [isGenerating, setIsGenerating] = useState(false);
+export function useGenerateSummary(onSuccess?: (summary: WeeklySummary) => void) {
   const [toast, setToast] = useState<GenerateToast | null>(null);
 
   const clearToast = useCallback(() => {
     setToast(null);
   }, []);
 
-  const generate = useCallback(async () => {
-    setIsGenerating(true);
+  const mutation = useGenerateSummaryMutation()
 
+  const generate = useCallback(async () => {
     try {
-      const summary = await generateWeeklySummary();
+      const summary = await mutation.mutateAsync(undefined)
       setToast({ message: "Weekly summary generated", type: "success" });
-      onSuccess(summary);
+      onSuccess?.(summary);
     } catch {
       setToast({
         message: "Summary generation failed - check your AI provider settings",
         type: "error",
       });
-    } finally {
-      setIsGenerating(false);
     }
-  }, [onSuccess]);
+  }, [mutation, onSuccess]);
 
-  return { generate, isGenerating, toast, clearToast };
+  return { generate, isGenerating: mutation.isPending, toast, clearToast };
 }

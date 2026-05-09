@@ -1,106 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import IncomeFilters from "@/components/income/IncomeFilters";
 import IncomeForm from "@/components/income/IncomeForm";
 import IncomeList from "@/components/income/IncomeList";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
-import {
-  deleteIncome,
-  getAccounts,
-  getIncome,
-  getIncomeCategories,
-  getIncomeSummary,
-} from "@/lib/api";
 import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
-import type { Account, Income, IncomeCategory } from "@/types";
+import { useIncome } from "@/lib/hooks/useIncome";
+import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useIncomeCategories } from "@/lib/hooks/useIncomeCategories";
+import { useDeleteIncome } from "@/lib/hooks/useIncomeMutations";
+import { queryKeys } from "@/lib/queryKeys";
+import type { Income, IncomeCategory } from "@/types";
 
 export default function IncomePage() {
-  const [income, setIncome] = useState<Income[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<IncomeCategory[]>([]);
-  const [summary, setSummary] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingIncome, setEditingIncome] = useState<Income | undefined>(undefined);
-  const [hasLoaded, setHasLoaded] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  const initialMonthRef = useRef<string>(selectedMonth);
-  const initialAccountRef = useRef<string | null>(selectedAccountId);
-  const hasFetchedAfterLoadRef = useRef<boolean>(false);
+  const qc = useQueryClient();
 
-  const fetchIncome = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const { data, isLoading: loading, error } = useIncome(selectedMonth);
+  const { data: accounts = [] } = useAccounts();
+  const { data: categories = [] } = useIncomeCategories();
+  const deleteIncomeMutation = useDeleteIncome(selectedMonth);
 
-    try {
-      const [incomeData, summaryData] = await Promise.all([
-        getIncome({
-          month: selectedMonth || undefined,
-          accountId: selectedAccountId ?? undefined,
-        }),
-        getIncomeSummary(selectedMonth || undefined),
-      ]);
-
-      setIncome(incomeData);
-      setSummary(summaryData);
-    } catch (fetchError) {
-      setError("Unable to load income.");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedAccountId, selectedMonth]);
-
-  useEffect(() => {
-    const fetchInitial = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const [accountsData, categoriesData, incomeData, summaryData] = await Promise.all([
-          getAccounts(),
-          getIncomeCategories(),
-          getIncome({
-            month: initialMonthRef.current || undefined,
-            accountId: initialAccountRef.current ?? undefined,
-          }),
-          getIncomeSummary(initialMonthRef.current || undefined),
-        ]);
-
-        setAccounts(accountsData);
-        setCategories(categoriesData);
-        setIncome(incomeData);
-        setSummary(summaryData);
-        setHasLoaded(true);
-      } catch (fetchError) {
-        setError("Unable to load income.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInitial();
-  }, []);
-
-  useEffect(() => {
-    if (!hasLoaded) {
-      return;
-    }
-
-    if (!hasFetchedAfterLoadRef.current) {
-      hasFetchedAfterLoadRef.current = true;
-      return;
-    }
-
-    fetchIncome();
-  }, [fetchIncome, hasLoaded]);
+  const income = data?.income ?? [];
+  const summary = data?.summary ?? {};
 
   const handleAddClick = () => {
     setEditingIncome(undefined);
@@ -109,10 +41,9 @@ export default function IncomePage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteIncome(id);
+      await deleteIncomeMutation.mutateAsync(id);
       setToast({ message: "Income deleted", type: "success" });
-      await fetchIncome();
-    } catch (deleteError) {
+    } catch {
       setToast({ message: "Unable to delete income", type: "error" });
     }
   };
@@ -122,11 +53,18 @@ export default function IncomePage() {
     setShowForm(true);
   };
 
+  const handleFormSuccess = useCallback(async (message: string) => {
+    setToast({ message, type: "success" });
+    await qc.invalidateQueries({ queryKey: queryKeys.income(selectedMonth) });
+    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+  }, [qc, selectedMonth]);
+
   const summaryItems = useMemo(
     () =>
       Object.entries(summary)
         .map(([category, total]) => {
-          const matchingCategory = categories.find((item) => item.name === category);
+          const matchingCategory = categories.find((item: IncomeCategory) => item.name === category);
           return {
             category,
             total,
@@ -212,7 +150,7 @@ export default function IncomePage() {
           </div>
         </div>
 
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="text-sm text-red-400">Unable to load income.</p> : null}
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -235,10 +173,7 @@ export default function IncomePage() {
           income={editingIncome}
           categories={categories}
           accounts={accounts}
-          onSuccess={async (message) => {
-            setToast({ message, type: "success" });
-            await fetchIncome();
-          }}
+          onSuccess={handleFormSuccess}
           onClose={() => setShowForm(false)}
         />
       ) : null}

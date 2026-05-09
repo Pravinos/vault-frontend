@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 
 import { logout } from "@/lib/auth";
+import { queryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
+import { fetchDashboard, getExpenseSummary, getIncomeSummary } from "@/lib/api";
+import { getLastNMonths } from "@/lib/hooks/useDashboard";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -74,6 +78,22 @@ export default function Sidebar({
     router.push("/login");
   };
 
+  const prefetchDashboard = useCallback(() => {
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.dashboard,
+      queryFn: async () => {
+        const monthRange = getLastNMonths(6);
+        const [dashboard, expenseSummaries, incomeSummaries] = await Promise.all([
+          fetchDashboard(),
+          Promise.all(monthRange.map((month) => getExpenseSummary(month))),
+          Promise.all(monthRange.map((month) => getIncomeSummary(month))),
+        ]);
+        return { dashboard, expenseSummaries, incomeSummaries, monthRange };
+      },
+      staleTime: 2 * 60 * 1000,
+    });
+  }, []);
+
   const sidebarContent = (
     <div className="flex h-full w-[220px] flex-col bg-[#0f1923]">
       <div className="flex items-center justify-between border-b border-white/5 px-5 py-5">
@@ -95,6 +115,7 @@ export default function Sidebar({
             <Link
               key={href}
               href={href}
+              onMouseEnter={href === "/dashboard" ? prefetchDashboard : undefined}
               className={`flex items-center w-full transition-colors border-l-[3px] ${
                 active ? 'border-l-[#1D9E75]' : 'border-l-transparent'
               }`}

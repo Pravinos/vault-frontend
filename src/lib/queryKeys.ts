@@ -1,0 +1,25 @@
+export const queryKeys = {
+  // Accounts
+  accounts:           ['accounts']                                as const,
+  account:            (id: string) => ['account', id]            as const,
+  accountTransfers:   (id: string) => ['account-transfers', id]  as const,
+  accountCheckpoints: (id: string) => ['checkpoints', id]        as const,
+
+  // Expenses
+  expenses: (month: string) => ['expenses', month] as const,
+
+  // Income
+  income: (month: string) => ['income', month] as const,
+
+  // Dashboard
+  dashboard:     ['dashboard']      as const,
+
+  // Summaries & AI
+  summaries:     ['summaries']      as const,
+  latestSummary: ['latest-summary'] as const,
+  aiSettings:    ['ai-settings']    as const,
+
+  // Reference data
+  categories:       ['categories']        as const,
+  incomeCategories: ['income-categories'] as const,
+}

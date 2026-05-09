@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -19,11 +19,11 @@ import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import AccountCard from "@/components/accounts/AccountCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
-import { fetchDashboard, getExpenseSummary, getIncomeSummary, getLatestWeeklySummary } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useCountUp } from "@/lib/hooks/useCountUp";
+import { useDashboard } from "@/lib/hooks/useDashboard";
+import { useLatestSummary } from "@/lib/hooks/useLatestSummary";
 import type { AccountDashboardData, DashboardData } from "@/types/dashboard";
-import type { WeeklySummary } from "@/types";
 
 const CHART_COLORS = ["#10b981", "#3b82f6", "#f43f5e", "#64748b", "#34d399", "#60a5fa"];
 
@@ -40,21 +40,6 @@ type CashFlowBarDatum = {
 };
 
 // sync status removed — account cards no longer show sync indicators
-
-function toYearMonth(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
-}
-
-function getLastNMonths(count: number): string[] {
-  const months: string[] = [];
-  const now = new Date();
-  for (let index = count - 1; index >= 0; index -= 1) {
-    months.push(toYearMonth(new Date(now.getFullYear(), now.getMonth() - index, 1)));
-  }
-  return months;
-}
 
 function formatShortMonth(yearMonth: string): string {
   const [yearString, monthString] = yearMonth.split("-");
@@ -420,63 +405,44 @@ function CategoryFocusCard({
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [summary, setSummary] = useState<WeeklySummary | null>(null);
-  const [categoryDonutData, setCategoryDonutData] = useState<DonutSlice[]>([]);
-  const [monthlyTrendData, setMonthlyTrendData] = useState<CashFlowBarDatum[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data, isLoading: loading, error } = useDashboard()
+  const { data: summary = null } = useLatestSummary()
+
+  const dashboardData = data?.dashboard ?? null
+  const expenseSummaries = data?.expenseSummaries ?? []
+  const incomeSummaries = data?.incomeSummaries ?? []
+  const monthRange = data?.monthRange ?? []
+
+  const categoryDonutData = useMemo<DonutSlice[]>(() => {
+    const currentMonthSummary = expenseSummaries[expenseSummaries.length - 1]
+    return (currentMonthSummary?.byCategory ?? [])
+      .filter((item) => item.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6)
+  }, [expenseSummaries])
+
+  const monthlyTrendData = useMemo<CashFlowBarDatum[]>(() => {
+    return monthRange.map((month, index) => {
+      const incomeTotal = Object.values(incomeSummaries[index] ?? {}).reduce(
+        (sum, amount) => sum + amount,
+        0
+      )
+      const expenseTotal = expenseSummaries[index]?.total ?? 0
+      return {
+        month: formatShortMonth(month),
+        income: incomeTotal,
+        expenses: expenseTotal,
+        net: incomeTotal - expenseTotal,
+      }
+    })
+  }, [monthRange, expenseSummaries, incomeSummaries])
 
   // Call count-up hooks unconditionally to preserve Hooks order across renders.
-  const calculatedAnimated = useCountUp(data?.calculatedNetWorth ?? 0, 600);
-  const manualAnimated = useCountUp(data?.manualNetWorth ?? 0);
-  const incomeAnimated = useCountUp(data?.incomeThisMonth ?? 0);
-  const expensesAnimated = useCountUp(data?.expensesThisMonth ?? 0);
-  const netCashAnimated = useCountUp(data?.netCashFlow ?? 0);
-
-  useEffect(() => {
-    const monthRange = getLastNMonths(6);
-    const currentMonth = monthRange[monthRange.length - 1];
-
-    Promise.all([
-      fetchDashboard(),
-      getLatestWeeklySummary(),
-      getExpenseSummary(currentMonth),
-      Promise.all(monthRange.map((month) => getExpenseSummary(month))),
-      Promise.all(monthRange.map((month) => getIncomeSummary(month))),
-    ])
-      .then(([dashboardData, weeklySummary, currentMonthExpenseSummary, expenseSummaries, incomeSummaries]) => {
-        setData(dashboardData);
-        setSummary(weeklySummary);
-
-        const donutSlices = currentMonthExpenseSummary.byCategory
-          .filter((item) => item.total > 0)
-          .sort((a, b) => b.total - a.total)
-          .slice(0, 6);
-        setCategoryDonutData(donutSlices);
-
-        const trendData = monthRange.map((month, index) => {
-          const incomeTotal = Object.values(incomeSummaries[index] ?? {}).reduce(
-            (sum, amount) => sum + amount,
-            0
-          );
-          const expenseTotal = expenseSummaries[index]?.total ?? 0;
-          return {
-            month: formatShortMonth(month),
-            income: incomeTotal,
-            expenses: expenseTotal,
-            net: incomeTotal - expenseTotal,
-          };
-        });
-        setMonthlyTrendData(trendData);
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : "Failed to load dashboard";
-        console.error("Dashboard fetch failed:", err);
-        setError(message);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const calculatedAnimated = useCountUp(dashboardData?.calculatedNetWorth ?? 0, 600);
+  const manualAnimated = useCountUp(dashboardData?.manualNetWorth ?? 0);
+  const incomeAnimated = useCountUp(dashboardData?.incomeThisMonth ?? 0);
+  const expensesAnimated = useCountUp(dashboardData?.expensesThisMonth ?? 0);
+  const netCashAnimated = useCountUp(dashboardData?.netCashFlow ?? 0);
 
   if (loading) {
     return (
@@ -488,15 +454,16 @@ export default function DashboardPage() {
   }
 
   if (error) {
+    const message = error instanceof Error ? error.message : "Failed to load dashboard";
     return (
       <div className="space-y-4 sm:space-y-6">
         <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
-        <ErrorState message={error} />
+        <ErrorState message={message} />
       </div>
     );
   }
 
-  if (!data) {
+  if (!dashboardData) {
     return null;
   }
 
@@ -508,45 +475,50 @@ export default function DashboardPage() {
 
       <div className="space-y-6">
         <NetWorthCard
-          calculated={data.calculatedNetWorth}
-          manual={data.manualNetWorth}
-          drift={data.netWorthDrift}
+          calculated={dashboardData.calculatedNetWorth}
+          manual={dashboardData.manualNetWorth}
+          drift={dashboardData.netWorthDrift}
           calculatedAnimated={calculatedAnimated}
-          manualAnimated={data.manualNetWorth !== null ? manualAnimated : undefined}
+          manualAnimated={dashboardData.manualNetWorth !== null ? manualAnimated : undefined}
         />
 
-        <AccountsStrip accounts={data.accounts} />
+        <AccountsStrip accounts={dashboardData.accounts.map((a) => ({
+          ...a,
+          contributedAmount: a.currentValue !== null && a.returnAmount !== null
+            ? a.currentValue - a.returnAmount
+            : null,
+        }))} />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard
             label="Income This Month"
             value={incomeAnimated}
-            momPercent={data.incomeMoMPercent}
+            momPercent={dashboardData.incomeMoMPercent}
             momPositiveIsGood
-            monthLabel={data.currentMonthLabel}
+            monthLabel={dashboardData.currentMonthLabel}
           />
           <StatCard
             label="Expenses This Month"
             value={expensesAnimated}
-            momPercent={data.expensesMoMPercent}
+            momPercent={dashboardData.expensesMoMPercent}
             momPositiveIsGood={false}
-            monthLabel={data.currentMonthLabel}
+            monthLabel={dashboardData.currentMonthLabel}
           />
-          <NetCashFlowCard value={data.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
+          <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
           <CategoryFocusCard
             className="xl:col-span-3"
-            category={data.topExpenseCategory}
-            amount={data.topExpenseCategoryAmount}
-            total={data.expensesThisMonth}
-            monthLabel={data.currentMonthLabel}
+            category={dashboardData.topExpenseCategory}
+            amount={dashboardData.topExpenseCategoryAmount}
+            total={dashboardData.expensesThisMonth}
+            monthLabel={dashboardData.currentMonthLabel}
             donutData={categoryDonutData}
           />
           <div className="space-y-4 xl:col-span-2">
             <MonthlyTrendCard data={monthlyTrendData} />
-            <WeeklySummaryCard summary={summary} onGenerated={(newSummary) => setSummary(newSummary)} />
+            <WeeklySummaryCard summary={summary} onGenerated={() => {}} />
           </div>
         </div>
       </div>
