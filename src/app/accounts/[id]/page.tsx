@@ -17,9 +17,10 @@ import {
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
-import { addCheckpoint, getAccount, getCheckpoints } from "@/lib/api";
+import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
+import { addCheckpoint, getAccount, getCheckpoints, getAccountTransfers } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Account, InvestmentCheckpoint } from "@/types";
+import type { Account, InvestmentCheckpoint, Transfer } from "@/types";
 
 function formatReturnPercentage(value: number | null): string {
   if (value === null || value === 0) {
@@ -45,35 +46,73 @@ function formatCheckpointDate(value: string): string {
   });
 }
 
+function formatTransferDate(dateValue: string): string {
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateValue;
+  }
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
+
 export default function InvestmentAccountDetailPage() {
   const params = useParams<{ id: string }>();
   const accountId = params.id;
 
   const [account, setAccount] = useState<Account | null>(null);
   const [checkpoints, setCheckpoints] = useState<InvestmentCheckpoint[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [transfersLoading, setTransfersLoading] = useState<boolean>(false);
+  const [transfersError, setTransfersError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [valueInput, setValueInput] = useState<string>("");
   const [noteInput, setNoteInput] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [showManualModal, setShowManualModal] = useState<boolean>(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [accountData, checkpointsData] = await Promise.all([
-        getAccount(accountId),
-        getCheckpoints(accountId),
-      ]);
-
+      const accountData = await getAccount(accountId);
       setAccount(accountData);
-      setCheckpoints(checkpointsData);
+
+      if (accountData.accountType === "INVESTMENT") {
+        try {
+          const checkpointsData = await getCheckpoints(accountId);
+          setCheckpoints(checkpointsData);
+        } catch (cpErr) {
+          // If checkpoints fail for an investment account, show an error.
+          setError("Unable to load investment account details.");
+        }
+      } else {
+        // Non-investment accounts don't have checkpoints
+        setCheckpoints([]);
+      }
     } catch (fetchError) {
-      setError("Unable to load investment account details.");
+      setError("Unable to load account details.");
     } finally {
       setLoading(false);
+    }
+  }, [accountId]);
+
+  const fetchTransfers = useCallback(async () => {
+    setTransfersLoading(true);
+    setTransfersError(null);
+
+    try {
+      const data = await getAccountTransfers(accountId);
+      setTransfers(data);
+    } catch {
+      setTransfersError("Unable to load transfer history.");
+    } finally {
+      setTransfersLoading(false);
     }
   }, [accountId]);
 
@@ -84,6 +123,10 @@ export default function InvestmentAccountDetailPage() {
 
     return () => clearTimeout(timer);
   }, [fetchData]);
+
+  useEffect(() => {
+    void fetchTransfers();
+  }, [fetchTransfers]);
 
   const sortedCheckpoints = useMemo(() => {
     return [...checkpoints].sort(
@@ -153,9 +196,75 @@ export default function InvestmentAccountDetailPage() {
             Account not found.
           </div>
         ) : account.accountType !== "INVESTMENT" ? (
-          <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6 text-sm text-gray-300">
-            This account is not an investment account.
-          </div>
+          <>
+            <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
+              <h2 className="text-lg font-semibold text-white">{account.name}</h2>
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-lg bg-gray-800/70 p-3">
+                  <p className="text-xs text-gray-400">Balance</p>
+                  <p className="mt-1 text-sm font-semibold text-white">{formatCurrency(account.calculatedBalance)}</p>
+                </div>
+                <div className="rounded-lg bg-gray-800/70 p-3">
+                  <p className="text-xs text-gray-400">Opening Balance</p>
+                  <p className="mt-1 text-sm font-semibold text-white">{formatCurrency(account.openingBalance ?? 0)}</p>
+                </div>
+                <div className="rounded-lg bg-gray-800/70 p-3">
+                  <p className="text-xs text-gray-400">Since Opening</p>
+                  <p className="mt-1 text-sm font-semibold text-white">{formatCurrency((account.calculatedBalance ?? 0) - (account.openingBalance ?? 0))}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowManualModal(true)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400"
+                >
+                  Update Manual Balance
+                </button>
+
+                <Link
+                  href="/accounts"
+                  className="ml-auto inline-flex items-center justify-center rounded-lg border border-gray-700 px-3 py-2 text-base text-gray-200 hover:border-gray-500 sm:text-sm"
+                >
+                  Back to Accounts
+                </Link>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
+              <h3 className="text-base font-semibold text-white">Transfers</h3>
+              {transfersLoading ? (
+                <div className="mt-4">
+                  <Skeleton variant="card" className="h-24 rounded-xl" />
+                </div>
+              ) : transfersError ? (
+                <p className="mt-4 text-sm text-red-400">{transfersError}</p>
+              ) : transfers.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-400">No transfers yet.</p>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  {transfers.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-950/70 p-3 text-sm text-gray-200">
+                      <div>
+                        <p className="font-medium text-white">{formatCurrency(t.amount)}</p>
+                        <p className="text-xs text-gray-400">{formatTransferDate(t.createdAt)}</p>
+                      </div>
+                      <p className="text-xs text-gray-400">{t.description ?? t.note ?? "Transfer"}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {showManualModal && account ? (
+              <ManualBalanceModal
+                account={account}
+                onSuccess={(updatedAccount) => setAccount(updatedAccount)}
+                onClose={() => setShowManualModal(false)}
+              />
+            ) : null}
+          </>
         ) : (
           <>
             <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">

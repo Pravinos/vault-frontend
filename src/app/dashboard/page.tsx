@@ -171,7 +171,7 @@ function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
         {accounts.slice(0, 8).map((account) => (
           <Link
             key={account.id}
-            href={`/accounts/${account.id}`}
+            href={`/accounts`}
             className="w-[220px] shrink-0 snap-start sm:w-64"
           >
             <AccountCard
