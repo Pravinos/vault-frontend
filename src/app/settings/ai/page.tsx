@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getAiConfig, updateAiConfig } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { updateAiConfig } from "@/lib/api";
 import type { AiConfig } from "@/types";
 import AiProviderCard from "@/components/settings/AiProviderCard";
 import Toast from "@/components/ui/Toast";
+import { useAiSettings } from "@/lib/hooks/useAiSettings";
+import { queryKeys } from "@/lib/queryKeys";
 
 const DEFAULT_CONFIG: AiConfig = {
   chat: { provider: "lmstudio", model: "" },
@@ -13,41 +16,22 @@ const DEFAULT_CONFIG: AiConfig = {
 };
 
 export default function AiSettingsPage() {
-  const [config, setConfig] = useState<AiConfig>(DEFAULT_CONFIG);
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [localChat, setLocalChat] = useState(DEFAULT_CONFIG.chat);
   const [localSummary, setLocalSummary] = useState(DEFAULT_CONFIG.summary);
   const [savedConfig, setSavedConfig] = useState<AiConfig | null>(null);
   const [savingAll, setSavingAll] = useState(false);
 
-  useEffect(() => {
-    getAiConfig()
-      .then(setConfig)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const qc = useQueryClient();
+  const { data: config, isLoading: loading } = useAiSettings();
 
   useEffect(() => {
-    if (!loading) {
+    if (config) {
       setLocalChat(config.chat);
       setLocalSummary(config.summary);
       setSavedConfig(config);
     }
-  }, [loading, config]);
-
-  const refreshConfig = () => {
-    getAiConfig().then(setConfig).catch(() => {});
-  };
-
-  const handleSaved = () => {
-    setToast({ message: "Settings saved.", type: "success" });
-    refreshConfig();
-  };
-
-  const handleError = () => {
-    setToast({ message: "Failed to save settings.", type: "error" });
-  };
+  }, [config]);
 
   const isDirty = useMemo(() => {
     if (!savedConfig) return false;
@@ -83,14 +67,7 @@ export default function AiSettingsPage() {
 
     if (!hadError) {
       setToast({ message: "AI settings saved", type: "success" });
-      // refresh saved config
-      try {
-        const fresh = await getAiConfig();
-        setConfig(fresh);
-        setSavedConfig(fresh);
-        setLocalChat(fresh.chat);
-        setLocalSummary(fresh.summary);
-      } catch {}
+      await qc.invalidateQueries({ queryKey: queryKeys.aiSettings });
     }
 
     setSavingAll(false);

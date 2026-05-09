@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 
 import { logout } from "@/lib/auth";
+import { queryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
+import { fetchDashboard, getExpenseSummary, getIncomeSummary } from "@/lib/api";
+import { getLastNMonths } from "@/lib/hooks/useDashboard";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -74,6 +78,22 @@ export default function Sidebar({
     router.push("/login");
   };
 
+  const prefetchDashboard = useCallback(() => {
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.dashboard,
+      queryFn: async () => {
+        const monthRange = getLastNMonths(6);
+        const [dashboard, expenseSummaries, incomeSummaries] = await Promise.all([
+          fetchDashboard(),
+          Promise.all(monthRange.map((month) => getExpenseSummary(month))),
+          Promise.all(monthRange.map((month) => getIncomeSummary(month))),
+        ]);
+        return { dashboard, expenseSummaries, incomeSummaries, monthRange };
+      },
+      staleTime: 2 * 60 * 1000,
+    });
+  }, []);
+
   const sidebarContent = (
     <div className="flex h-full w-[220px] flex-col bg-[#0f1923]">
       <div className="flex items-center justify-between border-b border-white/5 px-5 py-5">
@@ -91,20 +111,25 @@ export default function Sidebar({
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
-          const base =
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]";
           return (
             <Link
               key={href}
               href={href}
-              className={`${base} ${
-                active
-                  ? "border-l-[#1D9E75] text-[#1D9E75] bg-[rgba(29,158,117,0.08)]"
-                  : "border-l-transparent text-gray-400 hover:bg-white/4 hover:text-white"
+              onMouseEnter={href === "/dashboard" ? prefetchDashboard : undefined}
+              className={`flex items-center w-full transition-colors border-l-[3px] ${
+                active ? 'border-l-[#1D9E75]' : 'border-l-transparent'
               }`}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
+              <div
+                className={`inline-flex items-center gap-3 px-3 py-2 rounded-md ml-2 text-sm font-medium transition-colors ${
+                  active
+                    ? 'bg-[rgba(29,158,117,0.15)] text-[#1D9E75]'
+                    : 'text-gray-400 hover:bg-white/4 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{label}</span>
+              </div>
             </Link>
           );
         })}
@@ -117,34 +142,40 @@ export default function Sidebar({
 
         {settingsItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
-          const base =
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]";
           return (
             <Link
               key={href}
               href={href}
-              className={`${base} ${
-                active
-                  ? "border-l-[#1D9E75] text-[#1D9E75] bg-[rgba(29,158,117,0.08)]"
-                  : "border-l-transparent text-gray-400 hover:bg-white/4 hover:text-white"
+              className={`flex items-center w-full transition-colors border-l-[3px] ${
+                active ? 'border-l-[#1D9E75]' : 'border-l-transparent'
               }`}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
+              <div
+                className={`inline-flex items-center gap-3 px-3 py-2 rounded-md ml-2 text-sm font-medium transition-colors ${
+                  active
+                    ? 'bg-[rgba(29,158,117,0.15)] text-[#1D9E75]'
+                    : 'text-gray-400 hover:bg-white/4 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{label}</span>
+              </div>
             </Link>
           );
         })}
       </nav>
 
       <div className="border-t border-white/5 px-3 py-4">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          Logout
-        </button>
+        <div className="flex w-full">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="inline-flex items-center gap-3 px-3 py-2 rounded-md ml-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   );

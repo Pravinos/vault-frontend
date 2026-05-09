@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -15,11 +15,14 @@ import {
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
-import { deleteWeeklySummary, getWeeklySummaries, fetchDashboard, getAccounts } from "@/lib/api";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
 import { formatCurrency } from "@/lib/utils";
 import type { WeeklySummary, Account } from "@/types";
 import type { DashboardData } from "@/types/dashboard";
+import { useSummaries } from "@/lib/hooks/useSummaries";
+import { useDashboard } from "@/lib/hooks/useDashboard";
+import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useDeleteSummary } from "@/lib/hooks/useSummaryMutations";
 
 function formatWeekRange(start: string, end: string): string {
   const startDate = new Date(`${start}T00:00:00`);
@@ -209,82 +212,27 @@ function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick, das
 }
 
 export default function WeeklySummariesPage() {
-  const [summaries, setSummaries] = useState<WeeklySummary[]>([]);
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [accounts, setAccounts] = useState<Account[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteToast, setDeleteToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
 
-  const { generate, isGenerating, toast, clearToast } = useGenerateSummary((summary) => {
-    setSummaries((prev) => sortSummaries([summary, ...prev.filter((item) => item.id !== summary.id)]));
-  });
+  const { data: summaries = [], isLoading, error } = useSummaries();
+  const { data: dashboardResult } = useDashboard();
+  const { data: accounts = null } = useAccounts();
+  const deleteSummaryMutation = useDeleteSummary();
 
-  useEffect(() => {
-    let mounted = true;
+  const dashboard = dashboardResult?.dashboard ?? null;
 
-    const loadSummaries = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        // Load summaries and dashboard in parallel; treat dashboard as optional
-        const [summariesRes, dashboardRes, accountsRes] = await Promise.allSettled([
-          getWeeklySummaries(),
-          fetchDashboard(),
-          getAccounts(),
-        ]);
-
-        if (!mounted) return;
-
-        if (summariesRes.status === "fulfilled") {
-          setSummaries(sortSummaries(summariesRes.value));
-        } else {
-          throw new Error("Unable to load weekly summaries.");
-        }
-
-        if (dashboardRes.status === "fulfilled") {
-          setDashboard(dashboardRes.value);
-        }
-
-        if (accountsRes.status === "fulfilled") {
-          setAccounts(accountsRes.value);
-        }
-      } catch {
-        if (!mounted) {
-          return;
-        }
-        setError("Unable to load weekly summaries.");
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadSummaries();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { generate, isGenerating, toast, clearToast } = useGenerateSummary();
 
   const hasSummaries = useMemo(() => summaries.length > 0, [summaries]);
 
   const handleDeleteSummary = (id: string) => {
     confirmDelete(id, async () => {
-      setDeletingId(id);
-
       try {
-        await deleteWeeklySummary(id);
-        setSummaries((prev) => prev.filter((summary) => summary.id !== id));
+        await deleteSummaryMutation.mutateAsync(id);
         setDeleteToast({ message: "Weekly summary deleted", type: "success" });
       } catch {
         setDeleteToast({ message: "Unable to delete weekly summary", type: "error" });
-      } finally {
-        setDeletingId(null);
       }
     });
   };
@@ -312,14 +260,14 @@ export default function WeeklySummariesPage() {
             <Skeleton variant="card" className="h-44 rounded-xl" />
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
+          <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">Unable to load weekly summaries.</div>
         ) : hasSummaries ? (
           <div className="space-y-4">
             {summaries.map((summary) => (
               <SummaryItem
                 key={summary.id}
                 summary={summary}
-                isDeleting={deletingId === summary.id}
+                isDeleting={deleteSummaryMutation.isPending && deleteSummaryMutation.variables === summary.id}
                 isPendingConfirm={isPendingConfirm(summary.id)}
                 onDeleteClick={handleDeleteSummary}
                 dashboard={dashboard}

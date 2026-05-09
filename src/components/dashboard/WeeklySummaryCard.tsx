@@ -54,6 +54,8 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
     onGenerated?.(nextSummary);
   });
 
+  const [expanded, setExpanded] = useState(false);
+
   if (!summary) {
     return (
       <>
@@ -83,8 +85,6 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
       </>
     );
   }
-
-  const [expanded, setExpanded] = useState(false);
 
   return (
     <>

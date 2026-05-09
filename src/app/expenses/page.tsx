@@ -1,147 +1,37 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
-import axios from "axios";
+import { useQueryClient } from "@tanstack/react-query";
 
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
 import ExpenseList from "@/components/expenses/ExpenseList";
 import Skeleton from "@/components/ui/Skeleton";
-import {
-  getAccounts,
-  deleteExpense,
-  getCategories,
-  getExpenses,
-  getExpenseSummary,
-} from "@/lib/api";
 import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
-import type { Account, Category, Expense, ExpenseMonthlySummary } from "@/types";
-
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const isColdStartError = (error: unknown) => {
-  if (!axios.isAxiosError(error)) {
-    return false;
-  }
-
-  const status = error.response?.status;
-  return status === 502 || status === 504 || error.code === "ECONNABORTED";
-};
+import { useExpenses } from "@/lib/hooks/useExpenses";
+import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useCategories } from "@/lib/hooks/useCategories";
+import { useDeleteExpense } from "@/lib/hooks/useExpenseMutations";
+import { queryKeys } from "@/lib/queryKeys";
+import type { Category, Expense } from "@/types";
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [summary, setSummary] = useState<ExpenseMonthlySummary | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
-  const [hasLoaded, setHasLoaded] = useState<boolean>(false);
-  const initialMonthRef = useRef<string>(selectedMonth);
-  const initialCategoryRef = useRef<number | null>(selectedCategoryId);
-  const hasFetchedAfterLoadRef = useRef<boolean>(false);
 
-  const fetchExpenses = useCallback(
-    async (allowRetry = true) => {
-      setLoading(true);
-      setError(null);
-      setRetryMessage(null);
+  const qc = useQueryClient();
 
-      try {
-        const [data, summaryData] = await Promise.all([
-          getExpenses({
-            month: selectedMonth || undefined,
-            categoryId: selectedCategoryId ?? undefined,
-          }),
-          getExpenseSummary(selectedMonth || undefined),
-        ]);
-        setExpenses(data);
-        setSummary(summaryData);
-      } catch (error) {
-        if (allowRetry && isColdStartError(error)) {
-          setRetryMessage("Waking up the server... retrying");
-          await wait(5000);
-          try {
-            const [retryData, retrySummary] = await Promise.all([
-              getExpenses({
-                month: selectedMonth || undefined,
-                categoryId: selectedCategoryId ?? undefined,
-              }),
-              getExpenseSummary(selectedMonth || undefined),
-            ]);
-            setExpenses(retryData);
-            setSummary(retrySummary);
-            return;
-          } catch {
-            setError("Unable to load expenses.");
-            return;
-          }
-        }
+  const { data, isLoading: loading, error } = useExpenses(selectedMonth);
+  const { data: accounts = [] } = useAccounts();
+  const { data: categories = [] } = useCategories();
+  const deleteExpenseMutation = useDeleteExpense(selectedMonth);
 
-        setError("Unable to load expenses.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [selectedCategoryId, selectedMonth]
-  );
-
-  useEffect(() => {
-    const fetchInitial = async (allowRetry = true) => {
-      setLoading(true);
-      setError(null);
-      setRetryMessage(null);
-
-      try {
-        const [categoriesData, accountsData, expensesData, summaryData] = await Promise.all([
-          getCategories(),
-          getAccounts(),
-          getExpenses({
-            month: initialMonthRef.current || undefined,
-            categoryId: initialCategoryRef.current ?? undefined,
-          }),
-          getExpenseSummary(initialMonthRef.current || undefined),
-        ]);
-
-        setCategories(categoriesData);
-        setAccounts(accountsData);
-        setExpenses(expensesData);
-        setSummary(summaryData);
-        setHasLoaded(true);
-      } catch (err) {
-        if (allowRetry && isColdStartError(err)) {
-          setRetryMessage("Waking up the server... retrying");
-          await wait(5000);
-          return fetchInitial(false);
-        }
-
-        setError("Unable to load expenses.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void fetchInitial();
-  }, []);
-
-  useEffect(() => {
-    if (!hasLoaded) {
-      return;
-    }
-
-    if (!hasFetchedAfterLoadRef.current) {
-      hasFetchedAfterLoadRef.current = true;
-      return;
-    }
-
-    fetchExpenses();
-  }, [fetchExpenses, hasLoaded]);
+  const expenses = data?.expenses ?? [];
+  const summary = data?.summary ?? null;
 
   const handleAddClick = () => {
     setEditingExpense(undefined);
@@ -149,12 +39,7 @@ export default function ExpensesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await deleteExpense(id);
-      await fetchExpenses();
-    } catch {
-      setError("Unable to delete expense.");
-    }
+    await deleteExpenseMutation.mutateAsync(id);
   };
 
   const handleEdit = (expense: Expense) => {
@@ -162,9 +47,11 @@ export default function ExpensesPage() {
     setShowForm(true);
   };
 
-  const handleFormSuccess = async () => {
-    await fetchExpenses();
-  };
+  const handleFormSuccess = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: queryKeys.expenses(selectedMonth) });
+    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+  }, [qc, selectedMonth]);
 
   const filteredExpenses = useMemo(
     () =>
@@ -185,7 +72,7 @@ export default function ExpensesPage() {
     () =>
       (summary?.byCategory ?? [])
         .map((item) => {
-          const category = categories.find((c) => c.name === item.category);
+          const category = categories.find((c: Category) => c.name === item.category);
           return {
             categoryId: category?.id,
             categoryName: item.category,
@@ -211,7 +98,6 @@ export default function ExpensesPage() {
 
     setSelectedCategoryId((prev) => (prev === categoryId ? null : categoryId));
   };
-
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -293,10 +179,7 @@ export default function ExpensesPage() {
           </div>
         )}
 
-        {retryMessage ? (
-          <p className="text-xs font-medium text-amber-300">{retryMessage}</p>
-        ) : null}
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="text-sm text-red-400">Unable to load expenses.</p> : null}
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (

@@ -6,6 +6,7 @@ export interface AccountDashboardData {
   manualBalance: number | null;
   openingBalance: number;
   sinceOpening: number;
+  contributedAmount: number | null;
   currentValue: number | null;
   returnAmount: number | null;
   returnPercentage: number | null;
