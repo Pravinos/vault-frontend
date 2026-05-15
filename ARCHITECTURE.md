@@ -499,6 +499,27 @@ POST /api/v1/auth/logout
 Set-Cookie: vault_token=; Max-Age=0
 ```
 
+#### Operational notes — status and reset behavior
+
+- `/auth/status`: implementers should return HTTP 200 with `{ configured: true|false }` when the backend application and its dependencies (DB, config) are healthy. If the service is temporarily unable to determine configuration (cold start, failing downstream), return a non-OK status (503) so frontends and proxies can treat the service as "starting" rather than "not configured". The frontend middleware treats non-OK as unreachable and shows a lightweight `/starting` page to avoid mounting heavy pages during backend warm-up.
+
+- `/auth/reset-password` (optional admin/reset endpoint): for single-instance/self-hosted deployments without email, provide an endpoint that accepts `{ "newPassword": "..." }` and authorizes the request by one of two server-side mechanisms forwarded by the frontend proxy:
+  - `Authorization: Bearer <API_ADMIN_TOKEN>` — a long-lived admin token set as an environment variable on the frontend and backend. The frontend proxy will attach this header to reset requests when `API_ADMIN_TOKEN` is set.
+  - `x-reset-token: <PASSWORD_RESET_TOKEN>` — a short, pre-shared reset token configured in `.env` and validated server-side. The backend should compare this value using a timing-safe comparison and invalidate or rotate the token after use where appropriate.
+
+  On success, the endpoint should issue the same `Set-Cookie: vault_token=...; HttpOnly; Secure; SameSite=None` used by login/setup so the frontend becomes authenticated automatically. Rate-limit the endpoint to avoid brute-force attempts.
+
+- Retrying behavior: frontend proxies for `POST /auth/login` and `POST /auth/setup` implement a small retry/backoff loop (3 attempts with short waits) to reduce 502/503/504 surface area during backend cold starts. Client fetch helpers also use retries for idempotent GET/HEAD calls, and the client Axios instance retries some transient server errors once with a short delay.
+
+- Middleware behavior: the Next.js middleware queries `/api/auth/status` and interprets responses as:
+  - 200 + `{ configured: false }` → redirect unauthenticated users to `/setup` (app not configured)
+  - non-OK (e.g., 503) or network error → treat backend as unreachable and redirect to `/starting` (lightweight holding page)
+  - 200 + `{ configured: true }` → normal auth gating using `vault_token` cookie
+
+  This prevents accidental redirect-to-setup during transient backend unavailability.
+
+- Caching suggestion: to reduce repeated calls from middleware during heavy traffic or rapid reloads, implement a short in-memory TTL (1-2s) for the `/auth/status` result on the backend or use your hosting platform's short-lived cache.
+
 ---
 
 ### Protected Endpoints

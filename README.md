@@ -4,6 +4,13 @@ Vault is a personal finance app where you can track expenses and income, manage 
 
 This repository is the frontend application.
 
+The frontend includes the following operational features and behaviors you should know about:
+
+- Cold-start handling: when the backend is unreachable (cold start or redeploy) the app shows a lightweight `/starting` page instead of mounting full pages or redirecting to `/setup`. This reduces noisy API calls and avoids accidental setup lockouts.
+- Resilient auth flows: the auth proxy routes (`/api/auth/login`, `/api/auth/setup`) and client fetch helpers implement short retry/backoff for transient 502/503/504 errors during backend startup.
+- Self-hosted password reset: for single-instance/self-hosted deployments without email, a `reset-password` flow exists. The frontend proxies reset requests to the backend and may forward an `API_ADMIN_TOKEN` or an `x-reset-token` header — configure these via environment variables.
+- UI simplification: the previous Security settings tab was removed; a `Reset password` link is available on the login page. The `reset-password` and `/starting` pages are minimal and do not render the main app sidebar.
+
 ## What You Can Do In Vault
 
 - See your financial snapshot on the dashboard (net worth, cash flow, category focus, monthly comparisons)
@@ -106,11 +113,18 @@ npm run lint
 - Check `.env.local` has the correct `NEXT_PUBLIC_API_URL`
 - Confirm backend allows requests from your frontend origin
 
+- During backend redeploy/cold-start you may be redirected to `/starting`. This page polls backend status and avoids mounting heavy pages while the backend warms up. If the backend is fully up and you still land on `/setup`, check the backend `/api/v1/auth/status` response.
+
 ### App keeps redirecting to login
 
 - Session cookie may be expired or invalid
 - Log in again with your vault password
 - Ensure backend and frontend URLs match your environment setup
+
+### Password reset (self-hosted)
+
+- For single-instance/self-hosted deployments without email, set a reset token or admin token in your environment (see `.env.example`): `PASSWORD_RESET_TOKEN` and optionally `API_ADMIN_TOKEN`.
+- The frontend exposes `/reset-password` which posts to `/api/auth/reset-password` and will set the `vault_token` cookie on success.
 
 ### Setup/Login returns too many attempts
 
