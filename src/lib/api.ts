@@ -63,17 +63,43 @@ export async function apiFetch(url: string, options?: RequestInit) {
   const targetUrl = normalizedUrl.startsWith("/api/v1/")
     ? normalizedUrl
     : `/api/v1${normalizedUrl}`;
-  const res = await fetch(targetUrl, fetchOptions(options));
+  const method = (options?.method ?? "GET").toUpperCase();
 
-  if (res.status === 401) {
-    return handleAuthFailure();
+  // Retry on 503 (backend still starting) for idempotent requests (GET/HEAD)
+  const retryable = method === "GET" || method === "HEAD";
+  const maxAttempts = retryable ? 4 : 1;
+
+  let attempt = 0;
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    const res = await fetch(targetUrl, fetchOptions(options));
+
+    if (res.status === 401) {
+      return handleAuthFailure();
+    }
+
+    if (res.status === 429) {
+      throw new Error("Too many requests. Please wait 15 minutes and try again.");
+    }
+
+    if (res.status !== 503) {
+      return res;
+    }
+
+    // 503: backend likely still starting. If we have more attempts, wait and retry.
+    if (attempt < maxAttempts) {
+      const delay = 200 * Math.pow(2, attempt - 1); // 200ms, 400ms, 800ms
+      // eslint-disable-next-line no-await-in-loop
+      await wait(delay);
+      continue;
+    }
+
+    // final 503 — return the response so callers can handle it
+    return res;
   }
 
-  if (res.status === 429) {
-    throw new Error("Too many requests. Please wait 15 minutes and try again.");
-  }
-
-  return res;
+  // Shouldn't reach here, but return a generic failure.
+  throw new Error("Failed to fetch");
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {
@@ -155,11 +181,14 @@ api.interceptors.response.use(
     }
 
     const shouldRetry =
-      (status === 502 || status === 504) && config && !config.__retry;
+      (status === 502 || status === 503 || status === 504) &&
+      config &&
+      !config.__retry;
 
     if (shouldRetry) {
       config.__retry = true;
-      await wait(5000);
+      // small backoff for temporary gateway/backend startup errors
+      await wait(1000);
       return api.request(config);
     }
 

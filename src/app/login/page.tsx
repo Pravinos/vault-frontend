@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 
@@ -144,6 +145,13 @@ function LoginForm() {
                 "Enter Vault"
               )}
             </button>
+
+            <p className="text-center text-xs text-gray-600">
+              Forgot your password?{" "}
+              <Link href="/reset-password" className="text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline transition-colors">
+                Reset it
+              </Link>
+            </p>
           </form>
         </div>
 
