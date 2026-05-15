@@ -6,6 +6,12 @@ async function isConfigured(req: NextRequest): Promise<boolean | null> {
     const res = await fetch(new URL("/api/auth/status", appUrl), {
       cache: "no-store",
     });
+
+    // If the status endpoint returned non-OK (e.g., 503 because backend
+    // is still starting), treat as unreachable so middleware can redirect
+    // to the lightweight `/starting` page instead of `/setup`.
+    if (!res.ok) return null;
+
     const data = await res.json();
     // Explicitly not-configured only when backend definitively says so.
     if (data.configured === false) return false;
