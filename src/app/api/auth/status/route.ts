@@ -6,8 +6,14 @@ export async function GET() {
       cache: "no-store",
     });
     const data = await backendRes.json();
+    // If backend returned a non-OK status, propagate as unavailable so
+    // the frontend can treat it as a cold-start rather than "not configured".
+    if (!backendRes.ok) {
+      return NextResponse.json({ error: "backend_unreachable" }, { status: 503 });
+    }
+
     return NextResponse.json(data);
   } catch {
-    return NextResponse.json({ configured: false });
+    return NextResponse.json({ error: "backend_unreachable" }, { status: 503 });
   }
 }
