@@ -29,14 +29,35 @@ function normalizeTokenValue(token: string): string {
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  let backendRes: Response;
-  try {
-    backendRes = await fetch(`${process.env.API_URL}/api/v1/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch {
+  // Retry a couple times on 503 (backend cold start). Login is safe to retry once.
+  let backendRes: Response | null = null;
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      backendRes = await fetch(`${process.env.API_URL}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      backendRes = null;
+    }
+
+    if (!backendRes) {
+      if (attempt === maxAttempts) break;
+      await new Promise((r) => setTimeout(r, 500 * attempt));
+      continue;
+    }
+
+    if (backendRes.status === 503 && attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 500 * attempt));
+      continue;
+    }
+
+    break;
+  }
+
+  if (!backendRes) {
     return NextResponse.json(
       { error: "Could not reach the backend. Is it running?" },
       { status: 503 }

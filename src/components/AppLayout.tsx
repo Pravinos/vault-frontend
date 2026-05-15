@@ -12,7 +12,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const isAuthRoute =
-    pathname === "/login" || pathname === "/setup" || pathname === "/register";
+    pathname === "/login" ||
+    pathname === "/setup" ||
+    pathname === "/register" ||
+    pathname === "/reset-password" ||
+    pathname === "/starting";
 
   if (isAuthRoute) {
     return <PageTransition>{children}</PageTransition>;
