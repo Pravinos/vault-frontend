@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 import PageTransition from "@/components/layout/PageTransition";
 import Sidebar, { SidebarMenuButton } from "@/components/Sidebar";
@@ -30,7 +31,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen lg:ml-[220px]">
         <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-white/5 bg-[#0f1923] px-4 py-4 lg:hidden">
           <SidebarMenuButton onClick={() => setSidebarOpen(true)} />
-          <span className="text-base font-semibold text-white">Vault</span>
+          <Link
+            href="/dashboard"
+            aria-label="Go to dashboard"
+            className="inline-flex items-center"
+          >
+            <img
+              src="/vault-logo.svg"
+              alt="Vault"
+              className="h-5 w-auto transform transition-transform hover:scale-105 hover:-rotate-2 cursor-pointer"
+            />
+          </Link>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">

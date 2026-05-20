@@ -15,6 +15,11 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Vault",
   description: "Personal finance dashboard",
+  icons: {
+    icon: '/vault-logo-app.png',
+    shortcut: '/vault-logo-app.png',
+    apple: '/vault-logo-app.png',
+  },
 };
 
 export const viewport: Viewport = {
