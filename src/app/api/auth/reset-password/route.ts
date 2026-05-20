@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 function getTokenFromSetCookie(setCookieHeader: string | null): string | null {
   if (!setCookieHeader) return null;
@@ -61,7 +62,13 @@ export async function POST(req: NextRequest) {
 
   let backendRes: Response;
   try {
-    const target = `${process.env.API_URL}/api/v1/auth/reset-password`;
+    const apiUrl = process.env.API_URL;
+    if (!apiUrl) {
+      console.error(`API_URL is not set — ${req.url} proxy cannot forward request`);
+      return NextResponse.json({ error: "API_URL not configured" }, { status: 500 });
+    }
+
+    const target = `${apiUrl}/api/v1/auth/reset-password`;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
     // If an API admin token is configured, use it to authenticate the proxy call.
@@ -73,11 +80,15 @@ export async function POST(req: NextRequest) {
       headers["x-reset-token"] = provided;
     }
 
-    backendRes = await fetch(target, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ newPassword }),
-    });
+    backendRes = await fetchWithTimeout(
+      target,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ newPassword }),
+      },
+      8000
+    );
   } catch {
     return NextResponse.json(
       { error: "Could not reach the backend." },
@@ -104,16 +115,30 @@ export async function POST(req: NextRequest) {
 
   if (!sessionToken) {
     // Reset succeeded but no token — redirect to login
-    return NextResponse.json({ success: true, token: null });
+    const resp = NextResponse.json({ success: true, token: null });
+    // Still try to forward set-cookie headers from backend if present
+    const cookies = (backendRes.headers as any).getSetCookie?.() || [];
+    cookies.forEach((cookie: string) => resp.headers.append("Set-Cookie", cookie));
+    if (cookies.length === 0) {
+      const singleCookie = backendRes.headers.get("set-cookie");
+      if (singleCookie) resp.headers.set("Set-Cookie", singleCookie);
+    }
+    return resp;
   }
 
   const response = NextResponse.json({ success: true, token: sessionToken });
-  response.cookies.set("vault_token", sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
+  // Prefer forwarding backend cookies if any
+  const cookies = (backendRes.headers as any).getSetCookie?.() || [];
+  cookies.forEach((cookie: string) => response.headers.append("Set-Cookie", cookie));
+  if (cookies.length === 0) {
+    // If backend didn't set cookies but returned token, set a proxy cookie
+    response.cookies.set("vault_token", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
+  }
   return response;
 }

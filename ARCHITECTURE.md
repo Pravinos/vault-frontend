@@ -47,6 +47,10 @@ These notes capture current frontend behavior so product docs and architecture s
   - Category details are centralized in a single `Category focus` block.
   - The older duplicated top-category presentation was removed from secondary metric cards.
 
+  - Network and auth utilities:
+    - A shared `fetchWithTimeout` helper is used for server-side and client-side calls to enforce predictable timeouts for backend requests.
+    - Auth proxy routes under `/api/auth/*` exist in the frontend and proxy requests to the backend. These proxy routes correctly forward `Set-Cookie` headers (including multiple cookies) to the browser and forward client IP headers so backend rate-limiting is accurate.
+
 ---
 
 ## Authentication Architecture
@@ -104,6 +108,19 @@ Vault uses **HttpOnly cookies** instead of Bearer tokens:
 - Set `SameSite=None` and `Secure=true`
 - Set `allowCredentials=true` in CORS config
 - Browser automatically includes cookie in all cross-origin requests
+
+### Frontend proxy & timeout details
+
+- The frontend exposes auth proxy endpoints under `/api/auth/*` which forward requests to `${API_URL}/api/v1/auth/*` on the backend. Reasons:
+  - Keep browser same-origin with frontend so HttpOnly cookies (set by backend) are processed by the browser when proxied through the frontend.
+  - Allow the frontend to inject and forward client IP headers (`X-Forwarded-For`, `X-Real-IP`) so backend rate-limiting operates by client IP rather than the hosting platform IP.
+
+- Implementation details:
+  - Middleware probes `/api/auth/status` with a 2.5s timeout using `fetchWithTimeout`. If probing fails (timeout/network error), middleware redirects to `/starting` which polls status every 3s (30 attempts → ~90s) before showing a retry.
+  - Auth mutation proxies (login/setup/refresh/logout/reset) use `fetchWithTimeout` with an 8s timeout to tolerate slow cold starts while still surfacing network failures as 503.
+  - Proxies forward all `Set-Cookie` headers: they use `Response.headers.getSetCookie()` when available and append each `Set-Cookie` to the outgoing response; as a fallback they read `headers.get('set-cookie')` and set it on the response. This avoids losing or corrupting multiple cookie headers.
+  - On 429 responses, client forms (setup/login) read `Retry-After` to show a friendly "wait X minutes" message.
+
 
 ---
 

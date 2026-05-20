@@ -4,7 +4,7 @@ Vault is a personal finance app where you can track expenses and income, manage 
 
 This repository is the frontend application.
 
-The frontend includes the following operational features and behaviors you should know about:
+This repository contains the Next.js frontend and includes the following important operational changes and behaviors:
 
 - Cold-start handling: when the backend is unreachable (cold start or redeploy) the app shows a lightweight `/starting` page instead of mounting full pages or redirecting to `/setup`. This reduces noisy API calls and avoids accidental setup lockouts.
 - Resilient auth flows: the auth proxy routes (`/api/auth/login`, `/api/auth/setup`) and client fetch helpers implement short retry/backoff for transient 502/503/504 errors during backend startup.
