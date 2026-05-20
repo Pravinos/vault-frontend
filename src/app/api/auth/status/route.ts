@@ -1,19 +1,31 @@
 import { NextResponse } from "next/server";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 export async function GET() {
+  const apiUrl = process.env.API_URL;
+  if (!apiUrl) {
+    console.error("API_URL is not set in environment");
+    return NextResponse.json(
+      { error: "backend_unreachable", configured: false },
+      { status: 503 }
+    );
+  }
+
   try {
-    const backendRes = await fetch(`${process.env.API_URL}/api/v1/auth/status`, {
-      cache: "no-store",
-    });
-    const data = await backendRes.json();
-    // If backend returned a non-OK status, propagate as unavailable so
-    // the frontend can treat it as a cold-start rather than "not configured".
+    const backendRes = await fetchWithTimeout(
+      `${apiUrl}/api/v1/auth/status`,
+      { cache: "no-store" },
+      3000
+    );
+
     if (!backendRes.ok) {
       return NextResponse.json({ error: "backend_unreachable" }, { status: 503 });
     }
 
+    const data = await backendRes.json();
     return NextResponse.json(data);
-  } catch {
+  } catch (err) {
+    console.error("Auth status proxy error:", err);
     return NextResponse.json({ error: "backend_unreachable" }, { status: 503 });
   }
 }

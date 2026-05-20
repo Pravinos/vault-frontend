@@ -8,24 +8,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "API_URL not configured" }, { status: 500 });
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
-
   try {
     const backendRes = await fetchWithTimeout(
-      `${apiUrl}/api/v1/auth/setup`,
+      `${apiUrl}/api/v1/auth/refresh`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Forwarded-For": req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
           "X-Real-IP": req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for") || "unknown",
+          Cookie: req.headers.get("cookie") || "",
         },
-        body: JSON.stringify(body),
       },
       8000
     );

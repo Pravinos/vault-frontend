@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 
 async function isConfigured(req: NextRequest): Promise<boolean | null> {
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin;
-    const res = await fetch(new URL("/api/auth/status", appUrl), {
-      cache: "no-store",
-    });
+    const res = await fetchWithTimeout(
+      new URL("/api/auth/status", appUrl).toString(),
+      { cache: "no-store" },
+      2500
+    );
 
-    // If the status endpoint returned non-OK (e.g., 503 because backend
-    // is still starting), treat as unreachable so middleware can redirect
-    // to the lightweight `/starting` page instead of `/setup`.
     if (!res.ok) return null;
 
     const data = await res.json();
-    // Explicitly not-configured only when backend definitively says so.
     if (data.configured === false) return false;
     return true;
   } catch {
-    // Backend unreachable (cold start / redeployment) — return null so
-    // middleware can redirect to a lightweight "starting" page instead
-    // of letting full pages mount and trigger many API calls.
     return null;
   }
 }
@@ -27,11 +23,8 @@ async function isConfigured(req: NextRequest): Promise<boolean | null> {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("vault_token")?.value;
-
   const configured = await isConfigured(req);
 
-  // Backend unreachable: redirect users to a lightweight status page that
-  // avoids mounting heavy pages which would fire many API calls.
   if (configured === null) {
     if (pathname === "/starting") return NextResponse.next();
     return NextResponse.redirect(new URL("/starting", req.url));
@@ -49,7 +42,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Authenticated - don't let them see login/setup/reset pages
   if (pathname === "/login" || pathname === "/setup" || pathname === "/reset-password") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }

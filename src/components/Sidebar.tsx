@@ -97,7 +97,18 @@ export default function Sidebar({
   const sidebarContent = (
     <div className="flex h-full w-[220px] flex-col bg-[#0f1923]">
       <div className="flex items-center justify-between border-b border-white/5 px-5 py-5">
-        <span className="text-lg font-bold tracking-tight text-white">Vault</span>
+        <Link
+          href="/dashboard"
+          onMouseEnter={prefetchDashboard}
+          aria-label="Go to dashboard"
+          className="inline-flex items-center gap-2"
+        >
+          <img
+            src="/vault-logo.svg"
+            alt="Vault"
+            className="h-6 w-auto transform transition-transform hover:scale-105 hover:-rotate-2 cursor-pointer"
+          />
+        </Link>
         <button
           type="button"
           onClick={() => setOpen(false)}

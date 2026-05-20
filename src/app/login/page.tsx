@@ -32,7 +32,7 @@ function LoginForm() {
         if (data.token) {
           setToken(data.token);
         }
-        window.location.assign("/dashboard");
+        window.location.href = "/dashboard";
         return;
       }
 
@@ -47,7 +47,9 @@ function LoginForm() {
       }
 
       if (res.status === 429) {
-        setError("Too many attempts. Please wait 15 minutes and try again.");
+        const retryAfter = res.headers.get("Retry-After") || "900";
+        const minutes = Math.ceil(Number(retryAfter) / 60) || 15;
+        setError(`Too many attempts. Please wait ${minutes} minute(s) and try again.`);
         return;
       }
 
