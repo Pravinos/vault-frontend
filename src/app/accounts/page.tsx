@@ -12,6 +12,8 @@ import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
 import TransferForm from "@/components/accounts/TransferForm";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Modal from "@/components/ui/Modal";
+import EmptyState from "@/components/ui/EmptyState";
+import { CreditCard, Plus as PlusIcon } from "lucide-react";
 import SelectField from "@/components/ui/SelectField";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
@@ -24,6 +26,7 @@ import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
 import { useDeleteAccount, useRevertTransfer } from "@/lib/hooks/useAccountMutations";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Account, Transfer } from "@/types";
+import TransferRow from "@/components/transfers/TransferRow";
 
 const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -363,21 +366,13 @@ export default function AccountsPage() {
               ))}
             </div>
           ) : accounts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-20">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800">
-                <Plus className="h-8 w-8 text-gray-500" />
-              </div>
-              <p className="text-base font-medium text-gray-300">No accounts yet</p>
-              <p className="mt-1 text-sm text-gray-500">Add your first account to get started</p>
-              <button
-                type="button"
-                onClick={openCreate}
-                className="mt-6 flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
-              >
-                <Plus className="h-4 w-4" />
-                Create your first account
-              </button>
-            </div>
+            <EmptyState
+              icon={<CreditCard className="w-12 h-12" />}
+              title="No accounts yet"
+              description="Add your first account to get started"
+              actionLabel={<><PlusIcon className="h-4 w-4" /> Create your first account</>}
+              onAction={openCreate}
+            />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {accounts.map((account) => {
@@ -510,91 +505,22 @@ export default function AccountsPage() {
                 </div>
               ) : (
                 <>
-                  <div className="hidden overflow-x-auto rounded-xl border border-gray-800 md:block">
-                    <table className="min-w-full divide-y divide-gray-800 text-sm">
-                      <thead className="bg-[#111a28] text-left text-xs uppercase tracking-wider text-gray-400">
-                        <tr>
-                          <th className="px-4 py-3">Date</th>
-                          <th className="px-4 py-3">From</th>
-                          <th className="px-4 py-3">To</th>
-                          <th className="px-4 py-3">Amount</th>
-                          <th className="px-4 py-3">Note</th>
-                          <th className="px-4 py-3">Created</th>
-                          <th className="px-4 py-3 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-800 bg-[#1a2332] text-gray-200">
-                        {transfers.map((transfer) => {
-                          const canRevert = !isRevertTransfer(transfer);
-
-                          return (
-                          <tr key={transfer.id}>
-                            <td className="px-4 py-3">{formatTransferDate(transfer.transferDate)}</td>
-                            <td className="px-4 py-3">{transfer.fromAccountName}</td>
-                            <td className="px-4 py-3">{transfer.toAccountName}</td>
-                            <td className="px-4 py-3 font-medium tabular-nums text-white">
-                              {formatCurrency(transfer.amount)}
-                            </td>
-                            <td className="max-w-64 truncate px-4 py-3 text-gray-300">
-                              {transfer.note?.trim() ? transfer.note : "-"}
-                            </td>
-                            <td className="px-4 py-3 text-gray-300">{formatCreatedAt(transfer.createdAt)}</td>
-                            <td className="px-4 py-3 text-right">
-                              {canRevert ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setRevertTargetTransfer(transfer)}
-                                  className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/10"
-                                >
-                                  Revert
-                                </button>
-                              ) : null}
-                            </td>
-                          </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="space-y-3 md:hidden">
+                  <div className="space-y-3">
                     {transfers.map((transfer) => {
-                      const canRevert = !isRevertTransfer(transfer);
+                      const reversal = isRevertTransfer(transfer);
 
                       return (
-                      <div
-                        key={transfer.id}
-                        className="rounded-xl border border-gray-800 bg-[#1a2332] p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-white">
-                              {transfer.fromAccountName} to {transfer.toAccountName}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-400">
-                              {formatTransferDate(transfer.transferDate)}
-                            </p>
-                          </div>
-                          <p className="text-sm font-semibold tabular-nums text-white">
-                            {formatCurrency(transfer.amount)}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 space-y-1 text-xs text-gray-400">
-                          <p>Note: {transfer.note?.trim() ? transfer.note : "-"}</p>
-                          <p>Created: {formatCreatedAt(transfer.createdAt)}</p>
-                        </div>
-
-                        {canRevert ? (
-                          <button
-                            type="button"
-                            onClick={() => setRevertTargetTransfer(transfer)}
-                            className="mt-4 w-full rounded-lg border border-red-500/40 px-3 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
-                          >
-                            Revert transfer
-                          </button>
-                        ) : null}
-                      </div>
+                        <TransferRow
+                          key={transfer.id}
+                          fromAccount={{ name: transfer.fromAccountName }}
+                          toAccount={{ name: transfer.toAccountName }}
+                          amount={transfer.amount}
+                          date={transfer.transferDate}
+                          isReversal={reversal}
+                          onRevert={!reversal ? () => setRevertTargetTransfer(transfer) : undefined}
+                          note={transfer.note}
+                          createdAt={transfer.createdAt}
+                        />
                       );
                     })}
                   </div>

@@ -1,12 +1,13 @@
 ﻿"use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
 import ExpenseList from "@/components/expenses/ExpenseList";
+import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
 import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
 import { useExpenses } from "@/lib/hooks/useExpenses";
@@ -14,14 +15,18 @@ import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useDeleteExpense } from "@/lib/hooks/useExpenseMutations";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Category, Expense } from "@/types";
+import type { Category, Expense, CreateExpenseRequest } from "@/types";
 
 export default function ExpensesPage() {
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
+  const [initialExpenseValues, setInitialExpenseValues] = useState<
+    CreateExpenseRequest | undefined
+  >(undefined);
 
   const qc = useQueryClient();
 
@@ -35,6 +40,19 @@ export default function ExpensesPage() {
 
   const handleAddClick = () => {
     setEditingExpense(undefined);
+    setInitialExpenseValues(undefined);
+    setShowForm(true);
+  };
+
+  const handleDuplicate = (expense: Expense) => {
+    setEditingExpense(undefined);
+    setInitialExpenseValues({
+      amount: expense.amount,
+      categoryId: expense.category.id,
+      accountId: expense.accountId,
+      note: expense.note ?? undefined,
+      expenseDate: new Date().toISOString().slice(0, 10),
+    });
     setShowForm(true);
   };
 
@@ -53,17 +71,36 @@ export default function ExpensesPage() {
     await qc.invalidateQueries({ queryKey: queryKeys.accounts });
   }, [qc, selectedMonth]);
 
-  const filteredExpenses = useMemo(
-    () =>
-      selectedAccountId
-        ? expenses.filter((e) => e.accountId === selectedAccountId)
-        : expenses,
-    [expenses, selectedAccountId]
-  );
+  const displayedExpenses = useMemo(() => {
+    // Start with month-scoped data (already fetched for selectedMonth)
+    let data = expenses;
+
+    // Apply existing filters first
+    if (selectedCategoryId !== null) data = data.filter((e) => e.category.id === selectedCategoryId);
+    if (selectedAccountId) data = data.filter((e) => e.accountId === selectedAccountId);
+
+    // Then apply search
+    if (!searchQuery.trim()) return data;
+    const q = searchQuery.toLowerCase().trim();
+    return data.filter((item) => {
+      const noteMatch = item.note?.toLowerCase().includes(q);
+      const amountMatch = item.amount.toString().includes(q);
+      const categoryMatch = item.category.name?.toLowerCase().includes(q);
+      const accountMatch = item.accountName?.toLowerCase().includes(q);
+      return Boolean(noteMatch || amountMatch || categoryMatch || accountMatch);
+    });
+  }, [expenses, selectedCategoryId, selectedAccountId, searchQuery]);
+
+  const baseFilteredExpenses = useMemo(() => {
+    let data = expenses;
+    if (selectedCategoryId !== null) data = data.filter((e) => e.category.id === selectedCategoryId);
+    if (selectedAccountId) data = data.filter((e) => e.accountId === selectedAccountId);
+    return data;
+  }, [expenses, selectedCategoryId, selectedAccountId]);
 
   const totalAmount = useMemo(
-    () => filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
-    [filteredExpenses]
+    () => baseFilteredExpenses.reduce((sum, e) => sum + e.amount, 0),
+    [baseFilteredExpenses]
   );
 
   const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
@@ -119,13 +156,17 @@ export default function ExpensesPage() {
             <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
             {" "}spent in {monthLabel}
             <span className="text-gray-600">
-              {" "}· {filteredExpenses.length} {filteredExpenses.length === 1 ? "entry" : "entries"}
+              {" "}· {baseFilteredExpenses.length} {baseFilteredExpenses.length === 1 ? "entry" : "entries"}
             </span>
           </p>
         </div>
       )}
 
       <div className="space-y-5">
+        <div>
+          <TransactionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search expenses..." />
+        </div>
+
         <ExpenseFilters
           month={selectedMonth}
           categoryId={selectedCategoryId}
@@ -180,7 +221,19 @@ export default function ExpensesPage() {
         )}
 
         {error ? <p className="text-sm text-red-400">Unable to load expenses.</p> : null}
-        {loading ? (
+        {/* When a search is active and there are no matches, show contextual empty state */}
+        {searchQuery.trim().length > 0 && !loading && displayedExpenses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <Search className="w-8 h-8 mb-3 opacity-50" />
+            <p className="text-sm">No transactions match "{searchQuery}"</p>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="mt-2 text-xs text-emerald-400 hover:text-emerald-300"
+            >
+              Clear search
+            </button>
+          </div>
+        ) : loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} variant="text" className="h-14 rounded-xl" />
@@ -188,12 +241,14 @@ export default function ExpensesPage() {
           </div>
         ) : (
           <ExpenseList
-            expenses={filteredExpenses}
+            expenses={displayedExpenses}
             monthLabel={monthLabel}
             hasActiveFilters={hasActiveFilters}
             onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onClearFilters={clearFilters}
+            onAddClick={handleAddClick}
           />
         )}
       </div>
@@ -201,10 +256,14 @@ export default function ExpensesPage() {
       {showForm ? (
         <ExpenseForm
           expense={editingExpense}
+          initialValues={initialExpenseValues}
           categories={categories}
           accounts={accounts}
           onSuccess={handleFormSuccess}
-          onClose={() => setShowForm(false)}
+          onClose={() => {
+            setShowForm(false);
+            setInitialExpenseValues(undefined);
+          }}
         />
       ) : null}
     </div>

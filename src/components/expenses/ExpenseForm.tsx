@@ -12,6 +12,7 @@ type ExpenseFormProps = {
   expense?: Expense;
   categories: Category[];
   accounts: Account[];
+  initialValues?: Partial<CreateExpenseRequest>;
   onSuccess: () => void;
   onClose: () => void;
 };
@@ -30,14 +31,23 @@ export default function ExpenseForm({
   expense,
   categories,
   accounts,
+  initialValues,
   onSuccess,
   onClose,
 }: ExpenseFormProps) {
-  const [amount, setAmount] = useState<string>(expense?.amount.toString() ?? "");
-  const [categoryId, setCategoryId] = useState<string>(expense?.category.id.toString() ?? "");
-  const [accountId, setAccountId] = useState<string>(expense?.accountId ?? "");
-  const [expenseDate, setExpenseDate] = useState<string>(expense?.expenseDate ?? todayString());
-  const [note, setNote] = useState<string>(expense?.note ?? "");
+  const [amount, setAmount] = useState<string>(
+    expense?.amount.toString() ?? initialValues?.amount?.toString() ?? ""
+  );
+  const [categoryId, setCategoryId] = useState<string>(
+    expense?.category.id.toString() ?? initialValues?.categoryId?.toString() ?? ""
+  );
+  const [accountId, setAccountId] = useState<string>(
+    expense?.accountId ?? initialValues?.accountId ?? ""
+  );
+  const [expenseDate, setExpenseDate] = useState<string>(
+    expense?.expenseDate ?? initialValues?.expenseDate ?? todayString()
+  );
+  const [note, setNote] = useState<string>(expense?.note ?? initialValues?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);

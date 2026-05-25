@@ -11,6 +11,7 @@ type IncomeFormProps = {
   income?: Income;
   categories: IncomeCategory[];
   accounts: Account[];
+  initialValues?: Partial<CreateIncomePayload>;
   onSuccess: (message: string) => void;
   onClose: () => void;
 };
@@ -29,16 +30,21 @@ export default function IncomeForm({
   income,
   categories,
   accounts,
+  initialValues,
   onSuccess,
   onClose,
 }: IncomeFormProps) {
-  const [amount, setAmount] = useState<string>(income?.amount.toString() ?? "");
-  const [incomeCategoryId, setIncomeCategoryId] = useState<string>(
-    income?.incomeCategoryId.toString() ?? ""
+  const [amount, setAmount] = useState<string>(
+    income?.amount.toString() ?? initialValues?.amount?.toString() ?? ""
   );
-  const [accountId, setAccountId] = useState<string>(income?.accountId ?? "");
-  const [incomeDate, setIncomeDate] = useState<string>(income?.incomeDate ?? todayString());
-  const [note, setNote] = useState<string>(income?.note ?? "");
+  const [incomeCategoryId, setIncomeCategoryId] = useState<string>(
+    income?.incomeCategoryId.toString() ?? initialValues?.incomeCategoryId?.toString() ?? ""
+  );
+  const [accountId, setAccountId] = useState<string>(income?.accountId ?? initialValues?.accountId ?? "");
+  const [incomeDate, setIncomeDate] = useState<string>(
+    income?.incomeDate ?? initialValues?.incomeDate ?? todayString()
+  );
+  const [note, setNote] = useState<string>(income?.note ?? initialValues?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);

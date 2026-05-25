@@ -26,7 +26,7 @@
 | Local LLM | LM Studio (OpenAI-compatible local server) |
 | Cloud LLM | Groq API (llama3-70b-8192 — free tier) |
 | Database | PostgreSQL 17 |
-| Frontend | Next.js (App Router) |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind v4 |
 | Build | Maven |
 
 ---
@@ -49,7 +49,8 @@ These notes capture current frontend behavior so product docs and architecture s
 
   - Network and auth utilities:
     - A shared `fetchWithTimeout` helper is used for server-side and client-side calls to enforce predictable timeouts for backend requests.
-    - Auth proxy routes under `/api/auth/*` exist in the frontend and proxy requests to the backend. These proxy routes correctly forward `Set-Cookie` headers (including multiple cookies) to the browser and forward client IP headers so backend rate-limiting is accurate.
+    - Auth proxy routes under `/api/auth/*` exist in the frontend and proxy requests to the backend. The proxy forwards client IP headers (`X-Forwarded-For`, `X-Real-IP`) and correctly forwards all `Set-Cookie` headers (including multiple cookies) so browser cookies set by the backend are preserved.
+    - The frontend uses a hybrid auth strategy: the SPA API client uses a Bearer token stored in `localStorage` for API calls, while the Next.js middleware and some proxy routes rely on an HttpOnly `vault_token` cookie for page gating and server-side auth checks.
 
 ---
 
@@ -95,19 +96,14 @@ Controller Endpoint
 
 ### Cookie vs. Bearer Token
 
-Vault uses **HttpOnly cookies** instead of Bearer tokens:
+Vault uses a hybrid approach in the frontend:
 
-| Aspect | Cookie (HttpOnly) | Bearer Token |
-|--------|------------------|--------------|
-| Stored in | Browser cookie store | localStorage/sessionStorage |
-| Sent automatically | Yes (same-origin by default) | Must be manually added to requests |
-| Accessible to JavaScript | No (HttpOnly flag) | Yes (vulnerable to XSS) |
-| Cross-origin submission | Requires SameSite=None + Secure | Requires manual header setup |
+- **HttpOnly cookie (`vault_token`)**: used by Next.js middleware and server-side proxy routes to gate pages and for backend checks. The backend may set this cookie via `Set-Cookie` and the frontend proxy preserves and forwards those headers. The cookie is set with `httpOnly` and `secure` in production and currently uses `SameSite=Strict` when the proxy sets it.
+- **Bearer token (localStorage)**: the client-side API client stores a session token in `localStorage` and sends it as an `Authorization: Bearer <token>` header for API calls. This makes client API calls independent of cookie behavior (useful for SPA fetches and retry logic).
 
-**For cross-origin (Render + Vercel):**
-- Set `SameSite=None` and `Secure=true`
-- Set `allowCredentials=true` in CORS config
-- Browser automatically includes cookie in all cross-origin requests
+Notes:
+- The app keeps both in sync via a `TokenRefresher` client component: it calls the backend refresh endpoint (using the bearer token), receives a fresh token, stores it in `localStorage`, and posts it to `/api/auth/refresh-cookie` to set the HttpOnly cookie for middleware-protected navigation.
+- For cross-origin deployments, ensure CORS is configured with `allowCredentials=true` and `Secure` cookies in production.
 
 ### Frontend proxy & timeout details
 
@@ -115,11 +111,13 @@ Vault uses **HttpOnly cookies** instead of Bearer tokens:
   - Keep browser same-origin with frontend so HttpOnly cookies (set by backend) are processed by the browser when proxied through the frontend.
   - Allow the frontend to inject and forward client IP headers (`X-Forwarded-For`, `X-Real-IP`) so backend rate-limiting operates by client IP rather than the hosting platform IP.
 
-- Implementation details:
-  - Middleware probes `/api/auth/status` with a 2.5s timeout using `fetchWithTimeout`. If probing fails (timeout/network error), middleware redirects to `/starting` which polls status every 3s (30 attempts → ~90s) before showing a retry.
-  - Auth mutation proxies (login/setup/refresh/logout/reset) use `fetchWithTimeout` with an 8s timeout to tolerate slow cold starts while still surfacing network failures as 503.
-  - Proxies forward all `Set-Cookie` headers: they use `Response.headers.getSetCookie()` when available and append each `Set-Cookie` to the outgoing response; as a fallback they read `headers.get('set-cookie')` and set it on the response. This avoids losing or corrupting multiple cookie headers.
-  - On 429 responses, client forms (setup/login) read `Retry-After` to show a friendly "wait X minutes" message.
+  - Implementation details:
+    - The Next.js middleware probes the frontend proxy `GET /api/auth/status` with a ~2.5s timeout (used in `src/proxy.ts`). The proxy itself calls the backend `GET /api/v1/auth/status` with a 3s timeout (`src/app/api/auth/status/route.ts`) — non-OK or network errors are treated as "backend starting" and users are redirected to `/starting`.
+    - Auth mutation proxies (`/api/auth/login`, `/api/auth/setup`, `/api/auth/logout`, `/api/auth/refresh`, `/api/auth/reset-password`) forward requests to the backend with an 8s timeout to tolerate cold starts while surfacing real failures as 503.
+    - The frontend proxy preserves and forwards all `Set-Cookie` headers from the backend (including multiple cookies) by using `getSetCookie()` when available and falling back to `get('set-cookie')`.
+    - The SPA API client (`src/lib/api.ts`) uses a bearer token from `localStorage` and implements retry/backoff for idempotent requests: GET/HEAD requests will retry up to 4 attempts on 503, and axios-based calls retry transient 502/503/504 once with a short backoff.
+    - Client forms (setup/login) read `Retry-After` on 429 responses to present a friendly wait message.
+    - A client-side `TokenRefresher` component periodically exchanges the stored bearer token for a fresh session token and posts it to `/api/auth/refresh-cookie` so the proxy/middleware can set an HttpOnly `vault_token` cookie (the proxy sets this cookie with `SameSite=Strict` in the current implementation).
 
 
 ---
@@ -136,8 +134,10 @@ Vault uses **HttpOnly cookies** instead of Bearer tokens:
 │  │ 1. GET /auth/status (check if configured)                 │ │
 │  │ 2. Show setup form (first time) or login form             │ │
 │  │ 3. POST /setup or /login                                 │ │
-│  │ 4. Receive JWT in HttpOnly cookie (automatic)            │ │
-│  │ 5. Cookie auto-included in all subsequent requests       │ │
+  │  │ 4. Receive JWT in HttpOnly cookie (automatic)            │ │
+  │  │ 5. Cookie auto-included in all subsequent requests       │ │
+  │  │    (additionally, the SPA stores a bearer token in `localStorage` and uses it
+  │  │     for client-side API requests where appropriate)     │ │
 │  └────────────────────────────────────────────────────────────┘ │
 └───────────────────────────┬──────────────────────────────────────┘
                             │ HTTPS / REST / JSON
@@ -497,19 +497,19 @@ GET /api/v1/auth/status
 POST /api/v1/auth/setup
 ← { "password": "my-password" }
 → { "message": "Vault configured successfully" }
-Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=None
+Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=...
 
 POST /api/v1/auth/login
 ← { "password": "my-password" }
 → { "message": "Login successful" }
-Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=None
+Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=...
 
 GET /api/v1/auth/verify
 → { "valid": true }
 
 POST /api/v1/auth/refresh
 → { "message": "Token refreshed" }
-Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=None
+Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=...
 
 POST /api/v1/auth/logout
 → { "message": "Logged out" }
@@ -524,7 +524,7 @@ Set-Cookie: vault_token=; Max-Age=0
   - `Authorization: Bearer <API_ADMIN_TOKEN>` — a long-lived admin token set as an environment variable on the frontend and backend. The frontend proxy will attach this header to reset requests when `API_ADMIN_TOKEN` is set.
   - `x-reset-token: <PASSWORD_RESET_TOKEN>` — a short, pre-shared reset token configured in `.env` and validated server-side. The backend should compare this value using a timing-safe comparison and invalidate or rotate the token after use where appropriate.
 
-  On success, the endpoint should issue the same `Set-Cookie: vault_token=...; HttpOnly; Secure; SameSite=None` used by login/setup so the frontend becomes authenticated automatically. Rate-limit the endpoint to avoid brute-force attempts.
+  On success, the endpoint should issue the same `Set-Cookie: vault_token=...; HttpOnly; Secure; SameSite=...` used by login/setup so the frontend becomes authenticated automatically. Note: the frontend proxy includes a small helper endpoint (`/api/auth/refresh-cookie`) that sets the cookie using `SameSite=Strict` in the local proxy; when deploying cross-origin (Render + Vercel) ensure your backend sets `SameSite=None` and `Secure=true` and configure CORS with `allowCredentials=true`.
 
 - Retrying behavior: frontend proxies for `POST /auth/login` and `POST /auth/setup` implement a small retry/backoff loop (3 attempts with short waits) to reduce 502/503/504 surface area during backend cold starts. Client fetch helpers also use retries for idempotent GET/HEAD calls, and the client Axios instance retries some transient server errors once with a short delay.
 

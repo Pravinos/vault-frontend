@@ -20,7 +20,7 @@ async function isConfigured(req: NextRequest): Promise<boolean | null> {
   }
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("vault_token")?.value;
   const configured = await isConfigured(req);
@@ -50,5 +50,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
+  // Exclude Next internal routes, API, favicon and any file with an extension
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|.*\\..*).*)"],
 };

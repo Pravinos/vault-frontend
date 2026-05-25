@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import IncomeFilters from "@/components/income/IncomeFilters";
 import IncomeForm from "@/components/income/IncomeForm";
 import IncomeList from "@/components/income/IncomeList";
+import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
@@ -15,14 +16,18 @@ import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useIncomeCategories } from "@/lib/hooks/useIncomeCategories";
 import { useDeleteIncome } from "@/lib/hooks/useIncomeMutations";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Income, IncomeCategory } from "@/types";
+import type { Income, IncomeCategory, CreateIncomePayload } from "@/types";
 
 export default function IncomePage() {
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingIncome, setEditingIncome] = useState<Income | undefined>(undefined);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [initialIncomeValues, setInitialIncomeValues] = useState<
+    CreateIncomePayload | undefined
+  >(undefined);
 
   const qc = useQueryClient();
 
@@ -36,6 +41,19 @@ export default function IncomePage() {
 
   const handleAddClick = () => {
     setEditingIncome(undefined);
+    setInitialIncomeValues(undefined);
+    setShowForm(true);
+  };
+
+  const handleDuplicate = (entry: Income) => {
+    setEditingIncome(undefined);
+    setInitialIncomeValues({
+      amount: entry.amount,
+      incomeCategoryId: entry.incomeCategoryId,
+      accountId: entry.accountId,
+      note: entry.note ?? undefined,
+      incomeDate: new Date().toISOString().slice(0, 10),
+    });
     setShowForm(true);
   };
 
@@ -80,6 +98,20 @@ export default function IncomePage() {
     [income]
   );
 
+  const displayedIncome = useMemo(() => {
+    let data = income;
+    if (selectedAccountId) data = data.filter((i) => i.accountId === selectedAccountId);
+    if (!searchQuery.trim()) return data;
+    const q = searchQuery.toLowerCase().trim();
+    return data.filter((item) => {
+      const noteMatch = item.note?.toLowerCase().includes(q);
+      const amountMatch = item.amount.toString().includes(q);
+      const categoryMatch = item.categoryName?.toLowerCase().includes(q);
+      const accountMatch = item.accountName?.toLowerCase().includes(q);
+      return Boolean(noteMatch || amountMatch || categoryMatch || accountMatch);
+    });
+  }, [income, selectedAccountId, searchQuery]);
+
   const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
 
   const summaryTotal = useMemo(
@@ -113,6 +145,10 @@ export default function IncomePage() {
       )}
 
       <div className="space-y-5">
+        <div>
+          <TransactionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search income..." />
+        </div>
+
         <IncomeFilters
           month={selectedMonth}
           accountId={selectedAccountId}
@@ -151,7 +187,18 @@ export default function IncomePage() {
         </div>
 
         {error ? <p className="text-sm text-red-400">Unable to load income.</p> : null}
-        {loading ? (
+        {searchQuery.trim().length > 0 && !loading && displayedIncome.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <Search className="w-8 h-8 mb-3 opacity-50" />
+            <p className="text-sm">No transactions match "{searchQuery}"</p>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="mt-2 text-xs text-emerald-400 hover:text-emerald-300"
+            >
+              Clear search
+            </button>
+          </div>
+        ) : loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} variant="text" className="h-14 rounded-xl" />
@@ -159,9 +206,10 @@ export default function IncomePage() {
           </div>
         ) : (
           <IncomeList
-            income={income}
+            income={displayedIncome}
             month={selectedMonth}
             onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onAddClick={handleAddClick}
           />
@@ -171,10 +219,14 @@ export default function IncomePage() {
       {showForm ? (
         <IncomeForm
           income={editingIncome}
+          initialValues={initialIncomeValues}
           categories={categories}
           accounts={accounts}
           onSuccess={handleFormSuccess}
-          onClose={() => setShowForm(false)}
+          onClose={() => {
+            setShowForm(false);
+            setInitialIncomeValues(undefined);
+          }}
         />
       ) : null}
 

@@ -8,7 +8,20 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatDate(dateStr: string): string {
-  const date = new Date(`${dateStr}T00:00:00`);
+  if (!dateStr) return "-";
+
+  // Support both date-only strings (YYYY-MM-DD) and full ISO timestamps
+  let date = new Date(dateStr);
+
+  if (Number.isNaN(date.getTime())) {
+    // Try appending midnight for bare dates
+    date = new Date(`${dateStr}T00:00:00`);
+  }
+
+  if (Number.isNaN(date.getTime())) {
+    return dateStr;
+  }
+
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "2-digit",

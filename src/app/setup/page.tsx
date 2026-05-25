@@ -123,9 +123,7 @@ export default function SetupPage() {
       <div className="relative z-10 mx-4 w-full max-w-lg space-y-4">
         <div className="rounded-3xl border border-white/10 bg-[#111c2a]/80 p-8 shadow-2xl shadow-black/60 backdrop-blur-xl sm:p-10">
           <div className="mb-8 flex flex-col items-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/15">
-              <span className="text-3xl">🏦</span>
-            </div>
+            <img src="/vault-logo.svg" alt="Vault" className="mb-6 h-auto w-34" />
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Welcome to Vault</h1>
             <p className="mt-2 max-w-xs text-sm text-gray-400">
               Your personal finance assistant is ready. Let&apos;s secure it first.

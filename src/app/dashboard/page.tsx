@@ -13,7 +13,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceLine,
 } from "recharts";
+import { Info } from "lucide-react";
 
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import AccountCard from "@/components/accounts/AccountCard";
@@ -152,7 +154,7 @@ function NetWorthCard({
 function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
   return (
     <div className="relative">
-      <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
+      <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-0">
         {accounts.slice(0, 8).map((account) => (
           <Link
             key={account.id}
@@ -222,7 +224,25 @@ function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; an
 
   return (
     <div className={`rounded-2xl p-4 ${tintClass}`}>
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Net Cash Flow</p>
+      <div className="mb-2 flex items-center gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Net Cash Flow</p>
+
+        <div className="relative inline-flex group">
+          <button
+            type="button"
+            aria-label="Net Cash Flow info"
+            className="flex items-center"
+            title={subtitle}
+          >
+            <Info className="h-3 w-3 text-gray-400 group-hover:text-gray-300" />
+          </button>
+
+          <div className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#0b1720] px-2 py-1 text-xs text-gray-300 opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-opacity">
+            {subtitle}
+          </div>
+        </div>
+      </div>
+
       <p
         className={`text-xl font-bold ${
           displayValue > 0 ? "text-emerald-400" : displayValue < 0 ? "text-red-400" : "text-white"
@@ -230,7 +250,6 @@ function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; an
       >
         {formatCurrency(displayValue)}
       </p>
-      <p className="mt-1 text-xs text-gray-500">{subtitle}</p>
     </div>
   );
 }
@@ -238,45 +257,62 @@ function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; an
 function MonthlyTrendCard({ data }: { data: CashFlowBarDatum[] }) {
   const maxAbs = Math.max(1, ...data.map((item) => Math.abs(item.net)));
 
+  function formatYAxisTick(value: number) {
+    const abs = Math.abs(Number(value) || 0);
+    if (value === 0) return "0";
+    if (abs < 1000) return `${Math.round(Number(value))}`;
+    return `${(Number(value) / 1000).toFixed(1)}k`;
+  }
+
   return (
     <div className="rounded-2xl bg-[#1a2332] p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-white">Monthly Trend</h2>
         <span className="text-xs text-gray-500">Last 6 months</span>
       </div>
-      <div className="h-52">
+      <div className="h-52 min-h-[208px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.5} />
+            <CartesianGrid strokeDasharray="4 4" stroke="#334155" vertical={false} opacity={0.4} />
             <XAxis
               dataKey="month"
-              tick={{ fill: "#94a3b8", fontSize: 11 }}
-              axisLine={{ stroke: "#334155" }}
+              tick={{ fill: "#94a3b8", fontSize: 12 }}
+              axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              tick={{ fill: "#94a3b8", fontSize: 12 }}
               axisLine={false}
               tickLine={false}
-              width={38}
-              domain={[-maxAbs, maxAbs]}
-              tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+              width={60}
+              domain={["dataMin", "dataMax"]}
+              tickFormatter={formatYAxisTick}
               className="hidden sm:block"
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: "#141c2a",
-                border: "1px solid #334155",
-                borderRadius: "8px",
-                color: "#e2e8f0",
+              cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const value = Number(payload[0].value ?? 0);
+                return (
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 shadow-2xl">
+                    <p className="text-sm font-semibold text-slate-100 mb-1">{label}</p>
+                    <p className="text-xs text-slate-300">
+                      Net flow:{' '}
+                      <span className={value >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                      </span>
+                    </p>
+                  </div>
+                );
               }}
-              formatter={(value: unknown) => [formatCurrency(Number(value ?? 0)), "Net flow"]}
             />
-            <Bar dataKey="net" radius={[6, 6, 0, 0]}>
+            <Bar dataKey="net" radius={[6, 6, 0, 0]} minPointSize={3}>
               {data.map((entry) => (
-                <Cell key={entry.month} fill={entry.net >= 0 ? "#10b981" : "#f43f5e"} />
+                <Cell key={entry.month} fill={entry.net >= 0 ? "#10b981" : "#ef4444"} />
               ))}
             </Bar>
+            <ReferenceLine y={0} stroke="#475569" strokeWidth={1} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -473,7 +509,7 @@ export default function DashboardPage() {
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
 
-      <div className="space-y-6">
+      <div>
         <NetWorthCard
           calculated={dashboardData.calculatedNetWorth}
           manual={dashboardData.manualNetWorth}
@@ -482,43 +518,49 @@ export default function DashboardPage() {
           manualAnimated={dashboardData.manualNetWorth !== null ? manualAnimated : undefined}
         />
 
-        <AccountsStrip accounts={dashboardData.accounts.map((a) => ({
-          ...a,
-          contributedAmount: a.currentValue !== null && a.returnAmount !== null
-            ? a.currentValue - a.returnAmount
-            : null,
-        }))} />
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard
-            label="Income This Month"
-            value={incomeAnimated}
-            momPercent={dashboardData.incomeMoMPercent}
-            momPositiveIsGood
-            monthLabel={dashboardData.currentMonthLabel}
-          />
-          <StatCard
-            label="Expenses This Month"
-            value={expensesAnimated}
-            momPercent={dashboardData.expensesMoMPercent}
-            momPositiveIsGood={false}
-            monthLabel={dashboardData.currentMonthLabel}
-          />
-          <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
+        <div className="mt-6">
+          <AccountsStrip accounts={dashboardData.accounts.map((a) => ({
+            ...a,
+            contributedAmount: a.currentValue !== null && a.returnAmount !== null
+              ? a.currentValue - a.returnAmount
+              : null,
+          }))} />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          <CategoryFocusCard
-            className="xl:col-span-3"
-            category={dashboardData.topExpenseCategory}
-            amount={dashboardData.topExpenseCategoryAmount}
-            total={dashboardData.expensesThisMonth}
-            monthLabel={dashboardData.currentMonthLabel}
-            donutData={categoryDonutData}
-          />
-          <div className="space-y-4 xl:col-span-2">
-            <MonthlyTrendCard data={monthlyTrendData} />
-            <WeeklySummaryCard summary={summary} onGenerated={() => {}} />
+        <div className="mt-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label="Income This Month"
+              value={incomeAnimated}
+              momPercent={dashboardData.incomeMoMPercent}
+              momPositiveIsGood
+              monthLabel={dashboardData.currentMonthLabel}
+            />
+            <StatCard
+              label="Expenses This Month"
+              value={expensesAnimated}
+              momPercent={dashboardData.expensesMoMPercent}
+              momPositiveIsGood={false}
+              monthLabel={dashboardData.currentMonthLabel}
+            />
+            <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+            <CategoryFocusCard
+              className="xl:col-span-3"
+              category={dashboardData.topExpenseCategory}
+              amount={dashboardData.topExpenseCategoryAmount}
+              total={dashboardData.expensesThisMonth}
+              monthLabel={dashboardData.currentMonthLabel}
+              donutData={categoryDonutData}
+            />
+            <div className="space-y-4 xl:col-span-2">
+              <MonthlyTrendCard data={monthlyTrendData} />
+              <WeeklySummaryCard summary={summary} onGenerated={() => {}} />
+            </div>
           </div>
         </div>
       </div>

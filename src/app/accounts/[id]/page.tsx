@@ -26,6 +26,7 @@ import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
 import { useCheckpoints } from "@/lib/hooks/useCheckpoints";
 import { useAddCheckpoint } from "@/lib/hooks/useCheckpointMutations";
 import { queryKeys } from "@/lib/queryKeys";
+import TransferRow from "@/components/transfers/TransferRow";
 
 function formatReturnPercentage(value: number | null): string {
   if (value === null || value === 0) {
@@ -191,13 +192,16 @@ export default function InvestmentAccountDetailPage() {
               ) : (
                 <div className="mt-4 space-y-2">
                   {transfers.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-950/70 p-3 text-sm text-gray-200">
-                      <div>
-                        <p className="font-medium text-white">{formatCurrency(t.amount)}</p>
-                        <p className="text-xs text-gray-400">{formatTransferDate(t.createdAt)}</p>
-                      </div>
-                      <p className="text-xs text-gray-400">{t.note ?? "Transfer"}</p>
-                    </div>
+                    <TransferRow
+                      key={t.id}
+                      fromAccount={{ name: t.fromAccountName }}
+                      toAccount={{ name: t.toAccountName }}
+                      amount={t.amount}
+                      date={t.transferDate ?? t.createdAt}
+                      isReversal={false}
+                      note={t.note}
+                      createdAt={t.createdAt}
+                    />
                   ))}
                 </div>
               )}
