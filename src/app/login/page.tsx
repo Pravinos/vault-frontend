@@ -87,9 +87,7 @@ function LoginForm() {
 
         <div className="rounded-3xl border border-white/10 bg-[#111c2a]/80 p-8 shadow-2xl shadow-black/60 backdrop-blur-xl sm:p-10">
           <div className="mb-8 flex flex-col items-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/15">
-              <span className="text-2xl">🏦</span>
-            </div>
+            <img src="/vault-logo.svg" alt="Vault" className="mb-6 h-auto w-34" />
             <h1 className="text-2xl font-bold tracking-tight text-white">
               {reason === "expired" ? "Session Expired" : "Welcome back"}
             </h1>

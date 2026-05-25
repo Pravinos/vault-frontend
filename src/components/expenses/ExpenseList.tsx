@@ -10,6 +10,7 @@ import type { Expense } from "@/types";
 type ExpenseListProps = {
   expenses: Expense[];
   month?: string;
+  monthLabel?: string;
   hasActiveFilters?: boolean;
   onEdit: (expense: Expense) => void;
   onDuplicate?: (expense: Expense) => void;
@@ -21,6 +22,7 @@ type ExpenseListProps = {
 export default function ExpenseList({
   expenses,
   month,
+  monthLabel,
   hasActiveFilters,
   onEdit,
   onDuplicate,
@@ -41,12 +43,13 @@ export default function ExpenseList({
     return () => window.removeEventListener("keydown", handler);
   }, [activeConfirmId]);
 
-  const monthLabel = month
+  const computedMonthLabel = month
     ? new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", {
         month: "long",
         year: "numeric",
       })
     : "this period";
+  const effectiveMonthLabel = monthLabel ?? computedMonthLabel;
 
   const handleDelete = async (id: string) => {
     try {
@@ -95,7 +98,7 @@ export default function ExpenseList({
     return (
       <EmptyState
         icon={<PlusCircle className="w-12 h-12" />}
-        title={`No expenses in ${monthLabel}`}
+        title={`No expenses in ${effectiveMonthLabel}`}
         description={`Try a different month or add your first expense`}
         actionLabel={<><PlusCircle className="h-4 w-4" /> Add expense</>}
         onAction={() => onAddClick?.()}
