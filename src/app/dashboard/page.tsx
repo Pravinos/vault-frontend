@@ -152,7 +152,7 @@ function NetWorthCard({
 function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
   return (
     <div className="relative">
-      <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
+      <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-0">
         {accounts.slice(0, 8).map((account) => (
           <Link
             key={account.id}
@@ -473,7 +473,7 @@ export default function DashboardPage() {
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
 
-      <div className="space-y-6">
+      <div>
         <NetWorthCard
           calculated={dashboardData.calculatedNetWorth}
           manual={dashboardData.manualNetWorth}
@@ -482,43 +482,49 @@ export default function DashboardPage() {
           manualAnimated={dashboardData.manualNetWorth !== null ? manualAnimated : undefined}
         />
 
-        <AccountsStrip accounts={dashboardData.accounts.map((a) => ({
-          ...a,
-          contributedAmount: a.currentValue !== null && a.returnAmount !== null
-            ? a.currentValue - a.returnAmount
-            : null,
-        }))} />
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard
-            label="Income This Month"
-            value={incomeAnimated}
-            momPercent={dashboardData.incomeMoMPercent}
-            momPositiveIsGood
-            monthLabel={dashboardData.currentMonthLabel}
-          />
-          <StatCard
-            label="Expenses This Month"
-            value={expensesAnimated}
-            momPercent={dashboardData.expensesMoMPercent}
-            momPositiveIsGood={false}
-            monthLabel={dashboardData.currentMonthLabel}
-          />
-          <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
+        <div className="mt-6">
+          <AccountsStrip accounts={dashboardData.accounts.map((a) => ({
+            ...a,
+            contributedAmount: a.currentValue !== null && a.returnAmount !== null
+              ? a.currentValue - a.returnAmount
+              : null,
+          }))} />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          <CategoryFocusCard
-            className="xl:col-span-3"
-            category={dashboardData.topExpenseCategory}
-            amount={dashboardData.topExpenseCategoryAmount}
-            total={dashboardData.expensesThisMonth}
-            monthLabel={dashboardData.currentMonthLabel}
-            donutData={categoryDonutData}
-          />
-          <div className="space-y-4 xl:col-span-2">
-            <MonthlyTrendCard data={monthlyTrendData} />
-            <WeeklySummaryCard summary={summary} onGenerated={() => {}} />
+        <div className="mt-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label="Income This Month"
+              value={incomeAnimated}
+              momPercent={dashboardData.incomeMoMPercent}
+              momPositiveIsGood
+              monthLabel={dashboardData.currentMonthLabel}
+            />
+            <StatCard
+              label="Expenses This Month"
+              value={expensesAnimated}
+              momPercent={dashboardData.expensesMoMPercent}
+              momPositiveIsGood={false}
+              monthLabel={dashboardData.currentMonthLabel}
+            />
+            <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+            <CategoryFocusCard
+              className="xl:col-span-3"
+              category={dashboardData.topExpenseCategory}
+              amount={dashboardData.topExpenseCategoryAmount}
+              total={dashboardData.expensesThisMonth}
+              monthLabel={dashboardData.currentMonthLabel}
+              donutData={categoryDonutData}
+            />
+            <div className="space-y-4 xl:col-span-2">
+              <MonthlyTrendCard data={monthlyTrendData} />
+              <WeeklySummaryCard summary={summary} onGenerated={() => {}} />
+            </div>
           </div>
         </div>
       </div>

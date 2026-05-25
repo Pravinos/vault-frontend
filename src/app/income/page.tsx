@@ -15,7 +15,7 @@ import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useIncomeCategories } from "@/lib/hooks/useIncomeCategories";
 import { useDeleteIncome } from "@/lib/hooks/useIncomeMutations";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Income, IncomeCategory } from "@/types";
+import type { Income, IncomeCategory, CreateIncomePayload } from "@/types";
 
 export default function IncomePage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
@@ -23,6 +23,9 @@ export default function IncomePage() {
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingIncome, setEditingIncome] = useState<Income | undefined>(undefined);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [initialIncomeValues, setInitialIncomeValues] = useState<
+    CreateIncomePayload | undefined
+  >(undefined);
 
   const qc = useQueryClient();
 
@@ -36,6 +39,19 @@ export default function IncomePage() {
 
   const handleAddClick = () => {
     setEditingIncome(undefined);
+    setInitialIncomeValues(undefined);
+    setShowForm(true);
+  };
+
+  const handleDuplicate = (entry: Income) => {
+    setEditingIncome(undefined);
+    setInitialIncomeValues({
+      amount: entry.amount,
+      incomeCategoryId: entry.incomeCategoryId,
+      accountId: entry.accountId,
+      note: entry.note ?? undefined,
+      incomeDate: new Date().toISOString().slice(0, 10),
+    });
     setShowForm(true);
   };
 
@@ -162,6 +178,7 @@ export default function IncomePage() {
             income={income}
             month={selectedMonth}
             onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onAddClick={handleAddClick}
           />
@@ -171,10 +188,14 @@ export default function IncomePage() {
       {showForm ? (
         <IncomeForm
           income={editingIncome}
+          initialValues={initialIncomeValues}
           categories={categories}
           accounts={accounts}
           onSuccess={handleFormSuccess}
-          onClose={() => setShowForm(false)}
+          onClose={() => {
+            setShowForm(false);
+            setInitialIncomeValues(undefined);
+          }}
         />
       ) : null}
 

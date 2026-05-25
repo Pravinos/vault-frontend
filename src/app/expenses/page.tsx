@@ -14,7 +14,7 @@ import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useDeleteExpense } from "@/lib/hooks/useExpenseMutations";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Category, Expense } from "@/types";
+import type { Category, Expense, CreateExpenseRequest } from "@/types";
 
 export default function ExpensesPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
@@ -22,6 +22,9 @@ export default function ExpensesPage() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
+  const [initialExpenseValues, setInitialExpenseValues] = useState<
+    CreateExpenseRequest | undefined
+  >(undefined);
 
   const qc = useQueryClient();
 
@@ -35,6 +38,19 @@ export default function ExpensesPage() {
 
   const handleAddClick = () => {
     setEditingExpense(undefined);
+    setInitialExpenseValues(undefined);
+    setShowForm(true);
+  };
+
+  const handleDuplicate = (expense: Expense) => {
+    setEditingExpense(undefined);
+    setInitialExpenseValues({
+      amount: expense.amount,
+      categoryId: expense.category.id,
+      accountId: expense.accountId,
+      note: expense.note ?? undefined,
+      expenseDate: new Date().toISOString().slice(0, 10),
+    });
     setShowForm(true);
   };
 
@@ -192,6 +208,7 @@ export default function ExpensesPage() {
             monthLabel={monthLabel}
             hasActiveFilters={hasActiveFilters}
             onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onClearFilters={clearFilters}
           />
@@ -201,10 +218,14 @@ export default function ExpensesPage() {
       {showForm ? (
         <ExpenseForm
           expense={editingExpense}
+          initialValues={initialExpenseValues}
           categories={categories}
           accounts={accounts}
           onSuccess={handleFormSuccess}
-          onClose={() => setShowForm(false)}
+          onClose={() => {
+            setShowForm(false);
+            setInitialExpenseValues(undefined);
+          }}
         />
       ) : null}
     </div>

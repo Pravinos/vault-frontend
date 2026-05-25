@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Copy } from "lucide-react";
 
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -11,6 +11,7 @@ type ExpenseListProps = {
   monthLabel: string;
   hasActiveFilters: boolean;
   onEdit: (expense: Expense) => void;
+  onDuplicate?: (expense: Expense) => void;
   onDelete: (id: string) => void;
   onClearFilters: () => void;
 };
@@ -20,6 +21,7 @@ export default function ExpenseList({
   monthLabel,
   hasActiveFilters,
   onEdit,
+  onDuplicate,
   onDelete,
   onClearFilters,
 }: ExpenseListProps) {
@@ -84,6 +86,14 @@ export default function ExpenseList({
                   </button>
                   <button
                     type="button"
+                    onClick={() => onDuplicate?.(expense)}
+                    className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+                    aria-label="Duplicate expense"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() =>
                       confirmDelete(expense.id, () => onDelete(expense.id))
                     }
@@ -141,6 +151,14 @@ export default function ExpenseList({
                   aria-label="Edit expense"
                 >
                   <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDuplicate?.(expense)}
+                  className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label="Duplicate expense"
+                >
+                  <Copy className="h-4 w-4" />
                 </button>
                 <button
                   type="button"

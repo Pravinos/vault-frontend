@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, PlusCircle, Trash2, Wallet } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, Wallet, Copy } from "lucide-react";
 
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -10,11 +10,12 @@ type IncomeListProps = {
   income: Income[];
   month: string;
   onEdit: (entry: Income) => void;
+  onDuplicate?: (entry: Income) => void;
   onDelete: (id: string) => void;
   onAddClick: () => void;
 };
 
-export default function IncomeList({ income, month, onEdit, onDelete, onAddClick }: IncomeListProps) {
+export default function IncomeList({ income, month, onEdit, onDuplicate, onDelete, onAddClick }: IncomeListProps) {
   const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
 
   const monthLabel = month
@@ -88,6 +89,14 @@ export default function IncomeList({ income, month, onEdit, onDelete, onAddClick
                   </button>
                   <button
                     type="button"
+                    onClick={() => onDuplicate?.(entry)}
+                    className="rounded-md p-1.5 text-gray-400 hover:text-white transition-colors"
+                    aria-label="Duplicate income"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => confirmDelete(entry.id, () => onDelete(entry.id))}
                     className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${
                       isConfirming
@@ -145,6 +154,14 @@ export default function IncomeList({ income, month, onEdit, onDelete, onAddClick
                   aria-label="Edit income"
                 >
                   <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDuplicate?.(entry)}
+                  className="rounded-md p-1 text-gray-400 transition-colors hover:text-white"
+                  aria-label="Duplicate income"
+                >
+                  <Copy className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
