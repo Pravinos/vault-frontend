@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Pencil, PlusCircle, Trash2, Wallet, Copy } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
 
-import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Income } from "@/types";
 
@@ -16,7 +17,17 @@ type IncomeListProps = {
 };
 
 export default function IncomeList({ income, month, onEdit, onDuplicate, onDelete, onAddClick }: IncomeListProps) {
-  const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
+  const [activeConfirmId, setActiveConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!activeConfirmId) return undefined;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActiveConfirmId(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeConfirmId]);
 
   const monthLabel = month
     ? new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", {
@@ -27,23 +38,13 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
 
   if (income.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 py-16 text-center">
-        <Wallet className="mb-3 h-10 w-10 text-gray-600" />
-        <p className="text-sm font-medium text-gray-300">
-          No income in {monthLabel}
-        </p>
-        <p className="mt-1 text-xs text-gray-500">
-          Try a different month or add your first income entry
-        </p>
-        <button
-          type="button"
-          onClick={onAddClick}
-          className="mt-5 flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
-        >
-          <PlusCircle className="h-4 w-4" />
-          Add Income
-        </button>
-      </div>
+      <EmptyState
+        icon={<Wallet className="w-12 h-12" />}
+        title={`No income in ${monthLabel}`}
+        description={`Try a different month or add your first income entry`}
+        actionLabel={<><PlusCircle className="h-4 w-4" /> Add income</>}
+        onAction={onAddClick}
+      />
     );
   }
 
@@ -53,27 +54,19 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
       <div className="block sm:hidden">
         {income.map((entry, index) => {
           const noteLabel = entry.note?.trim() || entry.categoryName;
-          const isConfirming = isPendingConfirm(entry.id);
+          const isConfirming = activeConfirmId === entry.id;
 
           return (
             <div
               key={entry.id}
-              className={`border-b border-gray-800 p-4 last:border-b-0 ${
-                index % 2 === 0 ? "bg-gray-900/40" : "bg-gray-900/70"
-              }`}
+              className={`border-b border-gray-800 p-4 last:border-b-0 ${index % 2 === 0 ? "bg-gray-900/40" : "bg-gray-900/70"}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xl font-semibold tabular-nums text-white">
-                    {formatCurrency(entry.amount)}
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-gray-200 truncate">
-                    {noteLabel}
-                  </p>
+                  <p className="text-xl font-semibold tabular-nums text-white">{formatCurrency(entry.amount)}</p>
+                  <p className="mt-1 text-sm font-medium text-gray-200 truncate">{noteLabel}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs">
-                      {entry.categoryIcon}
-                    </span>
+                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs">{entry.categoryIcon}</span>
                     <span className="text-xs text-gray-400">{entry.categoryName}</span>
                     <span className="text-xs text-gray-500">{formatDate(entry.incomeDate)}</span>
                   </div>
@@ -95,18 +88,50 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
                   >
                     <Copy className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => confirmDelete(entry.id, () => onDelete(entry.id))}
-                    className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${
-                      isConfirming
-                        ? "bg-red-500/20 text-red-300"
-                        : "text-gray-400 hover:text-red-300"
-                    }`}
-                    aria-label="Delete income"
-                  >
-                    {isConfirming ? "Confirm?" : <Trash2 className="h-4 w-4" />}
-                  </button>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setActiveConfirmId((cur) => (cur === entry.id ? null : entry.id))}
+                      className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${isConfirming ? "bg-red-500/20 text-red-300" : "text-gray-400 hover:text-red-300"}`}
+                      aria-label="Delete income"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Inline confirmation area */}
+              <div className={`grid transition-all duration-200 ease-in-out ${isConfirming ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 pb-3 pl-[calc(1rem+48px)]">
+                    <span className="text-sm text-red-400">Are you sure?</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          setDeletingId(entry.id);
+                          await Promise.resolve(onDelete(entry.id));
+                        } finally {
+                          setDeletingId(null);
+                          setActiveConfirmId(null);
+                        }
+                      }}
+                      disabled={deletingId === entry.id}
+                      className="px-3 py-1 text-xs font-medium text-red-400 border border-red-400/30 rounded-md hover:bg-red-400/10 disabled:opacity-60"
+                    >
+                      {deletingId === entry.id ? "Deleting..." : "Delete"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveConfirmId(null)}
+                      disabled={deletingId === entry.id}
+                      className="px-3 py-1 text-xs font-medium text-slate-400 border border-slate-700 rounded-md hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -118,63 +143,84 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
       <div className="hidden sm:block">
         {income.map((entry, index) => {
           const noteLabel = entry.note?.trim() || entry.categoryName;
-          const isConfirming = isPendingConfirm(entry.id);
+          const isConfirming = activeConfirmId === entry.id;
 
           return (
-            <div
-              key={entry.id}
-              className={`flex items-center gap-4 border-b border-gray-800/60 px-4 py-3 last:border-b-0 transition-colors hover:bg-gray-800/40 ${
-                index % 2 === 0 ? "bg-gray-900/30" : "bg-gray-900/60"
-              }`}
-            >
-              <span className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-700 text-sm">
-                {entry.categoryIcon}
-              </span>
+            <div key={entry.id} className={`border-b border-gray-800/60 last:border-b-0 transition-colors hover:bg-gray-800/40 ${index % 2 === 0 ? "bg-gray-900/30" : "bg-gray-900/60"}`}>
+              <div className={`flex items-center gap-4 px-4 py-3`}>
+                <span className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-700 text-sm">{entry.categoryIcon}</span>
 
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{noteLabel}</p>
-                <p className="text-xs text-gray-500">
-                  {entry.categoryName} · {entry.accountName}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{noteLabel}</p>
+                  <p className="text-xs text-gray-500">{entry.categoryName} · {entry.accountName}</p>
+                </div>
+
+                <span className="hidden w-32 flex-shrink-0 text-sm text-gray-400 lg:block">{formatDate(entry.incomeDate)}</span>
+
+                <span className="w-28 flex-shrink-0 text-right text-sm font-semibold tabular-nums text-emerald-400">{formatCurrency(entry.amount)}</span>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(entry)}
+                    className="rounded-md p-1 text-gray-400 transition-colors hover:text-white"
+                    aria-label="Edit income"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDuplicate?.(entry)}
+                    className="rounded-md p-1 text-gray-400 transition-colors hover:text-white"
+                    aria-label="Duplicate income"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setActiveConfirmId((cur) => (cur === entry.id ? null : entry.id))}
+                      className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${isConfirming ? "bg-red-500/20 text-red-300" : "text-gray-400 hover:text-red-300"}`}
+                      aria-label="Delete income"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <span className="hidden w-32 flex-shrink-0 text-sm text-gray-400 lg:block">
-                {formatDate(entry.incomeDate)}
-              </span>
-
-              <span className="w-28 flex-shrink-0 text-right text-sm font-semibold tabular-nums text-emerald-400">
-                {formatCurrency(entry.amount)}
-              </span>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => onEdit(entry)}
-                  className="rounded-md p-1 text-gray-400 transition-colors hover:text-white"
-                  aria-label="Edit income"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDuplicate?.(entry)}
-                  className="rounded-md p-1 text-gray-400 transition-colors hover:text-white"
-                  aria-label="Duplicate income"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => confirmDelete(entry.id, () => onDelete(entry.id))}
-                  className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${
-                    isConfirming
-                      ? "bg-red-500/20 text-red-300"
-                      : "text-gray-400 hover:text-red-300"
-                  }`}
-                  aria-label="Delete income"
-                >
-                  {isConfirming ? "Confirm?" : <Trash2 className="h-4 w-4" />}
-                </button>
+              {/* Inline confirmation area */}
+              <div className={`grid transition-all duration-200 ease-in-out ${isConfirming ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 pb-3 pl-[calc(1rem+48px)]">
+                    <span className="text-sm text-red-400">Are you sure?</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          setDeletingId(entry.id);
+                          await Promise.resolve(onDelete(entry.id));
+                        } finally {
+                          setDeletingId(null);
+                          setActiveConfirmId(null);
+                        }
+                      }}
+                      disabled={deletingId === entry.id}
+                      className="px-3 py-1 text-xs font-medium text-red-400 border border-red-400/30 rounded-md hover:bg-red-400/10 disabled:opacity-60"
+                    >
+                      {deletingId === entry.id ? "Deleting..." : "Delete"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveConfirmId(null)}
+                      disabled={deletingId === entry.id}
+                      className="px-3 py-1 text-xs font-medium text-slate-400 border border-slate-700 rounded-md hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           );

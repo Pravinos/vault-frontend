@@ -24,7 +24,10 @@ export default function MonthNavigator({ value, onChange }: MonthNavigatorProps)
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const currentMonth = useMemo(() => {
-    return toYYYYMM(new Date());
+    const today = new Date();
+    // Use first day of the current month to be timezone-safe
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    return toYYYYMM(firstOfMonth);
   }, []);
 
   const goTo = useCallback(
@@ -70,15 +73,16 @@ export default function MonthNavigator({ value, onChange }: MonthNavigatorProps)
       }
       if (e.key === "ArrowRight") {
         e.preventDefault();
-        // prevent moving into future
-        if (value === currentMonth) return;
+        // prevent moving into or past the current real-world month
+        if (value >= currentMonth) return;
         next();
       }
     },
     [prev, next, value, currentMonth]
   );
 
-  const disabledNext = value === currentMonth;
+  // Disable the next button when the displayed month is the current month or a future month
+  const disabledNext = value >= currentMonth;
 
   return (
     <div
@@ -116,11 +120,14 @@ export default function MonthNavigator({ value, onChange }: MonthNavigatorProps)
 
       <button
         type="button"
-        onClick={next}
+        onClick={() => !disabledNext && next()}
         disabled={disabledNext}
-        className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm text-white bg-transparent border border-white/10 hover:bg-white/5 focus:outline-none ${
-          disabledNext ? "opacity-40 pointer-events-none" : ""
-        }`}
+        className={
+          "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm bg-transparent border border-white/10 focus:outline-none " +
+          (disabledNext
+            ? "text-slate-600 cursor-not-allowed"
+            : "text-slate-300 hover:bg-white/5")
+        }
         aria-label="Next month"
       >
         ›

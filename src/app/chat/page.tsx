@@ -7,6 +7,8 @@ import type { ChatMessage } from "@/types";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ChatInput from "@/components/chat/ChatInput";
 import TypingIndicator from "@/components/chat/TypingIndicator";
+import { useAiSettings } from "@/lib/hooks/useAiSettings";
+import ProviderBadge from "@/components/ui/ProviderBadge";
 
 function generateUUID(): string {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -17,11 +19,11 @@ function generateUUID(): string {
 }
 
 const SUGGESTED_PROMPTS = [
-  { emoji: "💸", text: "How much did I spend this month?" },
-  { emoji: "🔎", text: "Identify unusual or one-off transactions from the last 90 days" },
-  { emoji: "🏷️", text: "Which merchants did I spend the most at this month?" },
-  { emoji: "🔮", text: "Predict next month's cash flow based on recurring income and bills" },
-  { emoji: "💡", text: "Recommend 3 ways to reduce my monthly expenses by ~15%" },
+  { emoji: "💸", text: "What did I spend the most on this month?" },
+  { emoji: "🔁", text: "How does this month compare to last month?" },
+  { emoji: "💰", text: "What's my current net cash flow?" },
+  { emoji: "📊", text: "Show my top 3 expense categories this month" },
+  { emoji: "💡", text: "Recommend 3 practical ways to reduce monthly expenses by ~15%" },
 ];
 
 export default function ChatPage() {
@@ -32,6 +34,7 @@ export default function ChatPage() {
   const conversationIdRef = useRef<string>(generateUUID());
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { data: aiConfig } = useAiSettings();
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     bottomRef.current?.scrollIntoView({ behavior });
@@ -146,7 +149,7 @@ export default function ChatPage() {
                   }`}
                   onAnimationEnd={onVaultEntranceEnd}
                 >
-                  <span className="text-2xl">🏦</span>
+                  <span className="text-2xl">🤖</span>
                 </div>
                 <div className="mt-6 grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
                   {/* Primary chip (first prompt) */}
@@ -201,6 +204,15 @@ export default function ChatPage() {
         )}
 
         <div className="sticky bottom-0 z-10 mx-auto w-full max-w-2xl flex-shrink-0">
+          <div className="px-4 pb-3">
+            {/** Show current chat provider/model to avoid confusion */}
+            <div className="flex items-center justify-end">
+              {/** show badge when available */}
+              {aiConfig?.chat?.provider && (
+                <ProviderBadge provider={aiConfig.chat.provider} model={aiConfig.chat.model} />
+              )}
+            </div>
+          </div>
           <ChatInput
             value={inputValue}
             onChange={setInputValue}

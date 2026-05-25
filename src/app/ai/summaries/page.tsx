@@ -23,6 +23,7 @@ import { useSummaries } from "@/lib/hooks/useSummaries";
 import { useDashboard } from "@/lib/hooks/useDashboard";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useDeleteSummary } from "@/lib/hooks/useSummaryMutations";
+import EmptyState from "@/components/ui/EmptyState";
 
 function formatWeekRange(start: string, end: string): string {
   const startDate = new Date(`${start}T00:00:00`);
@@ -276,22 +277,18 @@ export default function WeeklySummariesPage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center rounded-xl border border-gray-800 bg-gray-900/60 px-6 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-800 text-gray-300">
-              <ScrollText className="h-6 w-6" />
-            </div>
-            <h2 className="mt-4 text-lg font-semibold text-white">No summaries yet</h2>
-            <p className="mt-2 text-sm text-gray-400">Generate your first summary</p>
-            <button
-              type="button"
-              onClick={generate}
-              disabled={isGenerating}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-2 text-xs font-medium text-gray-200 transition-all duration-150 hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <CalendarDays className="h-3.5 w-3.5" />
-              {isGenerating ? "Generating..." : "Generate your first summary"}
-            </button>
-          </div>
+          <EmptyState
+            icon={<ScrollText className="w-6 h-6" />}
+            title="No summaries yet"
+            description="Generate your first summary"
+            actionLabel={
+              <>
+                <CalendarDays className="h-3.5 w-3.5" />
+                {isGenerating ? " Generating..." : " Generate your first summary"}
+              </>
+            }
+            onAction={generate}
+          />
         )}
       </div>
 
