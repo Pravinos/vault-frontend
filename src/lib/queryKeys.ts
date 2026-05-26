@@ -14,6 +14,10 @@ export const queryKeys = {
   // Dashboard
   dashboard:     ['dashboard']      as const,
 
+  // Goals
+  goals:         ['goals']          as const,
+  goal:          (id: string) => ['goals', id] as const,
+
   // Summaries & AI
   summaries:     ['summaries']      as const,
   latestSummary: ['latest-summary'] as const,

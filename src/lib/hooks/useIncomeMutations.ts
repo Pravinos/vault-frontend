@@ -11,6 +11,7 @@ export function useDeleteIncome(month: string) {
       void qc.invalidateQueries({ queryKey: queryKeys.income(month) })
       void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
       void qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      void qc.invalidateQueries({ queryKey: queryKeys.goals })
     },
   })
 }

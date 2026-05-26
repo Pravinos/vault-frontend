@@ -76,6 +76,7 @@ export default function IncomePage() {
     await qc.invalidateQueries({ queryKey: queryKeys.income(selectedMonth) });
     await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+    await qc.invalidateQueries({ queryKey: queryKeys.goals });
   }, [qc, selectedMonth]);
 
   const summaryItems = useMemo(

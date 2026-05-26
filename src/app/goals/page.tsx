@@ -1,32 +1,78 @@
 "use client";
 
-import Link from "next/link";
-import { Ban } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import GoalCard from "@/components/goals/GoalCard";
+import GoalForm from "@/components/goals/GoalForm";
+import Modal from "@/components/ui/Modal";
+import { getGoals, deactivateGoal } from "@/lib/api";
+import type { Goal } from "@/types";
 
 export default function GoalsPage() {
+  const qc = useQueryClient();
+  const { data: goals = [], isLoading } = useQuery({ queryKey: ["goals"], queryFn: getGoals });
+
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Goal | undefined>(undefined);
+
+  const openCreate = () => {
+    setEditing(undefined);
+    setShowForm(true);
+  };
+
+  const openEdit = (g: Goal) => {
+    setEditing(g);
+    setShowForm(true);
+  };
+
+  const handleDeactivate = async (id: string) => {
+    try {
+      await deactivateGoal(id);
+      await qc.invalidateQueries({ queryKey: ["goals"] });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      <h1 className="text-xl font-bold text-white sm:text-2xl">Goals</h1>
-
-      <div className="rounded-2xl border border-gray-800 bg-[#1a2332] p-6 sm:p-8">
-        <div className="mx-auto flex max-w-xl flex-col items-center text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/15 text-amber-300">
-            <Ban className="h-7 w-7" />
-          </div>
-
-          <p className="text-lg font-semibold text-white">Goals is temporarily disabled</p>
-          <p className="mt-2 text-sm text-gray-400">
-            This feature has been hidden for now and will be re-enabled later.
-          </p>
-
-          <Link
-            href="/dashboard"
-            className="mt-6 inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-400"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">Goals</h1>
+        <button
+          type="button"
+          onClick={openCreate}
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-400"
+        >
+          <Plus className="h-4 w-4" /> Add Goal
+        </button>
       </div>
+
+      <div>
+        {isLoading ? (
+          <p className="text-sm text-gray-400">Loading goals...</p>
+        ) : goals.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
+            <p className="text-base font-medium text-gray-200">No goals yet</p>
+            <p className="mt-1 text-sm text-gray-500">Create a goal to get started.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {goals.map((g) => (
+              <GoalCard key={g.id} goal={g} onEdit={openEdit} onDeactivate={handleDeactivate} onUpdated={() => qc.invalidateQueries({ queryKey: ["goals"] })} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showForm ? (
+        <GoalForm
+          goal={editing}
+          onSuccess={() => qc.invalidateQueries({ queryKey: ["goals"] })}
+          onClose={() => setShowForm(false)}
+        />
+      ) : null}
     </div>
   );
 }
