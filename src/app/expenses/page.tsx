@@ -69,6 +69,7 @@ export default function ExpensesPage() {
     await qc.invalidateQueries({ queryKey: queryKeys.expenses(selectedMonth) });
     await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+    await qc.invalidateQueries({ queryKey: queryKeys.goals });
   }, [qc, selectedMonth]);
 
   const displayedExpenses = useMemo(() => {

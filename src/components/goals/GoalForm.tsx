@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createGoal, updateGoal } from "@/lib/api";
+import { useAccounts } from "@/lib/hooks/useAccounts";
 import type { Goal, CreateGoalRequest } from "@/types";
 
 type GoalFormProps = {
@@ -28,6 +29,10 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
     goal?.goalType ?? "SHORT_TERM"
   );
   const [deadline, setDeadline] = useState(goal?.deadline ?? "");
+  const { data: accounts = [] } = useAccounts();
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(
+    goal?.linkedAccounts?.map((a) => a.id) ?? []
+  );
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -56,6 +61,7 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
       targetAmount: Number(targetAmount),
       goalType: goalType as "SHORT_TERM" | "LONG_TERM",
       deadline: deadline || undefined,
+      accountIds: selectedAccountIds.length ? selectedAccountIds : undefined,
     };
     try {
       if (goal) {
@@ -152,6 +158,30 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}
           </button>
+        </div>
+
+        <div>
+          <p className="text-sm text-gray-200">Link accounts</p>
+          <p className="mt-1 mb-2 text-xs text-gray-400">Select accounts to include in goal progress (optional)</p>
+          <div className="space-y-2">
+            {accounts.map((a) => (
+              <label key={a.id} className="flex items-center gap-2 text-sm text-gray-200">
+                <input
+                  type="checkbox"
+                  checked={selectedAccountIds.includes(a.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedAccountIds((s) => [...s, a.id]);
+                    } else {
+                      setSelectedAccountIds((s) => s.filter((id) => id !== a.id));
+                    }
+                  }}
+                />
+                <span className="flex-1">{a.name}</span>
+                <span className="text-xs text-gray-400">{Number(a.calculatedBalance).toFixed(2)}</span>
+              </label>
+            ))}
+          </div>
         </div>
       </form>
     </Modal>

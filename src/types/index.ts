@@ -140,18 +140,27 @@ export interface CreateIncomePayload {
 
 export type GoalType = "SHORT_TERM" | "LONG_TERM";
 
+export interface LinkedAccountSummary {
+  id: string;
+  name: string;
+  accountType: 'CHECKING' | 'SAVINGS' | 'INVESTMENT';
+  calculatedBalance: number;
+}
+
 export interface Goal {
   id: string;
   name: string;
   description: string | null;
   targetAmount: number;
-  savedAmount: number;
+  savedAmount: number; // derived from linked accounts
   goalType: GoalType;
   deadline: string | null;
   createdAt: string;
   isActive: boolean;
   progressPercentage: number;
   daysRemaining: number;
+  isOverdue: boolean;
+  linkedAccounts: LinkedAccountSummary[];
 }
 
 export interface CreateGoalRequest {
@@ -160,10 +169,7 @@ export interface CreateGoalRequest {
   targetAmount: number;
   goalType: GoalType;
   deadline?: string;
-}
-
-export interface ContributeRequest {
-  amount: number;
+  accountIds?: string[];
 }
 
 export interface WeeklySummary {

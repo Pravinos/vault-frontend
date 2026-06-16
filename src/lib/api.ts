@@ -16,7 +16,6 @@ import type {
   Category,
   ChatRequest,
   ChatResponse,
-  ContributeRequest,
   CreateAccountPayload,
   CreateCheckpointPayload,
   CreateExpenseRequest,
@@ -415,11 +414,19 @@ export async function deactivateGoal(id: string): Promise<void> {
   await api.delete<void>(`/goals/${id}`);
 }
 
-export async function contributeToGoal(
-  id: string,
-  data: ContributeRequest
+export async function linkAccountToGoal(
+  goalId: string,
+  accountId: string
 ): Promise<Goal> {
-  const response = await api.post<Goal>(`/goals/${id}/contribute`, data);
+  const response = await api.post<Goal>(`/goals/${goalId}/accounts`, { accountId });
+  return response.data;
+}
+
+export async function unlinkAccountFromGoal(
+  goalId: string,
+  accountId: string
+): Promise<Goal> {
+  const response = await api.delete<Goal>(`/goals/${goalId}/accounts/${accountId}`);
   return response.data;
 }
 

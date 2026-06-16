@@ -4,13 +4,16 @@ import { Edit, MinusCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import type { Goal } from "@/types";
+import { useState, useEffect, useRef } from "react";
+import ManageAccountsModal from "./ManageAccountsModal";
+import Toast from "@/components/ui/Toast";
 
 function getDaysRemainingPill(goal: Goal) {
   if (!goal.deadline) return null;
-  if (goal.daysRemaining <= 0) {
+  if (goal.isOverdue) {
     return (
       <span className="rounded-full bg-red-900/60 px-2 py-0.5 text-xs font-medium text-red-300">
-        Deadline passed
+        Overdue
       </span>
     );
   }
@@ -43,17 +46,30 @@ function getGoalTypeBadge(goalType: Goal["goalType"]) {
 
 type GoalCardProps = {
   goal: Goal;
-  onContribute: (g: Goal) => void;
   onEdit: (g: Goal) => void;
   onDeactivate: (id: string) => void;
+  onUpdated?: () => void;
 };
 
-export default function GoalCard({ goal, onContribute, onEdit, onDeactivate }: GoalCardProps) {
+export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: GoalCardProps) {
   const { handleDelete: confirmDeactivate, isPendingConfirm } = useConfirmDelete();
+  const [showManage, setShowManage] = useState(false);
   const progress = Math.min(goal.progressPercentage, 100);
+  const prevProgressRef = useRef<number>(goal.progressPercentage);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const completed = goal.progressPercentage >= 100;
+
+  useEffect(() => {
+    const prev = prevProgressRef.current;
+    if (prev < 100 && goal.progressPercentage >= 100) {
+      setToast({ message: `Congratulations — you completed "${goal.name}"!`, type: "success" });
+    }
+    prevProgressRef.current = goal.progressPercentage;
+  }, [goal.progressPercentage, goal.name]);
 
   return (
-    <div className="flex flex-col rounded-xl border border-gray-800 bg-gray-900/60 p-5">
+    <div className={`flex flex-col rounded-xl p-5 ${completed ? 'border border-emerald-600 bg-emerald-900/30' : 'border border-gray-800 bg-gray-900/60'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base font-semibold text-white">{goal.name}</span>
@@ -87,40 +103,67 @@ export default function GoalCard({ goal, onContribute, onEdit, onDeactivate }: G
               <MinusCircle className="h-4 w-4" />
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowManage(true)}
+            className="rounded-md p-1.5 text-gray-400 transition-all duration-150 hover:text-white active:scale-95"
+            aria-label="Manage linked accounts"
+          >
+            Manage
+          </button>
         </div>
       </div>
 
       <div className="mt-4">
         <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-700">
           <div
-            className="h-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-300"
+            className={`h-2 rounded-full transition-all duration-300 ${completed ? 'bg-green-500' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`}
             style={{ width: `${progress}%` }}
           />
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 text-xs text-gray-400">
-          <span className="tabular-nums">
-            {formatCurrency(goal.savedAmount)}{" "}
-            <span className="text-gray-500">/ {formatCurrency(goal.targetAmount)}</span>
-          </span>
-          <span className="font-medium text-gray-300">
-            {goal.progressPercentage.toFixed(1)}%
-          </span>
+          <div>
+            <div className="tabular-nums font-medium text-white">
+              {formatCurrency(goal.savedAmount)}
+            </div>
+            <div className="text-xs text-gray-500">Saved across linked accounts / {formatCurrency(goal.targetAmount)}</div>
+          </div>
+          <span className="font-medium text-gray-300">{goal.progressPercentage.toFixed(1)}%</span>
         </div>
       </div>
 
       {goal.description ? (
-        <p className="mt-3 text-sm text-gray-400 whitespace-pre-line">
-          {goal.description}
-        </p>
+        <p className="mt-3 text-sm text-gray-400 whitespace-pre-line">{goal.description}</p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => onContribute(goal)}
-        className="mt-5 w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
-      >
-        Add funds
-      </button>
+      <div className="mt-4">
+        {goal.linkedAccounts && goal.linkedAccounts.length > 0 ? (
+          <div className="space-y-2">
+            {goal.linkedAccounts.map((a) => (
+              <div key={a.id} className="flex items-center justify-between text-sm text-gray-300">
+                <div>{a.name}</div>
+                <div className="tabular-nums text-gray-200">{formatCurrency(a.calculatedBalance)}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-2 text-sm text-gray-400">Link accounts to track live progress</div>
+        )}
+      </div>
+
+      {showManage ? (
+        <ManageAccountsModal
+          goal={goal}
+          onClose={() => setShowManage(false)}
+          onSuccess={() => {
+            setShowManage(false);
+            onUpdated?.();
+          }}
+        />
+      ) : null}
+      {toast ? (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      ) : null}
     </div>
   );
 }
