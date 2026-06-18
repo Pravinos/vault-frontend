@@ -204,6 +204,12 @@ api.interceptors.response.use(
 
 api.interceptors.request.use((config) => {
   authFailureHandling = false;
+
+  const token = getToken();
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 

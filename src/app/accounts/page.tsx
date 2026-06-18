@@ -31,6 +31,7 @@ import {
   useRevertTransfer,
 } from "@/lib/hooks/useAccountMutations";
 import { queryKeys } from "@/lib/queryKeys";
+import { isRevertTransfer } from "@/lib/transfers";
 import type { Account, Transfer } from "@/types";
 import TransferRow from "@/components/transfers/TransferRow";
 
@@ -48,63 +49,6 @@ function formatManualTimestamp(value: string | null): string {
     day: "2-digit",
     year: "numeric",
   });
-}
-
-function formatTransferDate(dateValue: string): string {
-  return new Date(`${dateValue}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-}
-
-function formatCreatedAt(timestamp: string): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "-";
-  }
-
-  return parsed.toLocaleString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function isRevertTransfer(transfer: Transfer): boolean {
-  const transferWithMeta = transfer as Transfer & {
-    isRevert?: boolean | null;
-    isReversal?: boolean | null;
-    originalTransferId?: string | null;
-    reversalOfTransferId?: string | null;
-    revertedTransferId?: string | null;
-    transferType?: string | null;
-    type?: string | null;
-    kind?: string | null;
-  };
-
-  if (transferWithMeta.isRevert || transferWithMeta.isReversal) {
-    return true;
-  }
-
-  if (
-    transferWithMeta.originalTransferId ||
-    transferWithMeta.reversalOfTransferId ||
-    transferWithMeta.revertedTransferId
-  ) {
-    return true;
-  }
-
-  const marker =
-    transferWithMeta.transferType ?? transferWithMeta.type ?? transferWithMeta.kind ?? "";
-  if (/revert|reversal/i.test(marker)) {
-    return true;
-  }
-
-  const note = transfer.note?.trim() ?? "";
-  return /^revert(?:ed)?\b|^reversal\b/i.test(note);
 }
 
 function getApiErrorMessage(error: unknown, fallback: string): string {
@@ -170,6 +114,17 @@ export default function AccountsPage() {
     setSelectedTransferAccountId(latestRecipientAccountId);
   }, [shouldResolveLatestRecipient, latestRecipientLoading, latestRecipientAccountId]);
 
+  useEffect(() => {
+    if (
+      selectedTransferAccountId &&
+      !accounts.some((account) => account.id === selectedTransferAccountId)
+    ) {
+      setSelectedTransferAccountId(null);
+    }
+  }, [accounts, selectedTransferAccountId]);
+
+  const resolvingLatestRecipient = shouldResolveLatestRecipient && latestRecipientLoading;
+
   const staleAccounts = useMemo(() => {
     const staleBefore = getCurrentTimestamp() - staleThresholdMs;
     return accounts.filter((account) => {
@@ -210,8 +165,13 @@ export default function AccountsPage() {
 
     setDeleteError(null);
 
+    const deletedAccountId = deleteTargetAccount.id;
+
     try {
-      await deleteAccountMutation.mutateAsync(deleteTargetAccount.id);
+      await deleteAccountMutation.mutateAsync(deletedAccountId);
+      if (selectedTransferAccountId === deletedAccountId) {
+        setSelectedTransferAccountId(null);
+      }
       setToast({ message: "Account permanently deleted", type: "success" });
       setDeleteTargetAccount(null);
       setDeleteConfirmInput("");
@@ -508,7 +468,13 @@ export default function AccountsPage() {
                 </div>
               </div>
 
-              {!selectedTransferAccountId ? (
+              {resolvingLatestRecipient ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <Skeleton key={index} variant="text" className="h-14 rounded-xl" />
+                  ))}
+                </div>
+              ) : !selectedTransferAccountId ? (
                 <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
                   <p className="text-base font-medium text-gray-200">Choose an account to view transfer history</p>
                   <p className="mt-1 text-sm text-gray-500">

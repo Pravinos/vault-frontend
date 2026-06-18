@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: req.headers.get("authorization") || "",
           "X-Forwarded-For": req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
           "X-Real-IP": req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for") || "unknown",
           Cookie: req.headers.get("cookie") || "",

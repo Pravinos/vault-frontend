@@ -18,18 +18,22 @@ export function getLastNMonths(count: number): string[] {
   return months
 }
 
+export async function fetchDashboardData() {
+  const monthRange = getLastNMonths(6)
+  const [dashboard, expenseSummaries, incomeSummaries] = await Promise.all([
+    fetchDashboard(),
+    Promise.all(monthRange.map((month) => getExpenseSummary(month))),
+    Promise.all(monthRange.map((month) => getIncomeSummary(month))),
+  ])
+  return { dashboard, expenseSummaries, incomeSummaries, monthRange }
+}
+
+export const dashboardQueryOptions = {
+  queryKey: queryKeys.dashboard,
+  queryFn: fetchDashboardData,
+  staleTime: 2 * 60 * 1000,
+}
+
 export function useDashboard() {
-  return useQuery({
-    queryKey: queryKeys.dashboard,
-    queryFn: async () => {
-      const monthRange = getLastNMonths(6)
-      const [dashboard, expenseSummaries, incomeSummaries] = await Promise.all([
-        fetchDashboard(),
-        Promise.all(monthRange.map((month) => getExpenseSummary(month))),
-        Promise.all(monthRange.map((month) => getIncomeSummary(month))),
-      ])
-      return { dashboard, expenseSummaries, incomeSummaries, monthRange }
-    },
-    staleTime: 2 * 60 * 1000,
-  })
+  return useQuery(dashboardQueryOptions)
 }

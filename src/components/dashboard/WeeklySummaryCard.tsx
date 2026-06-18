@@ -7,6 +7,7 @@ import ProviderBadge from "@/components/ui/ProviderBadge";
 import { useState } from "react";
 import Toast from "@/components/ui/Toast";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
+import { formatWeekRange } from "@/lib/summaryFormatting";
 import type { WeeklySummary } from "@/types";
 
 type WeeklySummaryCardProps = {
@@ -26,27 +27,6 @@ function getNextMondayLabel(): string {
     month: "short",
     day: "numeric",
   });
-}
-
-function formatWeekRange(start: string, end: string): string {
-  const startDate = new Date(`${start}T00:00:00`);
-  const endDate = new Date(`${end}T00:00:00`);
-
-  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
-    return `Week of ${start} - ${end}`;
-  }
-
-  const startLabel = startDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-  const endLabel = endDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  return `Week of ${startLabel} - ${endLabel}`;
 }
 
 export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummaryCardProps) {

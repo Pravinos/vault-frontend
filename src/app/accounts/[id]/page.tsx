@@ -26,6 +26,7 @@ import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
 import { useCheckpoints } from "@/lib/hooks/useCheckpoints";
 import { useAddCheckpoint } from "@/lib/hooks/useCheckpointMutations";
 import { queryKeys } from "@/lib/queryKeys";
+import { isRevertTransfer } from "@/lib/transfers";
 import type { Transfer } from "@/types";
 import TransferRow from "@/components/transfers/TransferRow";
 
@@ -69,18 +70,22 @@ function AccountTransfersSection({
         <p className="mt-4 text-sm text-gray-400">No transfers yet.</p>
       ) : (
         <div className="mt-4 space-y-2">
-          {transfers.map((t) => (
-            <TransferRow
-              key={t.id}
-              fromAccount={{ name: t.fromAccountName }}
-              toAccount={{ name: t.toAccountName }}
-              amount={t.amount}
-              date={t.transferDate ?? t.createdAt}
-              isReversal={false}
-              note={t.note}
-              createdAt={t.createdAt}
-            />
-          ))}
+          {transfers.map((t) => {
+            const reversal = isRevertTransfer(t);
+
+            return (
+              <TransferRow
+                key={t.id}
+                fromAccount={{ name: t.fromAccountName }}
+                toAccount={{ name: t.toAccountName }}
+                amount={t.amount}
+                date={t.transferDate ?? t.createdAt}
+                isReversal={reversal}
+                note={t.note}
+                createdAt={t.createdAt}
+              />
+            );
+          })}
         </div>
       )}
     </div>

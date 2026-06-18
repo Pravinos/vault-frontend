@@ -12,6 +12,14 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-space-grotesk)', ...defaultTheme.fontFamily.sans as string[]],
       },
+      colors: {
+        vault: {
+          green: '#1D9E75',
+          'green-muted': 'rgba(29, 158, 117, 0.15)',
+          surface: '#0f1923',
+          bg: '#0d1520',
+        },
+      },
     },
   },
   plugins: [],

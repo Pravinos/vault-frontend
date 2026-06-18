@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { createExpense, updateExpense } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getLocalDateString } from "@/lib/utils";
 import type { Account, Category, CreateExpenseRequest, Expense } from "@/types";
 
 type ExpenseFormProps = {
@@ -25,8 +25,6 @@ type FormErrors = {
   note?: string;
 };
 
-const todayString = () => new Date().toISOString().slice(0, 10);
-
 export default function ExpenseForm({
   expense,
   categories,
@@ -45,7 +43,7 @@ export default function ExpenseForm({
     expense?.accountId ?? initialValues?.accountId ?? ""
   );
   const [expenseDate, setExpenseDate] = useState<string>(
-    expense?.expenseDate ?? initialValues?.expenseDate ?? todayString()
+    expense?.expenseDate ?? initialValues?.expenseDate ?? getLocalDateString()
   );
   const [note, setNote] = useState<string>(expense?.note ?? initialValues?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});

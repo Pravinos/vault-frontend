@@ -97,6 +97,12 @@ export interface Transfer {
   note?: string;
   transferDate: string;
   createdAt: string;
+  isRevert?: boolean;
+  isReversal?: boolean;
+  originalTransferId?: string | null;
+  reversalOfTransferId?: string | null;
+  revertedTransferId?: string | null;
+  transferType?: string | null;
 }
 
 export interface InvestmentCheckpoint {

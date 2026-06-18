@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalForm from "@/components/goals/GoalForm";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
-import { getGoals, deactivateGoal } from "@/lib/api";
+import Toast from "@/components/ui/Toast";
+import { useDeactivateGoal } from "@/lib/hooks/useGoalMutations";
+import { useGoals } from "@/lib/hooks/useGoals";
+import { queryKeys } from "@/lib/queryKeys";
 import type { Goal } from "@/types";
 
 export default function GoalsPage() {
   const qc = useQueryClient();
-  const { data: goals = [], isLoading: loading } = useQuery({ queryKey: ["goals"], queryFn: getGoals });
+  const { data: goals = [], isLoading: loading, error, refetch } = useGoals();
+  const deactivateGoalMutation = useDeactivateGoal();
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Goal | undefined>(undefined);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const invalidateGoals = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: queryKeys.goals });
+  }, [qc]);
 
   const openCreate = () => {
     setEditing(undefined);
@@ -28,13 +38,21 @@ export default function GoalsPage() {
 
   const handleDeactivate = async (id: string) => {
     try {
-      await deactivateGoal(id);
-      await qc.invalidateQueries({ queryKey: ["goals"] });
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error(err);
+      await deactivateGoalMutation.mutateAsync(id);
+      setToast({ message: "Goal deactivated", type: "success" });
+    } catch {
+      setToast({ message: "Unable to deactivate goal.", type: "error" });
     }
   };
+
+  const handleFormClose = useCallback(() => {
+    setShowForm(false);
+    setEditing(undefined);
+  }, []);
+
+  const handleFormSuccess = useCallback(async () => {
+    await invalidateGoals();
+  }, [invalidateGoals]);
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -50,7 +68,12 @@ export default function GoalsPage() {
       </div>
 
       <div>
-        {loading ? (
+        {error ? (
+          <ErrorMessage
+            message="Unable to load goals."
+            onRetry={() => void refetch()}
+          />
+        ) : loading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <Skeleton key={index} variant="card" className="h-52 rounded-xl" />
@@ -64,7 +87,13 @@ export default function GoalsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {goals.map((g) => (
-              <GoalCard key={g.id} goal={g} onEdit={openEdit} onDeactivate={handleDeactivate} onUpdated={() => qc.invalidateQueries({ queryKey: ["goals"] })} />
+              <GoalCard
+                key={g.id}
+                goal={g}
+                onEdit={openEdit}
+                onDeactivate={handleDeactivate}
+                onUpdated={invalidateGoals}
+              />
             ))}
           </div>
         )}
@@ -73,9 +102,13 @@ export default function GoalsPage() {
       {showForm ? (
         <GoalForm
           goal={editing}
-          onSuccess={() => qc.invalidateQueries({ queryKey: ["goals"] })}
-          onClose={() => setShowForm(false)}
+          onSuccess={handleFormSuccess}
+          onClose={handleFormClose}
         />
+      ) : null}
+
+      {toast ? (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       ) : null}
     </div>
   );

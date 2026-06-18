@@ -7,16 +7,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import IncomeFilters from "@/components/income/IncomeFilters";
 import IncomeForm from "@/components/income/IncomeForm";
 import IncomeList from "@/components/income/IncomeList";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
-import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
+import { formatCurrency, formatMonth, getLocalDateString, getMonthString } from "@/lib/utils";
 import { useIncome } from "@/lib/hooks/useIncome";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useIncomeCategories } from "@/lib/hooks/useIncomeCategories";
 import { useDeleteIncome } from "@/lib/hooks/useIncomeMutations";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Income, IncomeCategory, CreateIncomePayload } from "@/types";
+import type { Income, CreateIncomePayload } from "@/types";
 
 export default function IncomePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -31,7 +32,7 @@ export default function IncomePage() {
 
   const qc = useQueryClient();
 
-  const { data, isLoading: loading, error } = useIncome(selectedMonth);
+  const { data, isLoading: loading, error, refetch } = useIncome(selectedMonth);
   const { data: accounts = [] } = useAccounts();
   const { data: categories = [] } = useIncomeCategories();
   const deleteIncomeMutation = useDeleteIncome(selectedMonth);
@@ -52,24 +53,26 @@ export default function IncomePage() {
       incomeCategoryId: entry.incomeCategoryId,
       accountId: entry.accountId,
       note: entry.note ?? undefined,
-      incomeDate: new Date().toISOString().slice(0, 10),
+      incomeDate: getLocalDateString(),
     });
     setShowForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await deleteIncomeMutation.mutateAsync(id);
-      setToast({ message: "Income deleted", type: "success" });
-    } catch {
-      setToast({ message: "Unable to delete income", type: "error" });
-    }
+    await deleteIncomeMutation.mutateAsync(id);
+    setToast({ message: "Income deleted", type: "success" });
   };
 
   const handleEdit = (entry: Income) => {
     setEditingIncome(entry);
     setShowForm(true);
   };
+
+  const handleFormClose = useCallback(() => {
+    setShowForm(false);
+    setEditingIncome(undefined);
+    setInitialIncomeValues(undefined);
+  }, []);
 
   const handleFormSuccess = useCallback(async (message: string) => {
     setToast({ message, type: "success" });
@@ -79,46 +82,71 @@ export default function IncomePage() {
     await qc.invalidateQueries({ queryKey: queryKeys.goals });
   }, [qc, selectedMonth]);
 
-  const summaryItems = useMemo(
-    () =>
-      Object.entries(summary)
-        .map(([category, total]) => {
-          const matchingCategory = categories.find((item: IncomeCategory) => item.name === category);
-          return {
-            category,
-            total,
-            icon: matchingCategory?.icon ?? "💶",
-          };
-        })
-        .sort((a, b) => b.total - a.total),
-    [categories, summary]
-  );
-
-  const totalIncome = useMemo(
-    () => income.reduce((sum, e) => sum + e.amount, 0),
-    [income]
-  );
+  const baseFilteredIncome = useMemo(() => {
+    if (!selectedAccountId) return income;
+    return income.filter((entry) => entry.accountId === selectedAccountId);
+  }, [income, selectedAccountId]);
 
   const displayedIncome = useMemo(() => {
-    let data = income;
-    if (selectedAccountId) data = data.filter((i) => i.accountId === selectedAccountId);
-    if (!searchQuery.trim()) return data;
+    if (!searchQuery.trim()) return baseFilteredIncome;
     const q = searchQuery.toLowerCase().trim();
-    return data.filter((item) => {
+    return baseFilteredIncome.filter((item) => {
       const noteMatch = item.note?.toLowerCase().includes(q);
       const amountMatch = item.amount.toString().includes(q);
       const categoryMatch = item.categoryName?.toLowerCase().includes(q);
       const accountMatch = item.accountName?.toLowerCase().includes(q);
       return Boolean(noteMatch || amountMatch || categoryMatch || accountMatch);
     });
-  }, [income, selectedAccountId, searchQuery]);
+  }, [baseFilteredIncome, searchQuery]);
+
+  // Totals intentionally exclude search — search only narrows the visible list.
+  const totalIncome = useMemo(
+    () => baseFilteredIncome.reduce((sum, entry) => sum + entry.amount, 0),
+    [baseFilteredIncome]
+  );
 
   const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
 
-  const summaryTotal = useMemo(
-    () => summaryItems.reduce((sum, item) => sum + item.total, 0),
-    [summaryItems]
-  );
+  const hasActiveFilters = selectedAccountId !== null;
+
+  const summaryItems = useMemo(() => {
+    if (hasActiveFilters) {
+      const totalsByCategory = new Map<
+        string,
+        { category: string; total: number; icon: string }
+      >();
+
+      for (const entry of baseFilteredIncome) {
+        const existing = totalsByCategory.get(entry.categoryName);
+        if (existing) {
+          existing.total += entry.amount;
+        } else {
+          totalsByCategory.set(entry.categoryName, {
+            category: entry.categoryName,
+            total: entry.amount,
+            icon: entry.categoryIcon,
+          });
+        }
+      }
+
+      return Array.from(totalsByCategory.values()).sort((a, b) => b.total - a.total);
+    }
+
+    return Object.entries(summary)
+      .map(([category, total]) => {
+        const matchingCategory = categories.find((c) => c.name === category);
+        return {
+          category,
+          total,
+          icon: matchingCategory?.icon ?? "💶",
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+  }, [hasActiveFilters, baseFilteredIncome, categories, summary]);
+
+  const clearFilters = () => {
+    setSelectedAccountId(null);
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -134,13 +162,14 @@ export default function IncomePage() {
         </button>
       </div>
 
-      {/* Summary bar */}
-      {!loading && (
+      {!loading && !error && (
         <div className="border-b border-gray-800 px-0 py-2">
           <p className="mb-4 text-sm text-gray-400">
             <span className="font-semibold text-white">{formatCurrency(totalIncome)}</span>
             {" "}income in {monthLabel}
-            <span className="text-gray-600"> · {income.length} {income.length === 1 ? "entry" : "entries"}</span>
+            <span className="text-gray-600">
+              {" "}· {baseFilteredIncome.length} {baseFilteredIncome.length === 1 ? "entry" : "entries"}
+            </span>
           </p>
         </div>
       )}
@@ -158,13 +187,12 @@ export default function IncomePage() {
           onAccountChange={setSelectedAccountId}
         />
 
-        <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            {selectedMonth} - breakdown
-          </h2>
-          {summaryItems.length === 0 ? (
-            <p className="mt-2 text-xs text-gray-500">No income summary for this month.</p>
-          ) : (
+        {!error && summaryItems.length > 0 && (
+          <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              {monthLabel} - Breakdown{hasActiveFilters ? " (filtered)" : ""}
+            </h2>
+
             <div className="flex flex-wrap gap-2">
               {summaryItems.map(({ category, icon, total }) => (
                 <div
@@ -179,25 +207,41 @@ export default function IncomePage() {
                 </div>
               ))}
             </div>
-          )}
 
-          <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
-            <span className="text-xs text-gray-500">Total income</span>
-            <span className="text-sm font-bold text-white">{formatCurrency(summaryTotal)}</span>
+            <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
+              <span className="text-xs text-gray-500">Total income</span>
+              <span className="text-sm font-bold text-white">{formatCurrency(totalIncome)}</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        {error ? <p className="text-sm text-red-400">Unable to load income.</p> : null}
-        {searchQuery.trim().length > 0 && !loading && displayedIncome.length === 0 ? (
+        {error ? (
+          <ErrorMessage
+            message="Unable to load income."
+            onRetry={() => void refetch()}
+          />
+        ) : searchQuery.trim().length > 0 && !loading && displayedIncome.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-            <Search className="w-8 h-8 mb-3 opacity-50" />
-            <p className="text-sm">No transactions match "{searchQuery}"</p>
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mt-2 text-xs text-emerald-400 hover:text-emerald-300"
-            >
-              Clear search
-            </button>
+            <Search className="mb-3 h-8 w-8 opacity-50" />
+            <p className="text-sm">No transactions match &quot;{searchQuery}&quot;</p>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-xs text-emerald-400 hover:text-emerald-300"
+              >
+                Clear search
+              </button>
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-xs text-gray-400 hover:text-gray-300"
+                >
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : loading ? (
           <div className="space-y-2">
@@ -209,9 +253,12 @@ export default function IncomePage() {
           <IncomeList
             income={displayedIncome}
             month={selectedMonth}
+            monthLabel={monthLabel}
+            hasActiveFilters={hasActiveFilters}
             onEdit={handleEdit}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
+            onClearFilters={clearFilters}
             onAddClick={handleAddClick}
           />
         )}
@@ -224,10 +271,7 @@ export default function IncomePage() {
           categories={categories}
           accounts={accounts}
           onSuccess={handleFormSuccess}
-          onClose={() => {
-            setShowForm(false);
-            setInitialIncomeValues(undefined);
-          }}
+          onClose={handleFormClose}
         />
       ) : null}
 
