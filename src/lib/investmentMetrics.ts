@@ -58,7 +58,8 @@ export function deriveInvestmentMetrics(
   const checkpointValue = getLatestCheckpointValue(checkpoints);
   const apiCurrentValue =
     typeof source.currentValue === "number" ? source.currentValue : null;
-  const currentValue = checkpointValue ?? apiCurrentValue ?? contributedAmount;
+  // Match backend: manual/API snapshot wins over latest checkpoint.
+  const currentValue = apiCurrentValue ?? checkpointValue ?? contributedAmount;
 
   if (contributedAmount === null || currentValue === null) {
     return {

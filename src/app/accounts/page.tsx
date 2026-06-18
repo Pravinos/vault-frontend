@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeftRight, Clock, Eye, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import axios from "axios";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import AccountForm from "@/components/accounts/AccountForm";
@@ -24,7 +24,12 @@ import {
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
-import { useDeleteAccount, useRevertTransfer } from "@/lib/hooks/useAccountMutations";
+import { useLatestTransferRecipientAccountId } from "@/lib/hooks/useLatestTransferRecipientAccountId";
+import {
+  invalidateTransferBalanceQueries,
+  useDeleteAccount,
+  useRevertTransfer,
+} from "@/lib/hooks/useAccountMutations";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Account, Transfer } from "@/types";
 import TransferRow from "@/components/transfers/TransferRow";
@@ -149,9 +154,21 @@ export default function AccountsPage() {
 
   const { data: accounts = [], isLoading: loading, error } = useAccounts();
   const investmentMetricsByAccountId = useInvestmentMetricsMap(accounts);
+  const shouldResolveLatestRecipient =
+    activeTab === "transfer" && selectedTransferAccountId === null && accounts.length >= 2;
+  const { recipientAccountId: latestRecipientAccountId, isLoading: latestRecipientLoading } =
+    useLatestTransferRecipientAccountId(accounts, shouldResolveLatestRecipient);
   const { data: transfers = [], isLoading: transfersLoading, error: transfersError } = useAccountTransfers(selectedTransferAccountId);
   const deleteAccountMutation = useDeleteAccount();
   const revertTransferMutation = useRevertTransfer(selectedTransferAccountId);
+
+  useEffect(() => {
+    if (!shouldResolveLatestRecipient || latestRecipientLoading || !latestRecipientAccountId) {
+      return;
+    }
+
+    setSelectedTransferAccountId(latestRecipientAccountId);
+  }, [shouldResolveLatestRecipient, latestRecipientLoading, latestRecipientAccountId]);
 
   const staleAccounts = useMemo(() => {
     const staleBefore = getCurrentTimestamp() - staleThresholdMs;
@@ -245,13 +262,16 @@ export default function AccountsPage() {
     await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
   };
 
-  const handleTransferSuccess = async () => {
+  const handleTransferSuccess = async ({
+    toAccountId,
+  }: {
+    fromAccountId: string;
+    toAccountId: string;
+  }) => {
     setShowTransferForm(false);
-    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
-    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-    if (selectedTransferAccountId) {
-      await qc.invalidateQueries({ queryKey: queryKeys.accountTransfers(selectedTransferAccountId) });
-    }
+    setActiveTab("transfer");
+    setSelectedTransferAccountId(toAccountId);
+    await invalidateTransferBalanceQueries(qc);
   };
 
   const canOpenTransferForm = accounts.length >= 2;
