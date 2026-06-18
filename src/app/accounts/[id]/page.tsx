@@ -73,6 +73,9 @@ export default function InvestmentAccountDetailPage() {
   const [noteInput, setNoteInput] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [showManualModal, setShowManualModal] = useState<boolean>(false);
+  const [showAllCheckpoints, setShowAllCheckpoints] = useState<boolean>(false);
+
+  const CHECKPOINTS_PREVIEW_COUNT = 5;
 
   const qc = useQueryClient();
 
@@ -81,11 +84,27 @@ export default function InvestmentAccountDetailPage() {
   const { data: transfers = [], isLoading: transfersLoading, error: transfersError } = useAccountTransfers(accountId);
   const addCheckpointMutation = useAddCheckpoint(accountId);
 
-  const sortedCheckpoints = useMemo(() => {
+  const chartCheckpoints = useMemo(() => {
     return [...checkpoints].sort(
       (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
     );
   }, [checkpoints]);
+
+  const sortedCheckpoints = useMemo(() => {
+    return [...checkpoints].sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    );
+  }, [checkpoints]);
+
+  const visibleCheckpoints = useMemo(
+    () =>
+      showAllCheckpoints
+        ? sortedCheckpoints
+        : sortedCheckpoints.slice(0, CHECKPOINTS_PREVIEW_COUNT),
+    [sortedCheckpoints, showAllCheckpoints]
+  );
+
+  const hasMoreCheckpoints = sortedCheckpoints.length > CHECKPOINTS_PREVIEW_COUNT;
 
   const investmentMetrics = useMemo(() => {
     if (!account || account.accountType !== "INVESTMENT") {
@@ -99,11 +118,11 @@ export default function InvestmentAccountDetailPage() {
 
   const chartData = useMemo(
     () =>
-      sortedCheckpoints.map((checkpoint) => ({
+      chartCheckpoints.map((checkpoint) => ({
         date: formatCheckpointDate(checkpoint.recordedAt),
         value: checkpoint.value,
       })),
-    [sortedCheckpoints]
+    [chartCheckpoints]
   );
 
   const handleAddCheckpoint = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -345,7 +364,7 @@ export default function InvestmentAccountDetailPage() {
                 <p className="mt-4 text-sm text-gray-400">No checkpoints yet.</p>
               ) : (
                 <div className="mt-4 space-y-2">
-                  {sortedCheckpoints.map((checkpoint) => (
+                  {visibleCheckpoints.map((checkpoint) => (
                     <div
                       key={checkpoint.id}
                       className="flex flex-col gap-1 rounded-lg border border-gray-800 bg-gray-950/70 p-3 text-sm text-gray-200 sm:flex-row sm:items-center sm:justify-between"
@@ -357,6 +376,17 @@ export default function InvestmentAccountDetailPage() {
                       <p className="text-xs text-gray-400">{checkpoint.note || "No note"}</p>
                     </div>
                   ))}
+                  {hasMoreCheckpoints ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllCheckpoints((current) => !current)}
+                      className="w-full rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:border-gray-500 hover:text-white"
+                    >
+                      {showAllCheckpoints
+                        ? "Show less"
+                        : `Show more (${sortedCheckpoints.length - CHECKPOINTS_PREVIEW_COUNT} more)`}
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
