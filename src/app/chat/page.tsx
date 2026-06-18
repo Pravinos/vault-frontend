@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type AnimationEvent } from "react";
 import { ChevronDown, MessageSquarePlus } from "lucide-react";
 import { sendChatMessage } from "@/lib/api";
 import type { ChatMessage } from "@/types";
@@ -10,13 +10,7 @@ import TypingIndicator from "@/components/chat/TypingIndicator";
 import { useAiSettings } from "@/lib/hooks/useAiSettings";
 import ProviderBadge from "@/components/ui/ProviderBadge";
 
-function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+const SCROLL_THRESHOLD = 120;
 
 const SUGGESTED_PROMPTS = [
   { emoji: "💸", text: "What did I spend the most on this month?" },
@@ -31,29 +25,53 @@ export default function ChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const conversationIdRef = useRef<string>(generateUUID());
+  const [vaultIconPulse, setVaultIconPulse] = useState(false);
+
+  const conversationIdRef = useRef(crypto.randomUUID());
+  const sendingRef = useRef(false);
+  const shouldAutoScrollRef = useRef(true);
+  const mountedRef = useRef(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { data: aiConfig } = useAiSettings();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     bottomRef.current?.scrollIntoView({ behavior });
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    if (shouldAutoScrollRef.current) {
+      scrollToBottom();
+    }
   }, [messages, isTyping, scrollToBottom]);
 
   const handleScroll = () => {
     const el = scrollAreaRef.current;
     if (!el) return;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setShowScrollBtn(distFromBottom > 120);
+    shouldAutoScrollRef.current = distFromBottom <= SCROLL_THRESHOLD;
+    setShowScrollBtn((prev) => {
+      const show = distFromBottom > SCROLL_THRESHOLD;
+      return prev === show ? prev : show;
+    });
   };
 
   const handleSend = async (content: string) => {
+    if (sendingRef.current) return;
+
+    const conversationId = conversationIdRef.current;
+    sendingRef.current = true;
+    shouldAutoScrollRef.current = true;
+
     const userMessage: ChatMessage = {
-      id: generateUUID(),
+      id: crypto.randomUUID(),
       role: "user",
       content,
       timestamp: new Date().toISOString(),
@@ -65,11 +83,13 @@ export default function ChatPage() {
     try {
       const response = await sendChatMessage({
         message: content,
-        conversationId: conversationIdRef.current,
+        conversationId,
       });
 
+      if (!mountedRef.current || conversationIdRef.current !== conversationId) return;
+
       const assistantMessage: ChatMessage = {
-        id: generateUUID(),
+        id: crypto.randomUUID(),
         role: "assistant",
         content: response.reply,
         provider: response.provider,
@@ -79,39 +99,46 @@ export default function ChatPage() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch {
+      if (!mountedRef.current || conversationIdRef.current !== conversationId) return;
+
       const errorMessage: ChatMessage = {
-        id: generateUUID(),
+        id: crypto.randomUUID(),
         role: "assistant",
         content: "Sorry, something went wrong. Please try again.",
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setIsTyping(false);
+      if (conversationIdRef.current === conversationId) {
+        sendingRef.current = false;
+        setIsTyping(false);
+      }
     }
   };
 
   const handleNewConversation = () => {
-    conversationIdRef.current = generateUUID();
+    conversationIdRef.current = crypto.randomUUID();
+    sendingRef.current = false;
+    shouldAutoScrollRef.current = true;
     setMessages([]);
     setInputValue("");
+    setIsTyping(false);
     scrollToBottom("auto");
   };
 
   const handlePromptClick = (prompt: string) => {
-    setInputValue(prompt);
-    window.requestAnimationFrame(() => {
-      handleSend(prompt);
-      setInputValue("");
-    });
+    handleSend(prompt);
   };
 
-  const [vaultIconPulse, setVaultIconPulse] = useState(false);
-  const onVaultEntranceEnd = (e: any) => {
+  const onVaultEntranceEnd = (e: AnimationEvent<HTMLDivElement>) => {
     if (e.animationName === "vaultIconEntrance") {
       setVaultIconPulse(true);
     }
   };
+
+  const promptButtonClass =
+    "flex items-start gap-2 rounded-xl px-4 py-3 text-left text-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -152,25 +179,23 @@ export default function ChatPage() {
                   <span className="text-2xl">🤖</span>
                 </div>
                 <div className="mt-6 grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-                  {/* Primary chip (first prompt) */}
-                  {SUGGESTED_PROMPTS.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handlePromptClick(SUGGESTED_PROMPTS[0].text)}
-                      className="col-span-full flex items-start gap-2 rounded-xl border-[1px] border-[rgba(29,158,117,0.6)] bg-[rgba(29,158,117,0.08)] px-4 py-3 text-left text-sm text-white transition-all active:scale-[0.98]"
-                    >
-                      <span className="mt-0.5 text-base leading-none">{SUGGESTED_PROMPTS[0].emoji}</span>
-                      <span className="leading-snug">{SUGGESTED_PROMPTS[0].text}</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled={isTyping}
+                    onClick={() => handlePromptClick(SUGGESTED_PROMPTS[0].text)}
+                    className={`col-span-full border-[1px] border-[rgba(29,158,117,0.6)] bg-[rgba(29,158,117,0.08)] text-white ${promptButtonClass}`}
+                  >
+                    <span className="mt-0.5 text-base leading-none">{SUGGESTED_PROMPTS[0].emoji}</span>
+                    <span className="leading-snug">{SUGGESTED_PROMPTS[0].text}</span>
+                  </button>
 
-                  {/* Secondary chips (remaining prompts) */}
                   {SUGGESTED_PROMPTS.slice(1).map((prompt) => (
                     <button
                       key={prompt.text}
                       type="button"
+                      disabled={isTyping}
                       onClick={() => handlePromptClick(prompt.text)}
-                      className="flex items-start gap-2 rounded-xl border border-gray-700 bg-[#0f1923] px-4 py-3 text-left text-sm text-gray-200 transition-all hover:border-emerald-700/60 hover:text-white hover:bg-[#0f2430] active:scale-[0.98]"
+                      className={`border border-gray-700 bg-[#0f1923] text-gray-200 hover:border-emerald-700/60 hover:bg-[#0f2430] hover:text-white ${promptButtonClass}`}
                     >
                       <span className="mt-0.5 text-base leading-none">{prompt.emoji}</span>
                       <span className="leading-snug">{prompt.text}</span>
@@ -194,7 +219,10 @@ export default function ChatPage() {
           <div className="pointer-events-none absolute bottom-24 right-6 z-10">
             <button
               type="button"
-              onClick={() => scrollToBottom()}
+              onClick={() => {
+                shouldAutoScrollRef.current = true;
+                scrollToBottom();
+              }}
               className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-gray-700 bg-[#0f1923] text-gray-300 shadow-lg transition-all hover:text-white"
               aria-label="Scroll to bottom"
             >
@@ -205,9 +233,7 @@ export default function ChatPage() {
 
         <div className="sticky bottom-0 z-10 mx-auto w-full max-w-2xl flex-shrink-0">
           <div className="px-4 pb-3">
-            {/** Show current chat provider/model to avoid confusion */}
             <div className="flex items-center justify-end">
-              {/** show badge when available */}
               {aiConfig?.chat?.provider && (
                 <ProviderBadge provider={aiConfig.chat.provider} model={aiConfig.chat.model} />
               )}

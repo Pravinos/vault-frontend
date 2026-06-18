@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { updateAiConfig } from "@/lib/api";
 import type { AiConfig } from "@/types";
 import AiProviderCard from "@/components/settings/AiProviderCard";
+import ErrorMessage from "@/components/ui/ErrorMessage";
+import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import { useAiSettings } from "@/lib/hooks/useAiSettings";
 import { queryKeys } from "@/lib/queryKeys";
@@ -23,7 +25,7 @@ export default function AiSettingsPage() {
   const [savingAll, setSavingAll] = useState(false);
 
   const qc = useQueryClient();
-  const { data: config, isLoading: loading } = useAiSettings();
+  const { data: config, isLoading: loading, error, refetch } = useAiSettings();
 
   useEffect(() => {
     if (config) {
@@ -54,18 +56,23 @@ export default function AiSettingsPage() {
     const results = await Promise.allSettled(ops);
     const [chatRes, summaryRes] = results;
 
-    let hadError = false;
-    if (chatRes.status === "rejected") {
-      setToast({ message: "Failed to save Chat settings", type: "error" });
-      hadError = true;
-    }
+    const failedTasks: string[] = [];
+    if (chatRes.status === "rejected") failedTasks.push("Chat");
+    if (summaryRes.status === "rejected") failedTasks.push("Summary");
 
-    if (summaryRes.status === "rejected") {
-      setToast({ message: "Failed to save Summary settings", type: "error" });
-      hadError = true;
-    }
-
-    if (!hadError) {
+    if (failedTasks.length > 0) {
+      const message =
+        failedTasks.length === 2
+          ? "Failed to save AI settings"
+          : `Failed to save ${failedTasks[0]} settings`;
+      setToast({ message, type: "error" });
+      if (failedTasks.length === 1) {
+        await qc.invalidateQueries({ queryKey: queryKeys.aiSettings });
+      }
+    } else {
+      setSavedConfig((prev) =>
+        prev ? { ...prev, chat: localChat, summary: localSummary } : prev,
+      );
       setToast({ message: "AI settings saved", type: "success" });
       await qc.invalidateQueries({ queryKey: queryKeys.aiSettings });
     }
@@ -81,8 +88,17 @@ export default function AiSettingsPage() {
       </div>
 
       <div>
-        {loading ? (
-          <p className="text-sm text-gray-400">Loading configuration…</p>
+        {error ? (
+          <ErrorMessage
+            message="Unable to load AI settings."
+            onRetry={() => void refetch()}
+          />
+        ) : loading ? (
+          <div className="flex max-w-2xl flex-col gap-6">
+            <Skeleton variant="card" className="h-52 rounded-xl" />
+            <Skeleton variant="card" className="h-52 rounded-xl" />
+            <Skeleton variant="text" className="ml-auto h-10 w-36 rounded-lg" />
+          </div>
         ) : (
           <div className="flex flex-col gap-6 max-w-2xl">
             <AiProviderCard

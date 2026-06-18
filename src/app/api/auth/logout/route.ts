@@ -49,6 +49,14 @@ export async function POST(req: NextRequest) {
       if (singleCookie) response.headers.set("Set-Cookie", singleCookie);
     }
 
+    response.cookies.set("vault_token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 0,
+    });
+
     return response;
   } catch (error) {
     console.error("Auth proxy error:", error);

@@ -10,15 +10,29 @@ import type { Income } from "@/types";
 type IncomeListProps = {
   income: Income[];
   month: string;
+  monthLabel?: string;
+  hasActiveFilters?: boolean;
   onEdit: (entry: Income) => void;
   onDuplicate?: (entry: Income) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
   onAddClick: () => void;
+  onClearFilters?: () => void;
 };
 
-export default function IncomeList({ income, month, onEdit, onDuplicate, onDelete, onAddClick }: IncomeListProps) {
+export default function IncomeList({
+  income,
+  month,
+  monthLabel,
+  hasActiveFilters,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onAddClick,
+  onClearFilters,
+}: IncomeListProps) {
   const [activeConfirmId, setActiveConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!activeConfirmId) return undefined;
@@ -29,18 +43,62 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
     return () => window.removeEventListener("keydown", handler);
   }, [activeConfirmId]);
 
-  const monthLabel = month
+  const computedMonthLabel = month
     ? new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", {
         month: "long",
         year: "numeric",
       })
     : "this period";
+  const effectiveMonthLabel = monthLabel ?? computedMonthLabel;
+
+  const handleDelete = async (id: string) => {
+    try {
+      setDeletingId(id);
+      await Promise.resolve(onDelete(id));
+      setActiveConfirmId(null);
+      setErrors((s) => {
+        const copy = { ...s };
+        delete copy[id];
+        return copy;
+      });
+    } catch (err) {
+      const msg = (err as Error)?.message || "Unable to delete";
+      setErrors((s) => ({ ...s, [id]: msg }));
+      setActiveConfirmId(id);
+      window.setTimeout(() => {
+        setErrors((s) => {
+          const copy = { ...s };
+          delete copy[id];
+          return copy;
+        });
+      }, 3500);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (income.length === 0) {
+    if (hasActiveFilters && onClearFilters) {
+      return (
+        <div className="flex flex-col items-center rounded-2xl bg-[#1a2332] px-6 py-12 text-center">
+          <span className="mb-3 text-4xl">💶</span>
+          <p className="mb-1 font-semibold text-white">No income found</p>
+          <p className="text-sm text-gray-400">Try clearing your filters</p>
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="mt-4 rounded-xl bg-white/5 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-white/10"
+          >
+            Clear filters
+          </button>
+        </div>
+      );
+    }
+
     return (
       <EmptyState
         icon={<Wallet className="w-12 h-12" />}
-        title={`No income in ${monthLabel}`}
+        title={`No income in ${effectiveMonthLabel}`}
         description={`Try a different month or add your first income entry`}
         actionLabel={<><PlusCircle className="h-4 w-4" /> Add income</>}
         onAction={onAddClick}
@@ -109,15 +167,7 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
                     <span className="text-sm text-red-400">Are you sure?</span>
                     <button
                       type="button"
-                      onClick={async () => {
-                        try {
-                          setDeletingId(entry.id);
-                          await Promise.resolve(onDelete(entry.id));
-                        } finally {
-                          setDeletingId(null);
-                          setActiveConfirmId(null);
-                        }
-                      }}
+                      onClick={() => handleDelete(entry.id)}
                       disabled={deletingId === entry.id}
                       className="px-3 py-1 text-xs font-medium text-red-400 border border-red-400/30 rounded-md hover:bg-red-400/10 disabled:opacity-60"
                     >
@@ -131,6 +181,7 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
                     >
                       Cancel
                     </button>
+                    {errors[entry.id] ? <div className="ml-3 text-xs text-red-300">{errors[entry.id]}</div> : null}
                   </div>
                 </div>
               </div>
@@ -197,15 +248,7 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
                     <span className="text-sm text-red-400">Are you sure?</span>
                     <button
                       type="button"
-                      onClick={async () => {
-                        try {
-                          setDeletingId(entry.id);
-                          await Promise.resolve(onDelete(entry.id));
-                        } finally {
-                          setDeletingId(null);
-                          setActiveConfirmId(null);
-                        }
-                      }}
+                      onClick={() => handleDelete(entry.id)}
                       disabled={deletingId === entry.id}
                       className="px-3 py-1 text-xs font-medium text-red-400 border border-red-400/30 rounded-md hover:bg-red-400/10 disabled:opacity-60"
                     >
@@ -219,6 +262,7 @@ export default function IncomeList({ income, month, onEdit, onDuplicate, onDelet
                     >
                       Cancel
                     </button>
+                    {errors[entry.id] ? <div className="ml-3 text-xs text-red-300">{errors[entry.id]}</div> : null}
                   </div>
                 </div>
               </div>

@@ -15,17 +15,19 @@ import {
   YAxis,
   ReferenceLine,
 } from "recharts";
-import { Info } from "lucide-react";
+import { Info, LayoutDashboard } from "lucide-react";
 
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import AccountCard from "@/components/accounts/AccountCard";
+import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useDashboard } from "@/lib/hooks/useDashboard";
+import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useLatestSummary } from "@/lib/hooks/useLatestSummary";
-import type { AccountDashboardData, DashboardData } from "@/types/dashboard";
+import type { AccountDashboardData } from "@/types/dashboard";
 
 const CHART_COLORS = ["#10b981", "#3b82f6", "#f43f5e", "#64748b", "#34d399", "#60a5fa"];
 
@@ -36,12 +38,8 @@ type DonutSlice = {
 
 type CashFlowBarDatum = {
   month: string;
-  income: number;
-  expenses: number;
   net: number;
 };
-
-// sync status removed — account cards no longer show sync indicators
 
 function formatShortMonth(yearMonth: string): string {
   const [yearString, monthString] = yearMonth.split("-");
@@ -108,7 +106,6 @@ function NetWorthCard({
 }) {
   const driftPositive = (drift ?? 0) >= 0;
   const headlineValue = typeof calculatedAnimated === "number" ? calculatedAnimated : calculated;
-  const smallCalculated = headlineValue;
   const smallManual = typeof manualAnimated === "number" ? manualAnimated : manual ?? 0;
 
   return (
@@ -126,7 +123,7 @@ function NetWorthCard({
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
             Calculated
           </p>
-          <p className="text-base font-bold text-emerald-400">{formatCurrency(smallCalculated)}</p>
+          <p className="text-base font-bold text-emerald-400">{formatCurrency(headlineValue)}</p>
         </div>
 
         <div className="rounded-xl bg-white/5 p-3">
@@ -158,7 +155,7 @@ function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
         {accounts.slice(0, 8).map((account) => (
           <Link
             key={account.id}
-            href={`/accounts`}
+            href={`/accounts/${account.id}`}
             className="w-[220px] shrink-0 snap-start sm:w-64"
           >
             <AccountCard
@@ -255,8 +252,6 @@ function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; an
 }
 
 function MonthlyTrendCard({ data }: { data: CashFlowBarDatum[] }) {
-  const maxAbs = Math.max(1, ...data.map((item) => Math.abs(item.net)));
-
   function formatYAxisTick(value: number) {
     const abs = Math.abs(Number(value) || 0);
     if (value === 0) return "0";
@@ -298,9 +293,9 @@ function MonthlyTrendCard({ data }: { data: CashFlowBarDatum[] }) {
                   <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 shadow-2xl">
                     <p className="text-sm font-semibold text-slate-100 mb-1">{label}</p>
                     <p className="text-xs text-slate-300">
-                      Net flow:{' '}
-                      <span className={value >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                        {value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                      Net flow:{" "}
+                      <span className={value >= 0 ? "text-emerald-400" : "text-red-400"}>
+                        {formatCurrency(value)}
                       </span>
                     </p>
                   </div>
@@ -337,14 +332,16 @@ function CategoryFocusCard({
 }) {
   const hasTopCategory = Boolean(category) && amount > 0;
   const share = total > 0 ? (amount / total) * 100 : 0;
-  const otherSpend = Math.max(total - amount, 0);
   const donutSource =
     donutData.length > 0
       ? donutData
       : [
           { category: category || "Top category", total: amount },
-          { category: "Other", total: otherSpend },
+          { category: "Other", total: Math.max(total - amount, 0) },
         ].filter((entry) => entry.total > 0);
+  const listedCategories = donutSource.slice(0, 4);
+  const listedTotal = listedCategories.reduce((sum, entry) => sum + entry.total, 0);
+  const remainingSpend = Math.max(total - listedTotal, 0);
 
   return (
     <div className={`rounded-2xl bg-[#1a2332] p-5 ${className ?? ""}`.trim()}>
@@ -385,7 +382,10 @@ function CategoryFocusCard({
                       paddingAngle={2}
                     >
                       {donutSource.map((entry, index) => (
-                        <Cell key={entry.category} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        <Cell
+                          key={`${entry.category}-${index}`}
+                          fill={CHART_COLORS[index % CHART_COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <Tooltip
@@ -406,10 +406,10 @@ function CategoryFocusCard({
           <div className="mt-3 rounded-xl border border-gray-700/60 bg-[#141c2a] p-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Top categories</p>
             <div className="mt-2 space-y-2">
-              {donutSource.slice(0, 4).map((entry) => {
+              {listedCategories.map((entry, index) => {
                 const entryShare = total > 0 ? (entry.total / total) * 100 : 0;
                 return (
-                  <div key={entry.category} className="flex items-center justify-between gap-2 text-sm">
+                  <div key={`${entry.category}-${index}`} className="flex items-center justify-between gap-2 text-sm">
                     <span className="truncate text-gray-200">{entry.category}</span>
                     <span className="whitespace-nowrap text-gray-400">
                       {formatCurrency(entry.total)} · {entryShare.toFixed(0)}%
@@ -417,10 +417,12 @@ function CategoryFocusCard({
                   </div>
                 );
               })}
-              <div className="flex items-center justify-between gap-2 border-t border-gray-700/70 pt-2 text-sm">
-                <span className="text-gray-400">Other categories</span>
-                <span className="text-gray-300">{formatCurrency(otherSpend)}</span>
-              </div>
+              {remainingSpend > 0 ? (
+                <div className="flex items-center justify-between gap-2 border-t border-gray-700/70 pt-2 text-sm">
+                  <span className="text-gray-400">Other categories</span>
+                  <span className="text-gray-300">{formatCurrency(remainingSpend)}</span>
+                </div>
+              ) : null}
             </div>
           </div>
         </>
@@ -434,7 +436,7 @@ function CategoryFocusCard({
         href="/expenses"
         className="mt-4 inline-block text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
       >
-        View all expenses -&gt;
+        View all expenses →
       </Link>
     </div>
   );
@@ -448,6 +450,7 @@ export default function DashboardPage() {
   const expenseSummaries = data?.expenseSummaries ?? []
   const incomeSummaries = data?.incomeSummaries ?? []
   const monthRange = data?.monthRange ?? []
+  const investmentMetricsByAccountId = useInvestmentMetricsMap(dashboardData?.accounts ?? [])
 
   const categoryDonutData = useMemo<DonutSlice[]>(() => {
     const currentMonthSummary = expenseSummaries[expenseSummaries.length - 1]
@@ -466,8 +469,6 @@ export default function DashboardPage() {
       const expenseTotal = expenseSummaries[index]?.total ?? 0
       return {
         month: formatShortMonth(month),
-        income: incomeTotal,
-        expenses: expenseTotal,
         net: incomeTotal - expenseTotal,
       }
     })
@@ -500,10 +501,19 @@ export default function DashboardPage() {
   }
 
   if (!dashboardData) {
-    return null;
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+        <EmptyState
+          icon={<LayoutDashboard className="h-6 w-6" />}
+          title="No dashboard data"
+          description="We couldn't load your financial overview. Try refreshing the page."
+          actionLabel="Refresh"
+          onAction={() => window.location.reload()}
+        />
+      </div>
+    );
   }
-
-  // (moved earlier) - use the precomputed animated values
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -519,12 +529,12 @@ export default function DashboardPage() {
         />
 
         <div className="mt-6">
-          <AccountsStrip accounts={dashboardData.accounts.map((a) => ({
-            ...a,
-            contributedAmount: a.currentValue !== null && a.returnAmount !== null
-              ? a.currentValue - a.returnAmount
-              : null,
-          }))} />
+          <AccountsStrip accounts={dashboardData.accounts.map((account) => {
+            const metrics = investmentMetricsByAccountId.get(account.id);
+            return metrics
+              ? { ...account, ...metrics }
+              : account;
+          })} />
         </div>
 
         <div className="mt-6">
@@ -532,16 +542,10 @@ export default function DashboardPage() {
             <StatCard
               label="Income This Month"
               value={incomeAnimated}
-              momPercent={dashboardData.incomeMoMPercent}
-              momPositiveIsGood
-              monthLabel={dashboardData.currentMonthLabel}
             />
             <StatCard
               label="Expenses This Month"
               value={expensesAnimated}
-              momPercent={dashboardData.expensesMoMPercent}
-              momPositiveIsGood={false}
-              monthLabel={dashboardData.currentMonthLabel}
             />
             <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
           </div>
@@ -559,7 +563,7 @@ export default function DashboardPage() {
             />
             <div className="space-y-4 xl:col-span-2">
               <MonthlyTrendCard data={monthlyTrendData} />
-              <WeeklySummaryCard summary={summary} onGenerated={() => {}} />
+              <WeeklySummaryCard summary={summary} />
             </div>
           </div>
         </div>

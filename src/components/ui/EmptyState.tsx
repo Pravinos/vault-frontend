@@ -9,6 +9,7 @@ type EmptyStateProps = {
   actionLabel?: React.ReactNode;
   onAction?: () => void;
   hideAction?: boolean;
+  actionDisabled?: boolean;
 };
 
 export default function EmptyState({
@@ -18,6 +19,7 @@ export default function EmptyState({
   actionLabel,
   onAction,
   hideAction,
+  actionDisabled = false,
 }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[400px] rounded-xl px-6 py-12 text-center">
@@ -34,7 +36,8 @@ export default function EmptyState({
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95"
+          disabled={actionDisabled}
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {actionLabel}
         </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -9,83 +9,35 @@ import {
   ScrollText,
   Trash2,
   Lightbulb,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
 import { formatCurrency } from "@/lib/utils";
-import type { WeeklySummary, Account } from "@/types";
-import type { DashboardData } from "@/types/dashboard";
+import type { WeeklySummary } from "@/types";
 import { useSummaries } from "@/lib/hooks/useSummaries";
-import { useDashboard } from "@/lib/hooks/useDashboard";
-import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useDeleteSummary } from "@/lib/hooks/useSummaryMutations";
 import EmptyState from "@/components/ui/EmptyState";
-
-function formatWeekRange(start: string, end: string): string {
-  const startDate = new Date(`${start}T00:00:00`);
-  const endDate = new Date(`${end}T00:00:00`);
-
-  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
-    return `${start} - ${end}`;
-  }
-
-  const startLabel = startDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-  const endLabel = endDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  return `Week of ${startLabel} - ${endLabel}`;
-}
-
-function formatGeneratedDate(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) {
-    return "Unknown";
-  }
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function sortSummaries(items: WeeklySummary[]): WeeklySummary[] {
-  return [...items].sort(
-    (a, b) => new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime()
-  );
-}
+import {
+  extractSummaryInsight,
+  formatGeneratedDate,
+  formatWeekRange,
+  isSummaryTruncatable,
+} from "@/lib/summaryFormatting";
 
 type SummaryItemProps = {
   summary: WeeklySummary;
   isDeleting: boolean;
   isPendingConfirm: boolean;
   onDeleteClick: (id: string) => void;
-  dashboard?: DashboardData | null;
-  accounts?: Account[] | null;
 };
 
-function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick, dashboard, accounts }: SummaryItemProps) {
+function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick }: SummaryItemProps) {
   const [expanded, setExpanded] = useState(false);
-
-  // Prefer authoritative values from dashboard when available.
-  const metrics = [
-    { key: "totalSpent", label: "Total Spent", value: summary.totalSpent },
-    { key: "totalIncome", label: "Total Income", value: dashboard?.incomeThisMonth },
-    { key: "netCashFlow", label: "Net Cash Flow", value: dashboard?.netCashFlow },
-    { key: "topCategory", label: "Top Category", value: dashboard?.topExpenseCategory },
-  ];
+  const summaryText = summary.summaryText?.trim() ?? "";
+  const canTruncate = isSummaryTruncatable(summaryText);
+  const insight = extractSummaryInsight(summaryText);
 
   return (
     <article className="rounded-xl border border-gray-800 bg-gray-900/60 p-5">
@@ -111,95 +63,52 @@ function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick, das
         </div>
       </div>
 
-      {/* Key metrics row */}
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {metrics.map((m) => {
-          const isNumber = typeof m.value === "number";
-          const display = isNumber ? formatCurrency(m.value as number) : m.value ? String(m.value) : "—";
-          const labelClass = "text-[12px] text-gray-400 uppercase tracking-[0.05em]";
-          const valueBase = "mt-1 text-[20px] font-semibold";
-          const valueClass =
-            m.key === "netCashFlow" && isNumber
-              ? (Number(m.value) >= 0 ? `${valueBase} text-emerald-400` : `${valueBase} text-red-400`)
-              : `${valueBase} text-white`;
-
-          return (
-            <div key={m.key} className="flex flex-col">
-              <span className={labelClass}>{m.label}</span>
-              <span className={valueClass}>{display}</span>
-            </div>
-          );
-        })}
+      <div className="mt-4">
+        <span className="text-[12px] uppercase tracking-[0.05em] text-gray-400">Total Spent (this week)</span>
+        <p className="mt-1 text-[20px] font-semibold text-white">{formatCurrency(summary.totalSpent)}</p>
       </div>
 
-      {/* Account / investment returns: show account name · assetType with context label */}
-      {accounts && accounts.length > 0 ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {accounts
-            .filter((a) => typeof a.returnPercentage === "number")
-            .slice(0, 2)
-            .map((a) => (
-              <div key={a.id} className="rounded-md border border-white/6 bg-[#0f1720] p-2 text-sm text-gray-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-white">
-                      {a.name}{a.assetType ? ` · ${a.assetType}` : ""}
-                    </div>
-                    <div className="text-xs text-gray-400">Investment return this week</div>
-                  </div>
-                  <div className={`flex items-center gap-2 ${a.returnPercentage! >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                    {a.returnPercentage! >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                    <div className="font-semibold">{a.returnPercentage!.toFixed(2)}%</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+      {summaryText ? (
+        <div className="mt-4">
+          <p
+            className="whitespace-normal text-sm leading-relaxed text-gray-200"
+            style={
+              expanded || !canTruncate
+                ? undefined
+                : {
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }
+            }
+          >
+            {summaryText}
+          </p>
+
+          {canTruncate ? (
+            <button
+              type="button"
+              onClick={() => setExpanded((prev) => !prev)}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
+            >
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {expanded ? "Read less" : "Read more"}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
-      <div className="mt-4">
-        <p
-          className="whitespace-normal text-sm leading-relaxed text-gray-200"
-          style={
-            expanded
-              ? undefined
-              : {
-                  display: "-webkit-box",
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }
-          }
-        >
-          {summary.summaryText?.trim()}
-        </p>
-
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
-        >
-          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          {expanded ? "Read less" : "Read more"}
-        </button>
-      </div>
-      {/* Highlighted insight (takeaway) moved after the narrative */}
-      {(() => {
-        const text = summary.summaryText ?? "";
-        const sentences = text.replace(/\n+/g, " ").split(".");
-        const keywords = ["practical tip", "allocate", "recommend", "suggestion"];
-        const found = sentences.map((s) => s.trim()).find((s) => keywords.some((k) => s.toLowerCase().includes(k)));
-        return found ? (
-          <div className="mt-3 rounded-md border border-white/6 bg-white/3 p-3 text-sm text-gray-100">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 text-emerald-300">
-                <Lightbulb className="h-4 w-4" />
-              </div>
-              <div className="text-sm leading-tight">{found}</div>
+      {insight ? (
+        <div className="mt-3 rounded-md border border-white/6 bg-white/3 p-3 text-sm text-gray-100">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 text-emerald-300">
+              <Lightbulb className="h-4 w-4" />
             </div>
+            <div className="text-sm leading-tight">{insight}</div>
           </div>
-        ) : null;
-      })()}
+        </div>
+      ) : null}
 
       <div className="mt-4 flex items-center justify-end">
         <div className="ml-4 flex-shrink-0">
@@ -217,15 +126,8 @@ export default function WeeklySummariesPage() {
   const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
 
   const { data: summaries = [], isLoading, error } = useSummaries();
-  const { data: dashboardResult } = useDashboard();
-  const { data: accounts = null } = useAccounts();
   const deleteSummaryMutation = useDeleteSummary();
-
-  const dashboard = dashboardResult?.dashboard ?? null;
-
   const { generate, isGenerating, toast, clearToast } = useGenerateSummary();
-
-  const hasSummaries = useMemo(() => summaries.length > 0, [summaries]);
 
   const handleDeleteSummary = (id: string) => {
     confirmDelete(id, async () => {
@@ -262,7 +164,7 @@ export default function WeeklySummariesPage() {
           </div>
         ) : error ? (
           <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">Unable to load weekly summaries.</div>
-        ) : hasSummaries ? (
+        ) : summaries.length > 0 ? (
           <div className="space-y-4">
             {summaries.map((summary) => (
               <SummaryItem
@@ -271,8 +173,6 @@ export default function WeeklySummariesPage() {
                 isDeleting={deleteSummaryMutation.isPending && deleteSummaryMutation.variables === summary.id}
                 isPendingConfirm={isPendingConfirm(summary.id)}
                 onDeleteClick={handleDeleteSummary}
-                dashboard={dashboard}
-                accounts={accounts}
               />
             ))}
           </div>
@@ -288,6 +188,7 @@ export default function WeeklySummariesPage() {
               </>
             }
             onAction={generate}
+            actionDisabled={isGenerating}
           />
         )}
       </div>

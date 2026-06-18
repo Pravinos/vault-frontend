@@ -7,15 +7,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
 import ExpenseList from "@/components/expenses/ExpenseList";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
-import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
+import { formatCurrency, formatMonth, getLocalDateString, getMonthString } from "@/lib/utils";
 import { useExpenses } from "@/lib/hooks/useExpenses";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useDeleteExpense } from "@/lib/hooks/useExpenseMutations";
 import { queryKeys } from "@/lib/queryKeys";
-import type { Category, Expense, CreateExpenseRequest } from "@/types";
+import type { Expense, CreateExpenseRequest } from "@/types";
 
 export default function ExpensesPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -30,7 +31,7 @@ export default function ExpensesPage() {
 
   const qc = useQueryClient();
 
-  const { data, isLoading: loading, error } = useExpenses(selectedMonth);
+  const { data, isLoading: loading, error, refetch } = useExpenses(selectedMonth);
   const { data: accounts = [] } = useAccounts();
   const { data: categories = [] } = useCategories();
   const deleteExpenseMutation = useDeleteExpense(selectedMonth);
@@ -51,7 +52,7 @@ export default function ExpensesPage() {
       categoryId: expense.category.id,
       accountId: expense.accountId,
       note: expense.note ?? undefined,
-      expenseDate: new Date().toISOString().slice(0, 10),
+      expenseDate: getLocalDateString(),
     });
     setShowForm(true);
   };
@@ -65,32 +66,18 @@ export default function ExpensesPage() {
     setShowForm(true);
   };
 
+  const handleFormClose = useCallback(() => {
+    setShowForm(false);
+    setEditingExpense(undefined);
+    setInitialExpenseValues(undefined);
+  }, []);
+
   const handleFormSuccess = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: queryKeys.expenses(selectedMonth) });
     await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     await qc.invalidateQueries({ queryKey: queryKeys.accounts });
     await qc.invalidateQueries({ queryKey: queryKeys.goals });
   }, [qc, selectedMonth]);
-
-  const displayedExpenses = useMemo(() => {
-    // Start with month-scoped data (already fetched for selectedMonth)
-    let data = expenses;
-
-    // Apply existing filters first
-    if (selectedCategoryId !== null) data = data.filter((e) => e.category.id === selectedCategoryId);
-    if (selectedAccountId) data = data.filter((e) => e.accountId === selectedAccountId);
-
-    // Then apply search
-    if (!searchQuery.trim()) return data;
-    const q = searchQuery.toLowerCase().trim();
-    return data.filter((item) => {
-      const noteMatch = item.note?.toLowerCase().includes(q);
-      const amountMatch = item.amount.toString().includes(q);
-      const categoryMatch = item.category.name?.toLowerCase().includes(q);
-      const accountMatch = item.accountName?.toLowerCase().includes(q);
-      return Boolean(noteMatch || amountMatch || categoryMatch || accountMatch);
-    });
-  }, [expenses, selectedCategoryId, selectedAccountId, searchQuery]);
 
   const baseFilteredExpenses = useMemo(() => {
     let data = expenses;
@@ -99,6 +86,19 @@ export default function ExpensesPage() {
     return data;
   }, [expenses, selectedCategoryId, selectedAccountId]);
 
+  const displayedExpenses = useMemo(() => {
+    if (!searchQuery.trim()) return baseFilteredExpenses;
+    const q = searchQuery.toLowerCase().trim();
+    return baseFilteredExpenses.filter((item) => {
+      const noteMatch = item.note?.toLowerCase().includes(q);
+      const amountMatch = item.amount.toString().includes(q);
+      const categoryMatch = item.category.name?.toLowerCase().includes(q);
+      const accountMatch = item.accountName?.toLowerCase().includes(q);
+      return Boolean(noteMatch || amountMatch || categoryMatch || accountMatch);
+    });
+  }, [baseFilteredExpenses, searchQuery]);
+
+  // Totals intentionally exclude search — search only narrows the visible list.
   const totalAmount = useMemo(
     () => baseFilteredExpenses.reduce((sum, e) => sum + e.amount, 0),
     [baseFilteredExpenses]
@@ -106,23 +106,45 @@ export default function ExpensesPage() {
 
   const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
 
-  const categorySummary = useMemo(
-    () =>
-      (summary?.byCategory ?? [])
-        .map((item) => {
-          const category = categories.find((c: Category) => c.name === item.category);
-          return {
-            categoryId: category?.id,
-            categoryName: item.category,
-            icon: category?.icon ?? "🧾",
-            total: item.total,
-          };
-        })
-        .sort((a, b) => b.total - a.total),
-    [categories, summary]
-  );
-
   const hasActiveFilters = selectedCategoryId !== null || selectedAccountId !== null;
+
+  const categorySummary = useMemo(() => {
+    if (hasActiveFilters) {
+      const totalsByCategory = new Map<
+        number,
+        { categoryId: number; categoryName: string; icon: string; total: number }
+      >();
+
+      for (const expense of baseFilteredExpenses) {
+        const id = expense.category.id;
+        const existing = totalsByCategory.get(id);
+        if (existing) {
+          existing.total += expense.amount;
+        } else {
+          totalsByCategory.set(id, {
+            categoryId: id,
+            categoryName: expense.category.name,
+            icon: expense.category.icon,
+            total: expense.amount,
+          });
+        }
+      }
+
+      return Array.from(totalsByCategory.values()).sort((a, b) => b.total - a.total);
+    }
+
+    return (summary?.byCategory ?? [])
+      .map((item) => {
+        const category = categories.find((c) => c.name === item.category);
+        return {
+          categoryId: category?.id,
+          categoryName: item.category,
+          icon: category?.icon ?? "🧾",
+          total: item.total,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+  }, [hasActiveFilters, baseFilteredExpenses, categories, summary]);
 
   const clearFilters = () => {
     setSelectedCategoryId(null);
@@ -136,6 +158,7 @@ export default function ExpensesPage() {
 
     setSelectedCategoryId((prev) => (prev === categoryId ? null : categoryId));
   };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -150,8 +173,7 @@ export default function ExpensesPage() {
         </button>
       </div>
 
-      {/* Summary bar */}
-      {!loading && (
+      {!loading && !error && (
         <div className="border-b border-gray-800 px-0 py-2">
           <p className="mb-4 text-sm text-gray-400">
             <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
@@ -179,10 +201,10 @@ export default function ExpensesPage() {
           onAccountChange={setSelectedAccountId}
         />
 
-        {categorySummary.length > 0 && (
+        {!error && categorySummary.length > 0 && (
           <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              {monthLabel} - Breakdown
+              {monthLabel} - Breakdown{hasActiveFilters ? " (filtered)" : ""}
             </p>
 
             <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
@@ -191,7 +213,7 @@ export default function ExpensesPage() {
 
                 return (
                   <button
-                    key={categoryName}
+                    key={categoryId ?? categoryName}
                     type="button"
                     className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
                       active
@@ -221,18 +243,33 @@ export default function ExpensesPage() {
           </div>
         )}
 
-        {error ? <p className="text-sm text-red-400">Unable to load expenses.</p> : null}
-        {/* When a search is active and there are no matches, show contextual empty state */}
-        {searchQuery.trim().length > 0 && !loading && displayedExpenses.length === 0 ? (
+        {error ? (
+          <ErrorMessage
+            message="Unable to load expenses."
+            onRetry={() => void refetch()}
+          />
+        ) : searchQuery.trim().length > 0 && !loading && displayedExpenses.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-            <Search className="w-8 h-8 mb-3 opacity-50" />
-            <p className="text-sm">No transactions match "{searchQuery}"</p>
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mt-2 text-xs text-emerald-400 hover:text-emerald-300"
-            >
-              Clear search
-            </button>
+            <Search className="mb-3 h-8 w-8 opacity-50" />
+            <p className="text-sm">No transactions match &quot;{searchQuery}&quot;</p>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-xs text-emerald-400 hover:text-emerald-300"
+              >
+                Clear search
+              </button>
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-xs text-gray-400 hover:text-gray-300"
+                >
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : loading ? (
           <div className="space-y-2">
@@ -261,10 +298,7 @@ export default function ExpensesPage() {
           categories={categories}
           accounts={accounts}
           onSuccess={handleFormSuccess}
-          onClose={() => {
-            setShowForm(false);
-            setInitialExpenseValues(undefined);
-          }}
+          onClose={handleFormClose}
         />
       ) : null}
     </div>

@@ -11,7 +11,7 @@ import type { Account, CreateTransferPayload } from "@/types";
 type TransferFormProps = {
   accounts: Account[];
   preselectedAccountId?: string | null;
-  onSuccess: () => Promise<void> | void;
+  onSuccess: (payload: { fromAccountId: string; toAccountId: string }) => Promise<void> | void;
   onClose: () => void;
 };
 
@@ -135,7 +135,7 @@ export default function TransferForm({
 
     try {
       await createTransfer(payload);
-      await onSuccess();
+      await onSuccess({ fromAccountId, toAccountId });
       onClose();
     } catch (error) {
       setFormError(getApiErrorMessage(error));

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createIncome, updateIncome } from "@/lib/api";
+import { getLocalDateString } from "@/lib/utils";
 import type { Account, CreateIncomePayload, Income, IncomeCategory } from "@/types";
 
 type IncomeFormProps = {
@@ -24,8 +25,6 @@ type FormErrors = {
   note?: string;
 };
 
-const todayString = () => new Date().toISOString().slice(0, 10);
-
 export default function IncomeForm({
   income,
   categories,
@@ -42,7 +41,7 @@ export default function IncomeForm({
   );
   const [accountId, setAccountId] = useState<string>(income?.accountId ?? initialValues?.accountId ?? "");
   const [incomeDate, setIncomeDate] = useState<string>(
-    income?.incomeDate ?? initialValues?.incomeDate ?? todayString()
+    income?.incomeDate ?? initialValues?.incomeDate ?? getLocalDateString()
   );
   const [note, setNote] = useState<string>(income?.note ?? initialValues?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});

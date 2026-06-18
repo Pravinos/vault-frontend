@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -20,13 +20,17 @@ import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Account, InvestmentCheckpoint, Transfer } from "@/types";
+import { deriveInvestmentMetrics } from "@/lib/investmentMetrics";
 import { useAccount } from "@/lib/hooks/useAccount";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
 import { useCheckpoints } from "@/lib/hooks/useCheckpoints";
 import { useAddCheckpoint } from "@/lib/hooks/useCheckpointMutations";
 import { queryKeys } from "@/lib/queryKeys";
+import { isRevertTransfer } from "@/lib/transfers";
+import type { Transfer } from "@/types";
 import TransferRow from "@/components/transfers/TransferRow";
+
+const CHECKPOINTS_PREVIEW_COUNT = 5;
 
 function formatReturnPercentage(value: number | null): string {
   if (value === null || value === 0) {
@@ -44,27 +48,51 @@ function getReturnColor(value: number | null): string {
   return value > 0 ? "text-green-400" : "text-red-400";
 }
 
-function formatCheckpointDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
+function AccountTransfersSection({
+  transfers,
+  transfersLoading,
+  transfersError,
+}: {
+  transfers: Transfer[];
+  transfersLoading: boolean;
+  transfersError: Error | null;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
+      <h3 className="text-base font-semibold text-white">Transfers</h3>
+      {transfersLoading ? (
+        <div className="mt-4">
+          <Skeleton variant="card" className="h-24 rounded-xl" />
+        </div>
+      ) : transfersError ? (
+        <p className="mt-4 text-sm text-red-400">Unable to load transfer history.</p>
+      ) : transfers.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-400">No transfers yet.</p>
+      ) : (
+        <div className="mt-4 space-y-2">
+          {transfers.map((t) => {
+            const reversal = isRevertTransfer(t);
+
+            return (
+              <TransferRow
+                key={t.id}
+                fromAccount={{ name: t.fromAccountName }}
+                toAccount={{ name: t.toAccountName }}
+                amount={t.amount}
+                date={t.transferDate ?? t.createdAt}
+                isReversal={reversal}
+                note={t.note}
+                createdAt={t.createdAt}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function formatTransferDate(dateValue: string): string {
-  const parsed = new Date(dateValue);
-  if (Number.isNaN(parsed.getTime())) {
-    return dateValue;
-  }
-  return parsed.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-}
-
-export default function InvestmentAccountDetailPage() {
+export default function AccountDetailPage() {
   const params = useParams<{ id: string }>();
   const accountId = params.id;
 
@@ -72,30 +100,66 @@ export default function InvestmentAccountDetailPage() {
   const [noteInput, setNoteInput] = useState<string>("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [showManualModal, setShowManualModal] = useState<boolean>(false);
+  const [showAllCheckpoints, setShowAllCheckpoints] = useState<boolean>(false);
 
   const qc = useQueryClient();
 
   const { data: account = null, isLoading: loading, error } = useAccount(accountId);
-  const { data: checkpoints = [], isLoading: checkpointsLoading } = useCheckpoints(accountId);
-  const { data: transfers = [], isLoading: transfersLoading, error: transfersError } = useAccountTransfers(accountId);
+  const isInvestment = account?.accountType === "INVESTMENT";
+
+  const { data: checkpoints = [], isLoading: checkpointsLoading } = useCheckpoints(
+    accountId,
+    isInvestment
+  );
+  const {
+    data: transfers = [],
+    isLoading: transfersLoading,
+    error: transfersError,
+  } = useAccountTransfers(accountId, account != null);
   const addCheckpointMutation = useAddCheckpoint(accountId);
 
-  const sortedCheckpoints = useMemo(() => {
+  const chartCheckpoints = useMemo(() => {
     return [...checkpoints].sort(
       (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
     );
   }, [checkpoints]);
 
-  const chartData = useMemo(
+  const sortedCheckpoints = useMemo(() => {
+    return [...checkpoints].sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    );
+  }, [checkpoints]);
+
+  const visibleCheckpoints = useMemo(
     () =>
-      sortedCheckpoints.map((checkpoint) => ({
-        date: formatCheckpointDate(checkpoint.recordedAt),
-        value: checkpoint.value,
-      })),
-    [sortedCheckpoints]
+      showAllCheckpoints
+        ? sortedCheckpoints
+        : sortedCheckpoints.slice(0, CHECKPOINTS_PREVIEW_COUNT),
+    [sortedCheckpoints, showAllCheckpoints]
   );
 
-  const handleAddCheckpoint = async (event: React.FormEvent<HTMLFormElement>) => {
+  const hasMoreCheckpoints = sortedCheckpoints.length > CHECKPOINTS_PREVIEW_COUNT;
+
+  const investmentMetrics = useMemo(() => {
+    if (!account || account.accountType !== "INVESTMENT") {
+      return null;
+    }
+    return deriveInvestmentMetrics(account, checkpoints);
+  }, [account, checkpoints]);
+
+  const contributedBaseline =
+    account?.contributedAmount ?? investmentMetrics?.contributedAmount ?? null;
+
+  const chartData = useMemo(
+    () =>
+      chartCheckpoints.map((checkpoint) => ({
+        date: formatDate(checkpoint.recordedAt),
+        value: checkpoint.value,
+      })),
+    [chartCheckpoints]
+  );
+
+  const handleAddCheckpoint = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const parsedValue = Number(valueInput);
@@ -118,10 +182,13 @@ export default function InvestmentAccountDetailPage() {
     }
   };
 
+  const pageTitle =
+    account?.accountType === "INVESTMENT" ? "Investment Details" : "Account Details";
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold text-white sm:text-2xl">Investment Details</h1>
+        <h1 className="text-xl font-bold text-white sm:text-2xl">{pageTitle}</h1>
         <Link
           href="/accounts"
           className="inline-flex w-full items-center justify-center rounded-lg border border-gray-700 px-3 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
@@ -132,7 +199,10 @@ export default function InvestmentAccountDetailPage() {
 
       <div className="space-y-6">
         {error ? (
-          <ErrorMessage message="Unable to load account details." onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.account(accountId) })} />
+          <ErrorMessage
+            message="Unable to load account details."
+            onRetry={() => qc.invalidateQueries({ queryKey: queryKeys.account(accountId) })}
+          />
         ) : loading ? (
           <div className="space-y-4">
             <Skeleton variant="card" className="h-40 rounded-xl" />
@@ -161,7 +231,7 @@ export default function InvestmentAccountDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={() => setShowManualModal(true)}
@@ -169,57 +239,34 @@ export default function InvestmentAccountDetailPage() {
                 >
                   Update Manual Balance
                 </button>
-
-                <Link
-                  href="/accounts"
-                  className="ml-auto inline-flex items-center justify-center rounded-lg border border-gray-700 px-3 py-2 text-base text-gray-200 hover:border-gray-500 sm:text-sm"
-                >
-                  Back to Accounts
-                </Link>
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
-              <h3 className="text-base font-semibold text-white">Transfers</h3>
-              {transfersLoading ? (
-                <div className="mt-4">
-                  <Skeleton variant="card" className="h-24 rounded-xl" />
-                </div>
-              ) : transfersError ? (
-                <p className="mt-4 text-sm text-red-400">Unable to load transfer history.</p>
-              ) : transfers.length === 0 ? (
-                <p className="mt-4 text-sm text-gray-400">No transfers yet.</p>
-              ) : (
-                <div className="mt-4 space-y-2">
-                  {transfers.map((t) => (
-                    <TransferRow
-                      key={t.id}
-                      fromAccount={{ name: t.fromAccountName }}
-                      toAccount={{ name: t.toAccountName }}
-                      amount={t.amount}
-                      date={t.transferDate ?? t.createdAt}
-                      isReversal={false}
-                      note={t.note}
-                      createdAt={t.createdAt}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <AccountTransfersSection
+              transfers={transfers}
+              transfersLoading={transfersLoading}
+              transfersError={transfersError}
+            />
 
-            {showManualModal && account ? (
+            {showManualModal ? (
               <ManualBalanceModal
                 account={account}
-                onSuccess={async (updatedAccount) => {
-                    setShowManualModal(false);
-                    await qc.invalidateQueries({ queryKey: queryKeys.account(accountId) });
-                    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
-                    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-                  }}
+                onSuccess={async () => {
+                  setShowManualModal(false);
+                  await qc.invalidateQueries({ queryKey: queryKeys.account(accountId) });
+                  await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+                  await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+                }}
                 onClose={() => setShowManualModal(false)}
               />
             ) : null}
           </>
+        ) : checkpointsLoading ? (
+          <div className="space-y-4">
+            <Skeleton variant="card" className="h-40 rounded-xl" />
+            <Skeleton variant="card" className="h-32 rounded-xl" />
+            <Skeleton variant="chart" className="h-72 rounded-xl" />
+          </div>
         ) : (
           <>
             <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-6">
@@ -232,25 +279,25 @@ export default function InvestmentAccountDetailPage() {
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Contributed</p>
                   <p className="mt-1 text-sm font-semibold text-white">
-                    {formatCurrency(account.contributedAmount ?? 0)}
+                    {formatCurrency(contributedBaseline ?? 0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Current Value</p>
                   <p className="mt-1 text-sm font-semibold text-white">
-                    {formatCurrency(account.currentValue ?? 0)}
+                    {formatCurrency(investmentMetrics?.currentValue ?? 0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Return</p>
-                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(account.returnAmount)}`}>
-                    {formatCurrency(account.returnAmount ?? 0)}
+                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(investmentMetrics?.returnAmount ?? null)}`}>
+                    {formatCurrency(investmentMetrics?.returnAmount ?? 0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Return %</p>
-                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(account.returnPercentage)}`}>
-                    {formatReturnPercentage(account.returnPercentage)}
+                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(investmentMetrics?.returnPercentage ?? null)}`}>
+                    {formatReturnPercentage(investmentMetrics?.returnPercentage ?? null)}
                   </p>
                 </div>
                 {account.assetType?.trim() ? (
@@ -313,9 +360,9 @@ export default function InvestmentAccountDetailPage() {
                         }}
                         itemStyle={{ color: "#f9fafb" }}
                       />
-                      {account.contributedAmount !== null ? (
+                      {typeof contributedBaseline === "number" ? (
                         <ReferenceLine
-                          y={account.contributedAmount}
+                          y={contributedBaseline}
                           stroke="#f59e0b"
                           strokeDasharray="4 4"
                           label={{ value: "Contributed", fill: "#f59e0b", position: "insideTopLeft" }}
@@ -334,21 +381,38 @@ export default function InvestmentAccountDetailPage() {
                 <p className="mt-4 text-sm text-gray-400">No checkpoints yet.</p>
               ) : (
                 <div className="mt-4 space-y-2">
-                  {sortedCheckpoints.map((checkpoint) => (
+                  {visibleCheckpoints.map((checkpoint) => (
                     <div
                       key={checkpoint.id}
                       className="flex flex-col gap-1 rounded-lg border border-gray-800 bg-gray-950/70 p-3 text-sm text-gray-200 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>
                         <p className="font-medium text-white">{formatCurrency(checkpoint.value)}</p>
-                        <p className="text-xs text-gray-400">{formatDate(checkpoint.recordedAt.slice(0, 10))}</p>
+                        <p className="text-xs text-gray-400">{formatDate(checkpoint.recordedAt)}</p>
                       </div>
                       <p className="text-xs text-gray-400">{checkpoint.note || "No note"}</p>
                     </div>
                   ))}
+                  {hasMoreCheckpoints ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllCheckpoints((current) => !current)}
+                      className="w-full rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:border-gray-500 hover:text-white"
+                    >
+                      {showAllCheckpoints
+                        ? "Show less"
+                        : `Show more (${sortedCheckpoints.length - CHECKPOINTS_PREVIEW_COUNT} more)`}
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
+
+            <AccountTransfersSection
+              transfers={transfers}
+              transfersLoading={transfersLoading}
+              transfersError={transfersError}
+            />
           </>
         )}
       </div>

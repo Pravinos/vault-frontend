@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeftRight, Clock, Eye, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import axios from "axios";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import AccountForm from "@/components/accounts/AccountForm";
@@ -22,9 +22,16 @@ import {
   getCurrentTimestamp,
 } from "@/lib/utils";
 import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
-import { useDeleteAccount, useRevertTransfer } from "@/lib/hooks/useAccountMutations";
+import { useLatestTransferRecipientAccountId } from "@/lib/hooks/useLatestTransferRecipientAccountId";
+import {
+  invalidateTransferBalanceQueries,
+  useDeleteAccount,
+  useRevertTransfer,
+} from "@/lib/hooks/useAccountMutations";
 import { queryKeys } from "@/lib/queryKeys";
+import { isRevertTransfer } from "@/lib/transfers";
 import type { Account, Transfer } from "@/types";
 import TransferRow from "@/components/transfers/TransferRow";
 
@@ -42,63 +49,6 @@ function formatManualTimestamp(value: string | null): string {
     day: "2-digit",
     year: "numeric",
   });
-}
-
-function formatTransferDate(dateValue: string): string {
-  return new Date(`${dateValue}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-}
-
-function formatCreatedAt(timestamp: string): string {
-  const parsed = new Date(timestamp);
-  if (Number.isNaN(parsed.getTime())) {
-    return "-";
-  }
-
-  return parsed.toLocaleString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function isRevertTransfer(transfer: Transfer): boolean {
-  const transferWithMeta = transfer as Transfer & {
-    isRevert?: boolean | null;
-    isReversal?: boolean | null;
-    originalTransferId?: string | null;
-    reversalOfTransferId?: string | null;
-    revertedTransferId?: string | null;
-    transferType?: string | null;
-    type?: string | null;
-    kind?: string | null;
-  };
-
-  if (transferWithMeta.isRevert || transferWithMeta.isReversal) {
-    return true;
-  }
-
-  if (
-    transferWithMeta.originalTransferId ||
-    transferWithMeta.reversalOfTransferId ||
-    transferWithMeta.revertedTransferId
-  ) {
-    return true;
-  }
-
-  const marker =
-    transferWithMeta.transferType ?? transferWithMeta.type ?? transferWithMeta.kind ?? "";
-  if (/revert|reversal/i.test(marker)) {
-    return true;
-  }
-
-  const note = transfer.note?.trim() ?? "";
-  return /^revert(?:ed)?\b|^reversal\b/i.test(note);
 }
 
 function getApiErrorMessage(error: unknown, fallback: string): string {
@@ -142,13 +92,38 @@ export default function AccountsPage() {
 
   const [selectedTransferAccountId, setSelectedTransferAccountId] = useState<string | null>(null);
   const [revertTargetTransfer, setRevertTargetTransfer] = useState<Transfer | null>(null);
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
   const qc = useQueryClient();
 
   const { data: accounts = [], isLoading: loading, error } = useAccounts();
+  const investmentMetricsByAccountId = useInvestmentMetricsMap(accounts);
+  const shouldResolveLatestRecipient =
+    activeTab === "transfer" && selectedTransferAccountId === null && accounts.length >= 2;
+  const { recipientAccountId: latestRecipientAccountId, isLoading: latestRecipientLoading } =
+    useLatestTransferRecipientAccountId(accounts, shouldResolveLatestRecipient);
   const { data: transfers = [], isLoading: transfersLoading, error: transfersError } = useAccountTransfers(selectedTransferAccountId);
   const deleteAccountMutation = useDeleteAccount();
   const revertTransferMutation = useRevertTransfer(selectedTransferAccountId);
+
+  useEffect(() => {
+    if (!shouldResolveLatestRecipient || latestRecipientLoading || !latestRecipientAccountId) {
+      return;
+    }
+
+    setSelectedTransferAccountId(latestRecipientAccountId);
+  }, [shouldResolveLatestRecipient, latestRecipientLoading, latestRecipientAccountId]);
+
+  useEffect(() => {
+    if (
+      selectedTransferAccountId &&
+      !accounts.some((account) => account.id === selectedTransferAccountId)
+    ) {
+      setSelectedTransferAccountId(null);
+    }
+  }, [accounts, selectedTransferAccountId]);
+
+  const resolvingLatestRecipient = shouldResolveLatestRecipient && latestRecipientLoading;
 
   const staleAccounts = useMemo(() => {
     const staleBefore = getCurrentTimestamp() - staleThresholdMs;
@@ -190,8 +165,13 @@ export default function AccountsPage() {
 
     setDeleteError(null);
 
+    const deletedAccountId = deleteTargetAccount.id;
+
     try {
-      await deleteAccountMutation.mutateAsync(deleteTargetAccount.id);
+      await deleteAccountMutation.mutateAsync(deletedAccountId);
+      if (selectedTransferAccountId === deletedAccountId) {
+        setSelectedTransferAccountId(null);
+      }
       setToast({ message: "Account permanently deleted", type: "success" });
       setDeleteTargetAccount(null);
       setDeleteConfirmInput("");
@@ -242,13 +222,16 @@ export default function AccountsPage() {
     await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
   };
 
-  const handleTransferSuccess = async () => {
+  const handleTransferSuccess = async ({
+    toAccountId,
+  }: {
+    fromAccountId: string;
+    toAccountId: string;
+  }) => {
     setShowTransferForm(false);
-    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
-    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-    if (selectedTransferAccountId) {
-      await qc.invalidateQueries({ queryKey: queryKeys.accountTransfers(selectedTransferAccountId) });
-    }
+    setActiveTab("transfer");
+    setSelectedTransferAccountId(toAccountId);
+    await invalidateTransferBalanceQueries(qc);
   };
 
   const canOpenTransferForm = accounts.length >= 2;
@@ -374,12 +357,19 @@ export default function AccountsPage() {
               onAction={openCreate}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {accounts.map((account) => {
+                const metrics = investmentMetricsByAccountId.get(account.id);
+                const displayAccount = metrics ? { ...account, ...metrics } : account;
+
                 return (
                   <AccountCard
                     key={account.id}
-                    account={account}
+                    account={displayAccount}
+                    detailsOpen={expandedAccountId === account.id}
+                    onDetailsOpenChange={(open) =>
+                      setExpandedAccountId(open ? account.id : null)
+                    }
                     details={
                       <>
                         <div className="rounded-xl border border-gray-800 bg-[#0f1923] p-3">
@@ -478,7 +468,13 @@ export default function AccountsPage() {
                 </div>
               </div>
 
-              {!selectedTransferAccountId ? (
+              {resolvingLatestRecipient ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <Skeleton key={index} variant="text" className="h-14 rounded-xl" />
+                  ))}
+                </div>
+              ) : !selectedTransferAccountId ? (
                 <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
                   <p className="text-base font-medium text-gray-200">Choose an account to view transfer history</p>
                   <p className="mt-1 text-sm text-gray-500">

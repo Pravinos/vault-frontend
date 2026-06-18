@@ -9,8 +9,9 @@ export default function TokenRefresher() {
     const token = getToken();
     if (!token) return;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`, {
+    fetch("/api/auth/refresh", {
       method: "POST",
+      credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (res) => {

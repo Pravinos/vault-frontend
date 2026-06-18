@@ -37,12 +37,14 @@ export async function proxy(req: NextRequest) {
 
   if (!token) {
     if (pathname === "/login" || pathname === "/reset-password") return NextResponse.next();
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("reason", "expired");
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   if (pathname === "/login" || pathname === "/setup" || pathname === "/reset-password") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  if (pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
