@@ -21,6 +21,7 @@ import Toast from "@/components/ui/Toast";
 import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Account, InvestmentCheckpoint, Transfer } from "@/types";
+import { deriveInvestmentMetrics } from "@/lib/investmentMetrics";
 import { useAccount } from "@/lib/hooks/useAccount";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
 import { useCheckpoints } from "@/lib/hooks/useCheckpoints";
@@ -85,6 +86,16 @@ export default function InvestmentAccountDetailPage() {
       (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime()
     );
   }, [checkpoints]);
+
+  const investmentMetrics = useMemo(() => {
+    if (!account || account.accountType !== "INVESTMENT") {
+      return null;
+    }
+    return deriveInvestmentMetrics(account, checkpoints);
+  }, [account, checkpoints]);
+
+  const contributedBaseline =
+    account?.contributedAmount ?? investmentMetrics?.contributedAmount ?? null;
 
   const chartData = useMemo(
     () =>
@@ -232,25 +243,25 @@ export default function InvestmentAccountDetailPage() {
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Contributed</p>
                   <p className="mt-1 text-sm font-semibold text-white">
-                    {formatCurrency(account.contributedAmount ?? 0)}
+                    {formatCurrency(contributedBaseline ?? 0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Current Value</p>
                   <p className="mt-1 text-sm font-semibold text-white">
-                    {formatCurrency(account.currentValue ?? 0)}
+                    {formatCurrency(investmentMetrics?.currentValue ?? 0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Return</p>
-                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(account.returnAmount)}`}>
-                    {formatCurrency(account.returnAmount ?? 0)}
+                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(investmentMetrics?.returnAmount ?? null)}`}>
+                    {formatCurrency(investmentMetrics?.returnAmount ?? 0)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-800/70 p-3">
                   <p className="text-xs text-gray-400">Return %</p>
-                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(account.returnPercentage)}`}>
-                    {formatReturnPercentage(account.returnPercentage)}
+                  <p className={`mt-1 text-sm font-semibold ${getReturnColor(investmentMetrics?.returnPercentage ?? null)}`}>
+                    {formatReturnPercentage(investmentMetrics?.returnPercentage ?? null)}
                   </p>
                 </div>
                 {account.assetType?.trim() ? (
@@ -313,9 +324,9 @@ export default function InvestmentAccountDetailPage() {
                         }}
                         itemStyle={{ color: "#f9fafb" }}
                       />
-                      {account.contributedAmount !== null ? (
+                      {typeof contributedBaseline === "number" ? (
                         <ReferenceLine
-                          y={account.contributedAmount}
+                          y={contributedBaseline}
                           stroke="#f59e0b"
                           strokeDasharray="4 4"
                           label={{ value: "Contributed", fill: "#f59e0b", position: "insideTopLeft" }}

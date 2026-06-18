@@ -5,13 +5,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalForm from "@/components/goals/GoalForm";
-import Modal from "@/components/ui/Modal";
+import Skeleton from "@/components/ui/Skeleton";
 import { getGoals, deactivateGoal } from "@/lib/api";
 import type { Goal } from "@/types";
 
 export default function GoalsPage() {
   const qc = useQueryClient();
-  const { data: goals = [], isLoading } = useQuery({ queryKey: ["goals"], queryFn: getGoals });
+  const { data: goals = [], isLoading: loading } = useQuery({ queryKey: ["goals"], queryFn: getGoals });
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Goal | undefined>(undefined);
@@ -50,8 +50,12 @@ export default function GoalsPage() {
       </div>
 
       <div>
-        {isLoading ? (
-          <p className="text-sm text-gray-400">Loading goals...</p>
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} variant="card" className="h-52 rounded-xl" />
+            ))}
+          </div>
         ) : goals.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
             <p className="text-base font-medium text-gray-200">No goals yet</p>

@@ -24,6 +24,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useDashboard } from "@/lib/hooks/useDashboard";
+import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useLatestSummary } from "@/lib/hooks/useLatestSummary";
 import type { AccountDashboardData, DashboardData } from "@/types/dashboard";
 
@@ -448,6 +449,7 @@ export default function DashboardPage() {
   const expenseSummaries = data?.expenseSummaries ?? []
   const incomeSummaries = data?.incomeSummaries ?? []
   const monthRange = data?.monthRange ?? []
+  const investmentMetricsByAccountId = useInvestmentMetricsMap(dashboardData?.accounts ?? [])
 
   const categoryDonutData = useMemo<DonutSlice[]>(() => {
     const currentMonthSummary = expenseSummaries[expenseSummaries.length - 1]
@@ -519,12 +521,12 @@ export default function DashboardPage() {
         />
 
         <div className="mt-6">
-          <AccountsStrip accounts={dashboardData.accounts.map((a) => ({
-            ...a,
-            contributedAmount: a.currentValue !== null && a.returnAmount !== null
-              ? a.currentValue - a.returnAmount
-              : null,
-          }))} />
+          <AccountsStrip accounts={dashboardData.accounts.map((account) => {
+            const metrics = investmentMetricsByAccountId.get(account.id);
+            return metrics
+              ? { ...account, ...metrics }
+              : account;
+          })} />
         </div>
 
         <div className="mt-6">
@@ -532,16 +534,10 @@ export default function DashboardPage() {
             <StatCard
               label="Income This Month"
               value={incomeAnimated}
-              momPercent={dashboardData.incomeMoMPercent}
-              momPositiveIsGood
-              monthLabel={dashboardData.currentMonthLabel}
             />
             <StatCard
               label="Expenses This Month"
               value={expensesAnimated}
-              momPercent={dashboardData.expensesMoMPercent}
-              momPositiveIsGood={false}
-              monthLabel={dashboardData.currentMonthLabel}
             />
             <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
           </div>

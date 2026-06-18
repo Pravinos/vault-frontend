@@ -12,6 +12,7 @@ export function useAddCheckpoint(accountId: string) {
       void qc.invalidateQueries({ queryKey: queryKeys.accountCheckpoints(accountId) })
       void qc.invalidateQueries({ queryKey: queryKeys.account(accountId) })
       void qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
     },
   })
 }

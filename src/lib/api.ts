@@ -123,7 +123,7 @@ export async function fetchDashboard(): Promise<DashboardData> {
 
 const api = axios.create({
   baseURL: "/api/v1",
-  timeout: 30000,
+  timeout: 60000, // Increased from 30s to 60s to handle slower responses
 });
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

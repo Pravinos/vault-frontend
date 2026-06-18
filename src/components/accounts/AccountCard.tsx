@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronDown, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { formatCurrency } from "@/lib/utils";
@@ -14,7 +14,6 @@ export interface AccountCardData {
   openingBalance?: number;
   sinceOpening?: number;
   currentValue?: number | null;
-  contributedAmount?: number | null;
   returnPercentage?: number | null;
 }
 
@@ -25,6 +24,8 @@ interface AccountCardProps {
   footer?: ReactNode;
   details?: ReactNode;
   detailsDefaultOpen?: boolean;
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
 }
 
 function getAccentClass(type: AccountType): string {
@@ -85,9 +86,22 @@ export default function AccountCard({
   footer,
   details,
   detailsDefaultOpen = false,
+  detailsOpen: controlledDetailsOpen,
+  onDetailsOpenChange,
 }: AccountCardProps) {
-  const [detailsOpen, setDetailsOpen] = useState(detailsDefaultOpen);
+  const [internalDetailsOpen, setInternalDetailsOpen] = useState(detailsDefaultOpen);
+  const isControlled = controlledDetailsOpen !== undefined;
+  const detailsOpen = isControlled ? controlledDetailsOpen : internalDetailsOpen;
   const isInvestment = account.accountType === "INVESTMENT";
+
+  const toggleDetails = () => {
+    const next = !detailsOpen;
+    if (isControlled) {
+      onDetailsOpenChange?.(next);
+      return;
+    }
+    setInternalDetailsOpen(next);
+  };
 
   const primaryBalance = isInvestment ? account.currentValue ?? 0 : account.calculatedBalance;
   const sinceOpening = getSinceOpening(account);
@@ -121,11 +135,6 @@ export default function AccountCard({
         <p className={`font-bold tabular-nums text-white ${compact ? "text-xl" : "text-3xl"}`}>
           {formatCurrency(primaryBalance)}
         </p>
-        {isInvestment ? (
-          <p className="mt-1 text-[11px] text-gray-400">
-            Contributed: {formatCurrency(account.contributedAmount ?? 0)}
-          </p>
-        ) : null}
       </div>
 
       <div
@@ -141,13 +150,26 @@ export default function AccountCard({
         <div className="mt-3 border-t border-white/10 pt-3">
           <button
             type="button"
-            onClick={() => setDetailsOpen((current) => !current)}
+            onClick={toggleDetails}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-300 transition-colors hover:text-white"
+            aria-expanded={detailsOpen}
           >
-            {detailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform duration-200 ease-in-out ${
+                detailsOpen ? "rotate-180" : ""
+              }`}
+            />
             {detailsOpen ? "Hide details" : "Show details"}
           </button>
-          {detailsOpen ? <div className="mt-3">{details}</div> : null}
+          <div
+            className={`grid transition-all duration-200 ease-in-out ${
+              detailsOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div className="mt-3">{details}</div>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>

@@ -22,6 +22,7 @@ import {
   getCurrentTimestamp,
 } from "@/lib/utils";
 import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
 import { useDeleteAccount, useRevertTransfer } from "@/lib/hooks/useAccountMutations";
 import { queryKeys } from "@/lib/queryKeys";
@@ -142,10 +143,12 @@ export default function AccountsPage() {
 
   const [selectedTransferAccountId, setSelectedTransferAccountId] = useState<string | null>(null);
   const [revertTargetTransfer, setRevertTargetTransfer] = useState<Transfer | null>(null);
+  const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
   const qc = useQueryClient();
 
   const { data: accounts = [], isLoading: loading, error } = useAccounts();
+  const investmentMetricsByAccountId = useInvestmentMetricsMap(accounts);
   const { data: transfers = [], isLoading: transfersLoading, error: transfersError } = useAccountTransfers(selectedTransferAccountId);
   const deleteAccountMutation = useDeleteAccount();
   const revertTransferMutation = useRevertTransfer(selectedTransferAccountId);
@@ -374,12 +377,19 @@ export default function AccountsPage() {
               onAction={openCreate}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {accounts.map((account) => {
+                const metrics = investmentMetricsByAccountId.get(account.id);
+                const displayAccount = metrics ? { ...account, ...metrics } : account;
+
                 return (
                   <AccountCard
                     key={account.id}
-                    account={account}
+                    account={displayAccount}
+                    detailsOpen={expandedAccountId === account.id}
+                    onDetailsOpenChange={(open) =>
+                      setExpandedAccountId(open ? account.id : null)
+                    }
                     details={
                       <>
                         <div className="rounded-xl border border-gray-800 bg-[#0f1923] p-3">
