@@ -8,6 +8,7 @@ export async function invalidateTransferBalanceQueries(qc: QueryClient) {
   await Promise.all([
     qc.invalidateQueries({ queryKey: queryKeys.accounts }),
     qc.invalidateQueries({ queryKey: queryKeys.dashboard }),
+    qc.invalidateQueries({ queryKey: queryKeys.goals }),
     qc.invalidateQueries({ queryKey: ['account'] }),
     qc.invalidateQueries({ queryKey: ['account-transfers'] }),
   ])
@@ -30,6 +31,7 @@ export function useDeleteAccount() {
     onSuccess: (_, id) => {
       void qc.invalidateQueries({ queryKey: queryKeys.accounts })
       void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
+      void qc.invalidateQueries({ queryKey: queryKeys.goals })
       qc.removeQueries({ queryKey: queryKeys.account(id) })
       qc.removeQueries({ queryKey: queryKeys.accountTransfers(id) })
       qc.removeQueries({ queryKey: queryKeys.accountCheckpoints(id) })

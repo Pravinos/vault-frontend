@@ -24,6 +24,7 @@ import { deriveInvestmentMetrics } from "@/lib/investmentMetrics";
 import { useAccount } from "@/lib/hooks/useAccount";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
 import { useCheckpoints } from "@/lib/hooks/useCheckpoints";
+import { invalidateTransferBalanceQueries } from "@/lib/hooks/useAccountMutations";
 import { useAddCheckpoint } from "@/lib/hooks/useCheckpointMutations";
 import { queryKeys } from "@/lib/queryKeys";
 import { isRevertTransfer } from "@/lib/transfers";
@@ -253,9 +254,7 @@ export default function AccountDetailPage() {
                 account={account}
                 onSuccess={async () => {
                   setShowManualModal(false);
-                  await qc.invalidateQueries({ queryKey: queryKeys.account(accountId) });
-                  await qc.invalidateQueries({ queryKey: queryKeys.accounts });
-                  await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+                  await invalidateTransferBalanceQueries(qc);
                 }}
                 onClose={() => setShowManualModal(false)}
               />

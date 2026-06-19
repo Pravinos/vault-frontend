@@ -218,8 +218,7 @@ export default function AccountsPage() {
 
   const handleManualBalanceSuccess = async (_updatedAccount: Account) => {
     setManualBalanceAccount(undefined);
-    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
-    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+    await invalidateTransferBalanceQueries(qc);
   };
 
   const handleTransferSuccess = async ({
