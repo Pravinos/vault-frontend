@@ -1,17 +1,20 @@
 # Vault — Personal Finance Assistant with Password-Gate Auth
 ### Architecture, Authentication, DB Schema, API Endpoints & Implementation Guide
 
+> **Repository scope:** This file lives in `vault-frontend` and documents the full Vault system. Backend sections describe the Spring Boot API this frontend consumes. For frontend-only setup, see [`README.md`](README.md).
+
 ---
 
 ## Table of Contents
 1. [Tech Stack](#tech-stack)
-2. [Frontend Behavior Notes (May 2026)](#frontend-behavior-notes-may-2026)
+2. [Frontend Behavior Notes (June 2026)](#frontend-behavior-notes-june-2026)
 3. [Authentication Architecture](#authentication-architecture)
 4. [System Architecture Overview](#system-architecture-overview)
-5. [Database Schema](#database-schema)
-6. [API Endpoints](#api-endpoints)
-7. [AI Integration](#ai-integration)
-8. [Implementation Phases](#implementation-phases)
+5. [Frontend Architecture](#frontend-architecture)
+6. [Database Schema](#database-schema)
+7. [API Endpoints](#api-endpoints)
+8. [AI Integration](#ai-integration)
+9. [Implementation Phases](#implementation-phases)
 
 ---
 
@@ -26,31 +29,68 @@
 | Local LLM | LM Studio (OpenAI-compatible local server) |
 | Cloud LLM | Groq API (llama3-70b-8192 — free tier) |
 | Database | PostgreSQL 17 |
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind v4 |
-| Build | Maven |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4 |
+| Frontend data | TanStack Query v5, Axios, Recharts |
+| Frontend build | npm (`output: "standalone"`) |
+| Backend build | Maven |
 
 ---
 
-## Frontend Behavior Notes (May 2026)
+## Frontend Behavior Notes (June 2026)
 
-These notes capture current frontend behavior so product docs and architecture stay aligned.
+These notes capture current frontend behavior in **this repository** (`vault-frontend`). The backend is a separate Spring Boot service; this repo is frontend-only.
 
-- Accounts card actions use a two-tier layout for responsive stability:
-  - Primary full-width `Update Balance` action
-  - Secondary three-button row: `Edit`, `Details`, `Delete`
-- Accounts grid is responsive at `1/2/3` columns for `base/sm/xl` breakpoints.
-- Transfer history revert behavior:
-  - `Revert` is shown only for normal transfers.
-  - If a transfer entry is itself a revert/reversal record, the UI hides the revert action.
-- Investment account details page displays `Asset Type` when available.
-- Dashboard category insight is de-duplicated:
-  - Category details are centralized in a single `Category focus` block.
-  - The older duplicated top-category presentation was removed from secondary metric cards.
+### Navigation & pages
 
-  - Network and auth utilities:
-    - A shared `fetchWithTimeout` helper is used for server-side and client-side calls to enforce predictable timeouts for backend requests.
-    - Auth proxy routes under `/api/auth/*` exist in the frontend and proxy requests to the backend. The proxy forwards client IP headers (`X-Forwarded-For`, `X-Real-IP`) and correctly forwards all `Set-Cookie` headers (including multiple cookies) so browser cookies set by the backend are preserved.
-    - The frontend uses a hybrid auth strategy: the SPA API client uses a Bearer token stored in `localStorage` for API calls, while the Next.js middleware and some proxy routes rely on an HttpOnly `vault_token` cookie for page gating and server-side auth checks.
+| Route | In sidebar | Notes |
+|---|---|---|
+| `/dashboard` | Yes | Net worth, account strip, MoM stats, category focus, 6-month trend, latest summary card |
+| `/expenses` | Yes | Month/category/account filters, text search, duplicate entry |
+| `/income` | Yes | Month/account filters, text search, duplicate entry |
+| `/accounts` | Yes | **Accounts** tab + **Transfer** tab (transfers are not a separate nav item) |
+| `/accounts/[id]` | No | Investment detail, checkpoints chart, transfer history (read-only) |
+| `/goals` | Yes | Create/edit, link accounts, progress from linked balances |
+| `/chat` | Yes | Suggested prompts, provider badge |
+| `/ai/summaries` | Yes | Generate, expand, delete with double-confirm |
+| `/settings/ai` | Yes (Settings group) | Separate provider/model for chat vs summary |
+| `/login`, `/setup`, `/reset-password`, `/starting` | No | Auth shell only — no sidebar |
+
+### Accounts & transfers
+
+- Account cards use a two-tier action layout: primary **Update Balance**, secondary row **Edit / Details / Delete**.
+- Accounts grid is responsive at `1/2/3` columns (`base/sm/xl`).
+- **Transfer** tab on `/accounts`: create transfers, pick account for history, revert normal transfers only.
+- `isRevertTransfer()` in `src/lib/transfers.ts` hides revert for reversal records (checks `isRevert`, `isReversal`, reversal IDs, or transfer type).
+- Stale manual balances (>7 days) show a warning banner on the accounts list.
+- Investment detail page shows platform, instrument, asset type, checkpoints, and return metrics when available.
+
+### Dashboard
+
+- Category insight is centralized in a single **Category focus** card (donut + top category share); not duplicated in stat cards.
+- `useDashboard` composes `GET /dashboard` with six months of expense/income summaries for the trend chart.
+- Dashboard query is prefetched on sidebar logo/link hover.
+
+### Goals
+
+- Progress is **derived from linked account balances**, not manual contributions.
+- `GoalForm` accepts optional `accountIds` on create/update; `ManageAccountsModal` links/unlinks after creation.
+- Deactivate uses double-confirm via `useConfirmDelete`.
+
+### Expenses & income
+
+- Both pages use `TransactionSearch`, `MonthNavigator`, and a duplicate action that pre-fills a new form with today's date.
+- Expenses filter by category; income filters by account only (category is on the form).
+
+### Auth & resilience
+
+- Hybrid auth: Bearer token in `localStorage` (`vault_token` key) for API calls; HttpOnly `vault_token` cookie for page gating.
+- Login/setup call `completeAuthSession()`: store token → `POST /api/auth/refresh-cookie` → redirect to `/dashboard`.
+- `TokenRefresher` runs on authenticated pages to refresh token + cookie on load.
+- Page guard in `src/proxy.ts` probes `GET /api/auth/status` (~2.5s timeout) and redirects to `/starting`, `/setup`, or `/login` as appropriate.
+- `fetchWithTimeout` enforces predictable timeouts on server-side proxy calls.
+- Auth proxies forward `X-Forwarded-For` / `X-Real-IP` and preserve all `Set-Cookie` headers from the backend.
+- Axios client retries 502/503/504 once; `apiFetch` retries GET/HEAD on 503 up to 4 times with exponential backoff.
+- Login/setup forms read `Retry-After` on 429 responses.
 
 ---
 
@@ -98,26 +138,41 @@ Controller Endpoint
 
 Vault uses a hybrid approach in the frontend:
 
-- **HttpOnly cookie (`vault_token`)**: used by Next.js middleware and server-side proxy routes to gate pages and for backend checks. The backend may set this cookie via `Set-Cookie` and the frontend proxy preserves and forwards those headers. The cookie is set with `httpOnly` and `secure` in production and currently uses `SameSite=Strict` when the proxy sets it.
-- **Bearer token (localStorage)**: the client-side API client stores a session token in `localStorage` and sends it as an `Authorization: Bearer <token>` header for API calls. This makes client API calls independent of cookie behavior (useful for SPA fetches and retry logic).
+- **HttpOnly cookie (`vault_token`)**: used by the page guard (`src/proxy.ts`) and server-side API route proxies to gate navigation. Set via backend `Set-Cookie` (preserved by auth proxies) or via `POST /api/auth/refresh-cookie` after login.
+- **Bearer token (`localStorage`, key `vault_token`)**: the Axios client and `apiFetch` attach `Authorization: Bearer <token>` on every browser request. Independent of cookie behavior for SPA fetches and retry logic.
 
 Notes:
-- The app keeps both in sync via a `TokenRefresher` client component: it calls the backend refresh endpoint (using the bearer token), receives a fresh token, stores it in `localStorage`, and posts it to `/api/auth/refresh-cookie` to set the HttpOnly cookie for middleware-protected navigation.
+- On login/setup success, the backend may return `{ "token": "..." }` in the JSON body **and** set the HttpOnly cookie. `completeAuthSession()` in `src/lib/auth-forms.ts` stores the token, syncs the cookie via `/api/auth/refresh-cookie`, then redirects to `/dashboard`.
+- On app load, `TokenRefresher` calls `POST /api/auth/refresh` with the Bearer token, updates `localStorage`, and re-syncs the cookie.
+- On 401/403 from API calls, `handleAuthFailure()` clears localStorage, POSTs logout, and redirects to `/login?reason=expired`.
 - For cross-origin deployments, ensure CORS is configured with `allowCredentials=true` and `Secure` cookies in production.
 
 ### Frontend proxy & timeout details
 
-- The frontend exposes auth proxy endpoints under `/api/auth/*` which forward requests to `${API_URL}/api/v1/auth/*` on the backend. Reasons:
-  - Keep browser same-origin with frontend so HttpOnly cookies (set by backend) are processed by the browser when proxied through the frontend.
-  - Allow the frontend to inject and forward client IP headers (`X-Forwarded-For`, `X-Real-IP`) so backend rate-limiting operates by client IP rather than the hosting platform IP.
+The frontend exposes two proxy layers:
 
-  - Implementation details:
-    - The Next.js middleware probes the frontend proxy `GET /api/auth/status` with a ~2.5s timeout (used in `src/proxy.ts`). The proxy itself calls the backend `GET /api/v1/auth/status` with a 3s timeout (`src/app/api/auth/status/route.ts`) — non-OK or network errors are treated as "backend starting" and users are redirected to `/starting`.
-    - Auth mutation proxies (`/api/auth/login`, `/api/auth/setup`, `/api/auth/logout`, `/api/auth/refresh`, `/api/auth/reset-password`) forward requests to the backend with an 8s timeout to tolerate cold starts while surfacing real failures as 503.
-    - The frontend proxy preserves and forwards all `Set-Cookie` headers from the backend (including multiple cookies) by using `getSetCookie()` when available and falling back to `get('set-cookie')`.
-    - The SPA API client (`src/lib/api.ts`) uses a bearer token from `localStorage` and implements retry/backoff for idempotent requests: GET/HEAD requests will retry up to 4 attempts on 503, and axios-based calls retry transient 502/503/504 once with a short backoff.
-    - Client forms (setup/login) read `Retry-After` on 429 responses to present a friendly wait message.
-    - A client-side `TokenRefresher` component periodically exchanges the stored bearer token for a fresh session token and posts it to `/api/auth/refresh-cookie` so the proxy/middleware can set an HttpOnly `vault_token` cookie (the proxy sets this cookie with `SameSite=Strict` in the current implementation).
+1. **Auth proxies** — `/api/auth/*` → `${API_URL}/api/v1/auth/*`
+2. **Data proxy** — `/api/v1/[...path]` → `${API_URL}/api/v1/*` (forwards Bearer header and cookie)
+
+Auth proxy routes:
+
+| Frontend route | Backend target | Timeout |
+|---|---|---|
+| `GET /api/auth/status` | `GET /api/v1/auth/status` | 3s |
+| `POST /api/auth/login` | `POST /api/v1/auth/login` | 8s |
+| `POST /api/auth/setup` | `POST /api/v1/auth/setup` | 8s |
+| `POST /api/auth/logout` | `POST /api/v1/auth/logout` | 8s |
+| `POST /api/auth/refresh` | `POST /api/v1/auth/refresh` | 8s |
+| `POST /api/auth/reset-password` | `POST /api/v1/auth/reset-password` | 8s |
+| `POST /api/auth/refresh-cookie` | *(local only — sets HttpOnly cookie)* | — |
+
+Implementation details:
+
+- The page guard in `src/proxy.ts` probes `GET /api/auth/status` with a ~2.5s timeout. Non-OK or network errors → redirect to `/starting`. `{ configured: false }` → `/setup`. Missing cookie on protected routes → `/login`.
+- Auth mutation proxies forward client IP headers and preserve all `Set-Cookie` headers using `getSetCookie()` with fallback to `get('set-cookie')`.
+- `/starting` polls status every 3s (max 30 attempts) then routes to `/login` or `/setup`.
+- The Axios client (`src/lib/api.ts`, base `/api/v1`) retries 502/503/504 once with 1s backoff. `apiFetch` retries GET/HEAD on 503 up to 4 attempts (200ms → 400ms → 800ms).
+- `/api/auth/refresh-cookie` sets `vault_token` with `httpOnly`, `sameSite: strict`, `secure` in production, 24h max-age.
 
 
 ---
@@ -126,21 +181,29 @@ Notes:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                        Next.js Frontend                          │
-│  [Setup] │ Login │ Dashboard │ Accounts │ Expenses │ Chat │      │
+│                     Next.js Frontend (this repo)                 │
+│  /login │ /setup │ /starting │ /reset-password                   │
+│  /dashboard │ /expenses │ /income │ /accounts │ /goals           │
+│  /chat │ /ai/summaries │ /settings/ai                            │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │ Authentication Flow (in browser)                           │ │
-│  │ 1. GET /auth/status (check if configured)                 │ │
-│  │ 2. Show setup form (first time) or login form             │ │
-│  │ 3. POST /setup or /login                                 │ │
-  │  │ 4. Receive JWT in HttpOnly cookie (automatic)            │ │
-  │  │ 5. Cookie auto-included in all subsequent requests       │ │
-  │  │    (additionally, the SPA stores a bearer token in `localStorage` and uses it
-  │  │     for client-side API requests where appropriate)     │ │
+│  │ Page guard (src/proxy.ts)                                  │ │
+│  │  • GET /api/auth/status → configured? cookie?              │ │
+│  │  • Redirect: /starting │ /setup │ /login │ /dashboard      │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Auth flow (browser)                                        │ │
+│  │ 1. POST /api/auth/setup or /api/auth/login                │ │
+│  │ 2. Receive { token } + Set-Cookie from backend             │ │
+│  │ 3. Store token in localStorage                             │ │
+│  │ 4. POST /api/auth/refresh-cookie (sync HttpOnly cookie)   │ │
+│  │ 5. All API calls: Authorization Bearer + /api/v1 proxy   │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ Data layer: TanStack Query hooks → src/lib/api.ts (Axios) │ │
 │  └────────────────────────────────────────────────────────────┘ │
 └───────────────────────────┬──────────────────────────────────────┘
-                            │ HTTPS / REST / JSON
+                            │ HTTPS / REST / JSON (via /api/v1 proxy)
 ┌───────────────────────────▼──────────────────────────────────────┐
 │                     Spring Boot Backend                          │
 │                                                                  │
@@ -192,6 +255,81 @@ Notes:
 │                                   income │ summaries            │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Frontend Architecture
+
+> This section describes the **vault-frontend** repository. Backend sections below document the API this app consumes.
+
+### Request flow
+
+```
+Browser
+  │
+  ├─ Page navigation ──► src/proxy.ts (page guard)
+  │                         └─ GET /api/auth/status
+  │
+  ├─ Auth forms ────────► /api/auth/* routes ──► backend /api/v1/auth/*
+  │
+  └─ Data mutations ────► Axios (/api/v1/*) ──► /api/v1/[...path] route ──► backend
+         ▲                      │
+         └─ Bearer token ───────┘ (from localStorage)
+            Cookie forwarded server-side when present
+```
+
+### Layout & routing
+
+- `src/app/layout.tsx` — root layout, Space Grotesk font, `Providers` (React Query).
+- `src/components/AppLayout.tsx` — sidebar + main content for authenticated routes; auth routes render children only.
+- `src/app/page.tsx` — redirects `/` → `/dashboard`.
+- `src/proxy.ts` — page guard with matcher excluding `_next`, `api/`, static files.
+
+### State management
+
+TanStack Query v5 wraps all server state. Hooks live in `src/lib/hooks/` and use keys from `src/lib/queryKeys.ts`. Mutations invalidate related query keys (e.g. transfer revert invalidates accounts + dashboard).
+
+| Domain | Read hooks | Mutation hooks |
+|---|---|---|
+| Dashboard | `useDashboard`, `useLatestSummary` | — |
+| Accounts | `useAccounts`, `useAccount`, `useAccountTransfers`, `useCheckpoints`, `useInvestmentMetricsMap` | `useAccountMutations`, `useCheckpointMutations` |
+| Expenses | `useExpenses`, `useCategories` | `useExpenseMutations` |
+| Income | `useIncome`, `useIncomeCategories` | `useIncomeMutations` |
+| Goals | `useGoals` | `useGoalMutations` |
+| AI | `useAiSettings`, `useSummaries`, `useGenerateSummary` | `useSummaryMutations` |
+
+### Typed API client
+
+`src/lib/api.ts` exports typed functions for every backend resource. The Axios instance uses `baseURL: "/api/v1"` and attaches the Bearer token via a request interceptor. Response interceptor handles 401/403 logout and transient gateway retries.
+
+`src/types/index.ts` and `src/types/dashboard.ts` define shared interfaces consumed by pages and components.
+
+### Component organization
+
+```
+src/components/
+├── accounts/       AccountCard, AccountForm, ManualBalanceModal, TransferForm
+├── auth/           AuthPageShell
+├── chat/           ChatBubble, ChatInput, TypingIndicator
+├── dashboard/      WeeklySummaryCard, StatsBar, CategoryChart
+├── expenses/       ExpenseForm, ExpenseList, ExpenseFilters
+├── goals/          GoalCard, GoalForm, ManageAccountsModal
+├── income/         IncomeForm, IncomeList, IncomeFilters
+├── layout/         PageTransition
+├── settings/       AiProviderCard, ModelDropdown, ConnectivityIndicator
+├── transfers/      TransferRow
+└── ui/             Modal, Toast, Skeleton, EmptyState, MonthNavigator, …
+```
+
+### Environment variables
+
+| Variable | Used by | Purpose |
+|---|---|---|
+| `API_URL` | Server routes | Backend base URL for proxies |
+| `NEXT_PUBLIC_APP_URL` | Page guard | Origin for auth status probe |
+| `NEXT_PUBLIC_API_URL` | Client (optional) | Public backend URL |
+| `PASSWORD_RESET_TOKEN` | Reset proxy | Self-hosted reset validation |
+| `API_ADMIN_TOKEN` | Reset proxy | Optional admin bearer for backend reset |
 
 ---
 
@@ -484,9 +622,12 @@ Base URL: `http://localhost:8080/api/v1`
 | GET | `/auth/status` | Yes | No | Check if vault is configured |
 | POST | `/auth/setup` | Yes | Yes (5/15m) | Configure vault with password |
 | POST | `/auth/login` | Yes | Yes (5/15m) | Authenticate with password |
+| POST | `/auth/reset-password` | Yes* | No | Reset password (self-hosted; requires admin token or reset token) |
 | GET | `/auth/verify` | No | No | Verify JWT is valid |
 | POST | `/auth/refresh` | No | No | Issue new JWT token |
 | POST | `/auth/logout` | No | No | Clear authentication cookie |
+
+\* Reset endpoint authorization depends on backend configuration (`API_ADMIN_TOKEN` or `x-reset-token` forwarded by frontend proxy).
 
 **Request/Response Examples:**
 
@@ -496,13 +637,16 @@ GET /api/v1/auth/status
 
 POST /api/v1/auth/setup
 ← { "password": "my-password" }
-→ { "message": "Vault configured successfully" }
+→ { "message": "Vault configured successfully", "token": "eyJ..." }
 Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=...
 
 POST /api/v1/auth/login
 ← { "password": "my-password" }
-→ { "message": "Login successful" }
+→ { "message": "Login successful", "token": "eyJ..." }
 Set-Cookie: vault_token=JWT...; HttpOnly; Secure; SameSite=...
+```
+
+> The frontend stores `token` from the JSON body in `localStorage` and syncs the HttpOnly cookie via `POST /api/auth/refresh-cookie`.
 
 GET /api/v1/auth/verify
 → { "valid": true }
@@ -528,7 +672,7 @@ Set-Cookie: vault_token=; Max-Age=0
 
 - Retrying behavior: frontend proxies for `POST /auth/login` and `POST /auth/setup` implement a small retry/backoff loop (3 attempts with short waits) to reduce 502/503/504 surface area during backend cold starts. Client fetch helpers also use retries for idempotent GET/HEAD calls, and the client Axios instance retries some transient server errors once with a short delay.
 
-- Middleware behavior: the Next.js middleware queries `/api/auth/status` and interprets responses as:
+- Middleware / page guard behavior: `src/proxy.ts` queries `/api/auth/status` and interprets responses as:
   - 200 + `{ configured: false }` → redirect unauthenticated users to `/setup` (app not configured)
   - non-OK (e.g., 503) or network error → treat backend as unreachable and redirect to `/starting` (lightweight holding page)
   - 200 + `{ configured: true }` → normal auth gating using `vault_token` cookie
@@ -541,7 +685,15 @@ Set-Cookie: vault_token=; Max-Age=0
 
 ### Protected Endpoints
 
-All endpoints below require a valid JWT in the `vault_token` HttpOnly cookie.
+All endpoints below require a valid JWT — sent as `Authorization: Bearer <token>` by the frontend Axios client and/or via the `vault_token` HttpOnly cookie forwarded by the `/api/v1` proxy.
+
+#### Dashboard
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/dashboard` | Aggregated snapshot: net worth, accounts, cash flow, MoM %, top category |
+
+Used by `fetchDashboard()` and composed in `useDashboard` with monthly expense/income summaries for trend charts.
 
 #### Accounts
 
@@ -593,9 +745,12 @@ All endpoints below require a valid JWT in the `vault_token` HttpOnly cookie.
 **PATCH /accounts/{id}/manual-balance — request body:**
 ```json
 {
-  "manualBalance": 215.00
+  "manualBalance": 215.00,
+  "alsoSetAsOpeningBalance": true
 }
 ```
+
+> `alsoSetAsOpeningBalance` is optional. When `true`, the frontend sends it via `updateManualBalance()` to reset the opening baseline.
 
 **POST /accounts/{id}/checkpoints — request body:**
 ```json
@@ -604,6 +759,29 @@ All endpoints below require a valid JWT in the `vault_token` HttpOnly cookie.
   "note": "S&P up this week"
 }
 ```
+
+---
+
+#### Transfers
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/transfers` | Create a transfer between two accounts |
+| `GET` | `/accounts/{id}/transfers` | List transfer history for an account |
+| `POST` | `/transfers/{id}/revert` | Revert a transfer (creates a reversal entry) |
+
+**POST /transfers — request body:**
+```json
+{
+  "fromAccountId": "uuid",
+  "toAccountId": "uuid",
+  "amount": 500.00,
+  "transferDate": "2025-06-01",
+  "note": "Move to savings"
+}
+```
+
+Frontend: create via Transfer tab on `/accounts`; history + revert on the same tab. Read-only history also shown on `/accounts/[id]`.
 
 ---
 
@@ -661,12 +839,12 @@ All endpoints below require a valid JWT in the `vault_token` HttpOnly cookie.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/goals` | List all active goals |
-| `POST` | `/goals` | Create a new goal |
+| `GET` | `/goals` | List all active goals with linked accounts and derived progress |
+| `POST` | `/goals` | Create a new goal (optional `accountIds` array) |
 | `PUT` | `/goals/{id}` | Update a goal |
 | `DELETE` | `/goals/{id}` | Deactivate a goal (soft delete) |
-| `POST` | `/goals/{id}/contribute` | Add amount toward a goal |
-| `GET` | `/goals/{id}/progress` | Goal progress as percentage + days remaining |
+| `POST` | `/goals/{id}/accounts` | Link an account to a goal |
+| `DELETE` | `/goals/{id}/accounts/{accountId}` | Unlink an account from a goal |
 
 **POST /goals — request body:**
 ```json
@@ -675,9 +853,12 @@ All endpoints below require a valid JWT in the `vault_token` HttpOnly cookie.
   "description": "Flight + hotel for 10 days",
   "targetAmount": 2500.00,
   "goalType": "LONG_TERM",
-  "deadline": "2025-12-01"
+  "deadline": "2025-12-01",
+  "accountIds": ["uuid-checking", "uuid-savings"]
 }
 ```
+
+> Goal `savedAmount` and `progressPercentage` are **derived from linked account balances**, not manual contributions. The frontend manages links via `GoalForm` (initial `accountIds`) and `ManageAccountsModal` (link/unlink after creation).
 
 ---
 
@@ -698,6 +879,7 @@ All endpoints below require a valid JWT in the `vault_token` HttpOnly cookie.
 | `GET` | `/ai/summaries` | List all weekly summaries |
 | `GET` | `/ai/summaries/latest` | Get the most recent weekly summary |
 | `POST` | `/ai/summaries/generate` | Manually trigger a summary generation |
+| `DELETE` | `/ai/summaries/{id}` | Delete a weekly summary |
 | `GET` | `/ai/config` | Get full provider config (providers, models, current selections) |
 | `PATCH` | `/ai/config` | Update provider/model selection for chat or summary task |
 | `GET` | `/ai/models/lmstudio` | Fetch available models from the local LM Studio server |
@@ -750,16 +932,6 @@ All endpoints below require a valid JWT in the `vault_token` HttpOnly cookie.
 
 > `task` is either `"chat"` or `"summary"`. Provider and model are validated
 > against the available model lists before saving.
-
----
-
-### Auth
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/auth/register` | Register user |
-| `POST` | `/auth/login` | Login, returns JWT |
-| `POST` | `/auth/refresh` | Refresh JWT token |
 
 ---
 
@@ -1042,7 +1214,7 @@ Spring Boot 4.x backend with PostgreSQL and Flyway managing 14 migrations. Entit
 
 **Status:** Implemented
 
-Next.js App Router with dashboard, expenses, goals, accounts, and income pages. Typed API client with authentication support.
+Next.js App Router with dashboard, expenses, goals, accounts, and income pages. Typed API client (`src/lib/api.ts`), TanStack Query hooks, and hybrid auth (Bearer + cookie).
 
 ---
 
@@ -1053,6 +1225,22 @@ Next.js App Router with dashboard, expenses, goals, accounts, and income pages. 
 Multi-account support (Checking, Savings, Investment) with derived balance calculations. Income tracking by category. Investment checkpoints for return tracking. Manual balance overrides. All linked to accounts with proper referential integrity.
 
 **Migrations:** V5–V11 (accounts, investment details, checkpoints, income categories, income)
+
+---
+
+### ✅ Phase 2.6 — Transfers, Goals & Account Linking
+
+**Status:** Implemented (frontend)
+
+**Features:**
+- Transfer creation and per-account history on `/accounts` Transfer tab
+- Transfer revert with reversal detection (`isRevertTransfer`)
+- Account detail page at `/accounts/[id]` with investment chart and checkpoints
+- Goals linked to accounts; progress derived from linked balances
+- Expense/income search, duplicate, and month navigation
+- Dashboard category focus card and 6-month cash-flow trend
+
+**Frontend routes:** `/accounts` (tabs), `/accounts/[id]`, enhanced `/goals`, `/expenses`, `/income`, `/dashboard`
 
 ---
 
@@ -1068,7 +1256,7 @@ Multi-account support (Checking, Savings, Investment) with derived balance calcu
 - Rate limiting: 5 attempts per 15 minutes per IP
 - Proxy-aware IP detection (X-Forwarded-For, X-Real-IP)
 - CORS with credentials support for Render + Vercel
-- 6 auth endpoints: `/auth/status`, `/auth/setup`, `/auth/login`, `/auth/verify`, `/auth/refresh`, `/auth/logout`
+- 7 auth endpoints: `/auth/status`, `/auth/setup`, `/auth/login`, `/auth/reset-password`, `/auth/verify`, `/auth/refresh`, `/auth/logout`
 - AppConfig table (V14) for storing vault password hash
 
 **Migration:** V14 (`app_config` table)
@@ -1091,7 +1279,7 @@ Multi-account support (Checking, Savings, Investment) with derived balance calcu
 - Model discovery endpoints: `GET /ai/models/lmstudio`, `GET /ai/models/groq`
 - Config endpoints: `GET /ai/config`, `PATCH /ai/config` for user-controlled provider/model selection
 - Chat endpoint: `POST /ai/chat` with conversation context support
-- Frontend: Chat UI, AI settings panel with provider/model toggles, LM Studio connectivity indicator
+- Frontend: Chat UI with suggested prompts, AI settings panel (`/settings/ai`) with separate chat/summary provider config, LM Studio connectivity indicator, weekly summaries page (`/ai/summaries`), summary card on dashboard
 
 **Deliverable:** Full chat interface that reasons over real expense, income, account, and goal data with user-controlled provider/model selection per task.
 
@@ -1105,8 +1293,9 @@ Multi-account support (Checking, Savings, Investment) with derived balance calcu
 - `WeeklyDataSnapshot` builder aggregating income, net cash flow, accounts, expenses, and goals
 - Scheduled job: `@Scheduled(cron = "0 0 8 * * MON")` running every Monday at 8am via `LlmProviderRouter.getClientForTask(TaskType.SUMMARY)`
 - Manual trigger: `POST /ai/summaries/generate` for on-demand summary generation
+- Delete: `DELETE /ai/summaries/{id}` with double-confirm in UI
 - Summaries saved with provider and model metadata for audit trail
-- Frontend: Summary card on dashboard with provider/model badge, full summary history page
+- Frontend: Summary card on dashboard, full history at `/ai/summaries` with expand/truncate and delete
 
 **Deliverable:** Automated weekly AI-generated reports every Monday covering spending, income, net cash flow, and investment performance. Users can also trigger manual summaries on demand.
 
@@ -1133,109 +1322,77 @@ Multi-account support (Checking, Savings, Investment) with derived balance calcu
 
 ## Project Structure
 
+### This repository (`vault-frontend`)
+
 ```
-vault/
-├── backend/                              # Spring Boot
-│   ├── src/main/java/com/vfa/vault/
-│   │   ├── config/                       # Security, Spring AI beans
-│   │   ├── controller/
-│   │   │   ├── AccountController.java
-│   │   │   ├── CategoryController.java
-│   │   │   ├── ExpenseController.java
-│   │   │   ├── GoalController.java
-│   │   │   ├── IncomeCategoryController.java
-│   │   │   ├── IncomeController.java
-│   │   │   └── WeeklySummaryController.java
-│   │   ├── service/
-│   │   │   ├── AccountService.java
-│   │   │   ├── CategoryService.java
-│   │   │   ├── ExpenseService.java
-│   │   │   ├── GoalService.java
-│   │   │   ├── IncomeCategoryService.java
-│   │   │   ├── IncomeService.java
-│   │   │   ├── InvestmentCheckpointService.java
-│   │   │   └── WeeklySummaryService.java
-│   │   ├── repository/
-│   │   │   ├── AccountRepository.java
-│   │   │   ├── CategoryRepository.java
-│   │   │   ├── ExpenseRepository.java
-│   │   │   ├── GoalRepository.java
-│   │   │   ├── IncomeCategoryRepository.java
-│   │   │   ├── IncomeRepository.java
-│   │   │   ├── InvestmentCheckpointRepository.java
-│   │   │   ├── InvestmentDetailRepository.java
-│   │   │   └── WeeklySummaryRepository.java
-│   │   ├── entity/
-│   │   │   ├── Account.java
-│   │   │   ├── Category.java
-│   │   │   ├── Expense.java
-│   │   │   ├── Goal.java
-│   │   │   ├── Income.java
-│   │   │   ├── IncomeCategory.java
-│   │   │   ├── InvestmentCheckpoint.java
-│   │   │   ├── InvestmentDetail.java
-│   │   │   └── WeeklySummary.java
-│   │   ├── dto/
-│   │   │   ├── AccountDTO.java
-│   │   │   ├── AccountResponseDTO.java
-│   │   │   ├── CategoryDTO.java
-│   │   │   ├── ExpenseDTO.java
-│   │   │   ├── GoalDTO.java
-│   │   │   ├── IncomeCategoryDTO.java
-│   │   │   ├── IncomeDTO.java
-│   │   │   ├── IncomeResponseDTO.java
-│   │   │   ├── InvestmentCheckpointDTO.java
-│   │   │   ├── InvestmentCheckpointResponseDTO.java
-│   │   │   └── ManualBalanceDTO.java
-│   │   ├── exception/
-│   │   │   ├── GlobalExceptionHandler.java
-│   │   │   └── ResourceNotFoundException.java
-│   │   ├── ai/                           # Phase 3+
-│   │   │   ├── AiConfig.java             # defines lmStudioModel + groqModel beans
-│   │   │   ├── FinanceTools.java
-│   │   │   └── LlmProviderRouter.java    # TaskType-aware routing
-│   │   └── scheduler/                    # Phase 4+
-│   │       └── WeeklySummaryScheduler.java
-│   ├── src/main/resources/
-│   │   ├── application.yaml
-│   │   └── db/migration/
-│   │       ├── V1__create_categories.sql
-│   │       ├── V2__create_expenses.sql
-│   │       ├── V3__create_goals.sql
-│   │       ├── V4__create_summaries_and_config.sql
-│   │       ├── V5__create_accounts.sql
-│   │       ├── V6__create_investment_details.sql
-│   │       ├── V7__create_investment_checkpoints.sql
-│   │       ├── V8__create_income_categories.sql
-│   │       ├── V9__create_income.sql
-│   │       ├── V10__add_default_account.sql
-│   │       └── V11__add_account_to_expenses.sql
-│   └── pom.xml
-│
-└── frontend/                             # Next.js
-    ├── app/
-    │   ├── accounts/
-    │   │   ├── page.tsx                  # accounts list
-    │   │   └── [id]/page.tsx             # investment detail
-    │   ├── dashboard/
-    │   ├── expenses/
-    │   ├── goals/
-    │   ├── income/
-    │   │   └── page.tsx
-    │   └── chat/                         # Phase 3+
-│   │   └── page.tsx
-│   └── settings/
-│       └── ai/page.tsx               # Phase 3+ provider/model config panel
-    ├── components/
-    │   ├── accounts/
-    │   │   ├── AccountForm.tsx
-    │   │   └── ManualBalanceModal.tsx
-    │   └── income/
-    │       └── IncomeForm.tsx
-    ├── lib/
-    │   ├── api.ts                        # typed API client
-    │   └── types.ts                      # shared TypeScript types
-    └── package.json
+vault-frontend/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx                    # redirect → /dashboard
+│   │   ├── layout.tsx                  # root layout + Providers
+│   │   ├── globals.css
+│   │   ├── login/page.tsx
+│   │   ├── setup/page.tsx
+│   │   ├── starting/page.tsx
+│   │   ├── reset-password/page.tsx
+│   │   ├── dashboard/page.tsx
+│   │   ├── expenses/page.tsx
+│   │   ├── income/page.tsx
+│   │   ├── accounts/
+│   │   │   ├── page.tsx                # accounts + transfer tabs
+│   │   │   └── [id]/page.tsx           # investment detail
+│   │   ├── goals/page.tsx
+│   │   ├── chat/page.tsx
+│   │   ├── ai/summaries/page.tsx
+│   │   ├── settings/ai/page.tsx
+│   │   └── api/
+│   │       ├── auth/                   # login, setup, logout, refresh, status, reset-password, refresh-cookie
+│   │       └── v1/[...path]/route.ts   # catch-all backend proxy
+│   ├── components/                     # domain + ui components (see Frontend Architecture)
+│   ├── lib/
+│   │   ├── api.ts                      # typed Axios client
+│   │   ├── auth.ts                     # localStorage token helpers
+│   │   ├── auth-forms.ts               # login/setup session completion
+│   │   ├── fetch-with-timeout.ts
+│   │   ├── queryClient.ts
+│   │   ├── queryKeys.ts
+│   │   ├── transfers.ts                # isRevertTransfer helper
+│   │   ├── investmentMetrics.ts
+│   │   ├── summaryFormatting.ts
+│   │   ├── utils.ts
+│   │   └── hooks/                      # TanStack Query hooks (24 files)
+│   ├── types/
+│   │   ├── index.ts
+│   │   └── dashboard.ts
+│   └── proxy.ts                        # page guard (auth redirects)
+├── public/                             # vault-logo.svg, app icons
+├── next.config.ts                      # output: "standalone"
+├── tailwind.config.ts
+├── package.json
+├── .env.example
+├── README.md
+└── ARCHITECTURE.md
+```
+
+### Backend (separate repository)
+
+The Spring Boot API is not in this repo. Expected layout:
+
+```
+vault-backend/
+├── src/main/java/com/vfa/vault/
+│   ├── config/                         # Security, Spring AI beans
+│   ├── controller/                     # REST controllers
+│   ├── service/                        # Business logic
+│   ├── repository/                     # JPA repositories
+│   ├── entity/                         # JPA entities
+│   ├── dto/                            # Request/response DTOs
+│   ├── ai/                             # FinanceTools, LlmProviderRouter
+│   └── scheduler/                      # WeeklySummaryScheduler
+├── src/main/resources/
+│   ├── application.yaml
+│   └── db/migration/                   # Flyway V1–V14+
+└── pom.xml
 ```
 
 ---
@@ -1265,11 +1422,13 @@ vault/
 1. **Deploy Next.js to Vercel** (connect GitHub repo)
 2. **Set Environment Variables:**
    ```
-  API_URL=https://vault-api-0uue.onrender.com
-  NEXT_PUBLIC_API_URL=https://vault-api-0uue.onrender.com
-  NEXT_PUBLIC_APP_URL=https://vault-frontend-lake.vercel.app/
+   API_URL=https://vault-api-0uue.onrender.com
+   NEXT_PUBLIC_API_URL=https://vault-api-0uue.onrender.com
+   NEXT_PUBLIC_APP_URL=https://vault-frontend-lake.vercel.app/
+   PASSWORD_RESET_TOKEN=<optional, for self-hosted reset>
    ```
-3. **Vercel will auto-detect Next.js** and build/deploy on push
+3. **Build Command:** `npm run build`
+4. **Start Command:** `npm run start` (standalone output)
 
 ### Security Checklist
 
@@ -1296,9 +1455,9 @@ FRONTEND_URL=http://localhost:3000
 ```
 
 **Start Stack:**
-1. Start Postgres: `docker-compose up -d postgres` (or use local instance)
-2. Start Backend: `./mvnw spring-boot:run`
-3. Start Frontend: `cd frontend && npm run dev`
+1. Start Postgres (or use hosted Supabase)
+2. Start Backend: `./mvnw spring-boot:run` (in backend repo)
+3. Start Frontend: `npm install && npm run dev` (in this repo)
 4. Visit: `http://localhost:3000`
 
 ### Monitoring & Logs
@@ -1337,6 +1496,7 @@ FRONTEND_URL=http://localhost:3000
 
 | Issue | Diagnosis | Fix |
 |-------|-----------|-----|
+| Frontend stuck on `/starting` | Backend cold start or `API_URL` misconfigured | Wait for backend; verify `API_URL` in `.env.local` |
 | Login fails with 401 | Check if vault is configured: `GET /auth/status` | Call `/auth/setup` first |
 | 429 Too Many Requests | Rate limit hit on `/auth/login` or `/auth/setup` | Wait 15 minutes or check client IP |
 | Cookie not sent cross-origin | `SameSite=Strict` in non-HTTPS environment | Set `VAULT_COOKIE_SAME_SITE=None` + HTTPS |
