@@ -18,6 +18,7 @@ import {
 import { Info, LayoutDashboard } from "lucide-react";
 
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
+import BudgetHighlightsCard from "@/components/dashboard/BudgetHighlightsCard";
 import AccountCard from "@/components/accounts/AccountCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -27,6 +28,7 @@ import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useDashboard } from "@/lib/hooks/useDashboard";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useLatestSummary } from "@/lib/hooks/useLatestSummary";
+import { getMonthString } from "@/lib/utils";
 import type { AccountDashboardData } from "@/types/dashboard";
 
 const CHART_COLORS = ["#10b981", "#3b82f6", "#f43f5e", "#64748b", "#34d399", "#60a5fa"];
@@ -450,6 +452,8 @@ export default function DashboardPage() {
   const expenseSummaries = data?.expenseSummaries ?? []
   const incomeSummaries = data?.incomeSummaries ?? []
   const monthRange = data?.monthRange ?? []
+  const currentMonth = data?.currentMonth ?? getMonthString()
+  const budgetItems = data?.budgetItems ?? []
   const investmentMetricsByAccountId = useInvestmentMetricsMap(dashboardData?.accounts ?? [])
 
   const categoryDonutData = useMemo<DonutSlice[]>(() => {
@@ -549,6 +553,14 @@ export default function DashboardPage() {
             />
             <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
           </div>
+        </div>
+
+        <div className="mt-6">
+          <BudgetHighlightsCard
+            month={currentMonth}
+            budgets={budgetItems}
+            alerts={dashboardData.budgetAlerts ?? []}
+          />
         </div>
 
         <div className="mt-6">

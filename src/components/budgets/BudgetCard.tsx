@@ -1,0 +1,219 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { Check, Pencil, Pin, Trash2 } from "lucide-react";
+
+import {
+  isValidBudgetAmount,
+  statusBadgeClasses,
+  statusBarColor,
+  statusLabel,
+} from "@/lib/budgetStatus";
+import { formatCurrency } from "@/lib/utils";
+import type { BudgetSummaryItem } from "@/types/budget";
+
+type BudgetCardProps = {
+  item: BudgetSummaryItem;
+  budgetId: string | undefined;
+  onSave: (categoryId: number, amount: number) => Promise<void>;
+  onDelete: (id: string) => void;
+  isPendingConfirm: boolean;
+  isSaving: boolean;
+  showHighlightToggle?: boolean;
+  isHighlighted?: boolean;
+  onToggleHighlight?: () => void;
+};
+
+export default function BudgetCard({
+  item,
+  budgetId,
+  onSave,
+  onDelete,
+  isPendingConfirm,
+  isSaving,
+  showHighlightToggle = false,
+  isHighlighted = false,
+  onToggleHighlight,
+}: BudgetCardProps) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(String(item.budgetAmount));
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  useEffect(() => {
+    if (!editing) {
+      setEditValue(String(item.budgetAmount));
+    }
+  }, [item.budgetAmount, editing]);
+
+  const progressWidth = Math.min(Math.max(item.percentageUsed, 0), 100);
+
+  const startEdit = () => {
+    setEditValue(String(item.budgetAmount));
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditValue(String(item.budgetAmount));
+    setEditing(false);
+  };
+
+  const saveEdit = async () => {
+    const parsed = Number.parseFloat(editValue);
+    if (!isValidBudgetAmount(parsed)) {
+      cancelEdit();
+      return;
+    }
+    if (parsed === item.budgetAmount) {
+      setEditing(false);
+      return;
+    }
+
+    try {
+      await onSave(item.categoryId, parsed);
+      setEditing(false);
+    } catch {
+      // Parent handles error toast; keep edit mode open.
+    }
+  };
+
+  return (
+    <div
+      className={`rounded-xl border bg-[#1a1a1a] p-4 ${
+        isHighlighted ? "border-teal-500/40 ring-1 ring-teal-500/20" : "border-white/10"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-xl">{item.categoryIcon}</span>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-white">{item.categoryName}</p>
+            {isHighlighted ? (
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-400">
+                Dashboard highlight
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {showHighlightToggle && onToggleHighlight ? (
+            <button
+              type="button"
+              onClick={onToggleHighlight}
+              className={`rounded-md p-1.5 transition ${
+                isHighlighted
+                  ? "bg-teal-500/15 text-teal-300"
+                  : "text-gray-400 hover:bg-white/5 hover:text-teal-300"
+              }`}
+              aria-label={
+                isHighlighted
+                  ? `Remove ${item.categoryName} from dashboard highlights`
+                  : `Highlight ${item.categoryName} on dashboard`
+              }
+              title={isHighlighted ? "Remove from dashboard" : "Show on dashboard"}
+            >
+              <Pin className={`h-4 w-4 ${isHighlighted ? "fill-current" : ""}`} />
+            </button>
+          ) : null}
+          {!editing ? (
+            <button
+              type="button"
+              onClick={startEdit}
+              className="rounded-md p-1.5 text-gray-400 transition hover:bg-white/5 hover:text-white"
+              aria-label={`Edit budget for ${item.categoryName}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void saveEdit()}
+              disabled={isSaving}
+              className="rounded-md p-1.5 text-teal-400 transition hover:bg-teal-500/10 disabled:opacity-50"
+              aria-label="Save budget amount"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+          )}
+          {budgetId ? (
+            <button
+              type="button"
+              onClick={() => onDelete(budgetId)}
+              className={`rounded-md p-1.5 transition ${
+                isPendingConfirm
+                  ? "bg-rose-500/20 text-rose-300"
+                  : "text-gray-400 hover:bg-white/5 hover:text-rose-400"
+              }`}
+              aria-label={
+                isPendingConfirm
+                  ? `Confirm delete budget for ${item.categoryName}`
+                  : `Delete budget for ${item.categoryName}`
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+        <div
+          className={`h-full rounded-full transition-all ${statusBarColor(item.status)}`}
+          style={{ width: `${progressWidth}%` }}
+        />
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          {editing ? (
+            <input
+              ref={inputRef}
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={editValue}
+              onChange={(event) => setEditValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void saveEdit();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancelEdit();
+                }
+              }}
+              className="w-28 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-teal-500/50 focus:outline-none"
+            />
+          ) : (
+            <p className="text-sm text-gray-300">
+              <span className="font-semibold text-white">{formatCurrency(item.spentAmount)}</span>
+              {" / "}
+              {formatCurrency(item.budgetAmount)}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            {item.remainingAmount >= 0 ? (
+              <>{formatCurrency(item.remainingAmount)} remaining</>
+            ) : (
+              <span className="text-rose-400">
+                {formatCurrency(Math.abs(item.remainingAmount))} over budget
+              </span>
+            )}
+          </p>
+        </div>
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeClasses(item.status)}`}
+        >
+          {statusLabel(item.status)}
+        </span>
+      </div>
+    </div>
+  );
+}

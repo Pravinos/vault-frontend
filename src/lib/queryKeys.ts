@@ -11,6 +11,10 @@ export const queryKeys = {
   // Income
   income: (month: string) => ['income', month] as const,
 
+  // Budgets
+  budgets: (month: string) => ['budgets', month] as const,
+  budgetSummary: (month: string) => ['budgets', 'summary', month] as const,
+
   // Dashboard
   dashboard:     ['dashboard']      as const,
 

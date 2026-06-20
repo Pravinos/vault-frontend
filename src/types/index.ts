@@ -223,3 +223,5 @@ export interface ChatResponse {
   model: string;
   functionCallsUsed: string[];
 }
+
+export type { Budget, BudgetSummaryItem } from "@/types/budget";
