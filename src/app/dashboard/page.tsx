@@ -19,11 +19,13 @@ import { Info, LayoutDashboard } from "lucide-react";
 
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import BudgetHighlightsCard from "@/components/dashboard/BudgetHighlightsCard";
+import NetWorthCard from "@/components/dashboard/NetWorthCard";
 import AccountCard from "@/components/accounts/AccountCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import { formatCurrency } from "@/lib/utils";
+import { buildNetWorthHistory, formatShortMonth, type NetWorthHistoryDatum } from "@/lib/netWorthHistory";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useDashboard } from "@/lib/hooks/useDashboard";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
@@ -42,16 +44,6 @@ type CashFlowBarDatum = {
   month: string;
   net: number;
 };
-
-function formatShortMonth(yearMonth: string): string {
-  const [yearString, monthString] = yearMonth.split("-");
-  const year = Number(yearString);
-  const month = Number(monthString);
-  if (!Number.isFinite(year) || !Number.isFinite(month)) {
-    return yearMonth;
-  }
-  return new Date(year, month - 1, 1).toLocaleDateString(undefined, { month: "short" });
-}
 
 function DashboardSkeleton() {
   return (
@@ -91,63 +83,6 @@ function DashboardSkeleton() {
 
 function ErrorState({ message }: { message: string }) {
   return <ErrorMessage message={message} onRetry={() => window.location.reload()} />;
-}
-
-function NetWorthCard({
-  calculated,
-  manual,
-  drift,
-  calculatedAnimated,
-  manualAnimated,
-}: {
-  calculated: number;
-  manual: number | null;
-  drift: number | null;
-  calculatedAnimated?: number;
-  manualAnimated?: number;
-}) {
-  const driftPositive = (drift ?? 0) >= 0;
-  const headlineValue = typeof calculatedAnimated === "number" ? calculatedAnimated : calculated;
-  const smallManual = typeof manualAnimated === "number" ? manualAnimated : manual ?? 0;
-
-  return (
-    <div className="rounded-2xl bg-gradient-to-br from-[#1a2f2a] to-[#1a2332] p-5">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-        Net Worth
-      </p>
-
-      <p className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-        {formatCurrency(headlineValue)}
-      </p>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-white/5 p-3">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Calculated
-          </p>
-          <p className="text-base font-bold text-emerald-400">{formatCurrency(headlineValue)}</p>
-        </div>
-
-        <div className="rounded-xl bg-white/5 p-3">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Manual
-          </p>
-          <p className={`text-base font-bold ${manual !== null ? "text-blue-400" : "text-gray-600"}`}>
-            {manual !== null ? formatCurrency(smallManual) : "Not set"}
-          </p>
-        </div>
-      </div>
-
-      {drift !== null ? (
-        <div className="mt-3 flex items-center gap-2 border-t border-white/5 pt-3">
-          <span className={`text-xs font-semibold ${driftPositive ? "text-emerald-400" : "text-red-400"}`}>
-            {driftPositive ? "▲" : "▼"} {formatCurrency(Math.abs(drift))}
-          </span>
-          <span className="ml-auto text-xs text-gray-500">manual vs calculated</span>
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
@@ -478,6 +413,14 @@ export default function DashboardPage() {
     })
   }, [monthRange, expenseSummaries, incomeSummaries])
 
+  const netWorthHistory = useMemo<NetWorthHistoryDatum[]>(() => {
+    return buildNetWorthHistory(
+      monthRange,
+      monthlyTrendData.map((entry) => entry.net),
+      dashboardData?.calculatedNetWorth ?? 0
+    )
+  }, [monthRange, monthlyTrendData, dashboardData?.calculatedNetWorth])
+
   // Call count-up hooks unconditionally to preserve Hooks order across renders.
   const calculatedAnimated = useCountUp(dashboardData?.calculatedNetWorth ?? 0, 600);
   const manualAnimated = useCountUp(dashboardData?.manualNetWorth ?? 0);
@@ -530,6 +473,7 @@ export default function DashboardPage() {
           drift={dashboardData.netWorthDrift}
           calculatedAnimated={calculatedAnimated}
           manualAnimated={dashboardData.manualNetWorth !== null ? manualAnimated : undefined}
+          historyData={netWorthHistory}
         />
 
         <div className="mt-6">
