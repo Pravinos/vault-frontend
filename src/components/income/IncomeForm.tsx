@@ -50,6 +50,11 @@ export default function IncomeForm({
 
   const isEditMode = useMemo(() => Boolean(income), [income]);
 
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
+    [categories]
+  );
+
   const validate = (): boolean => {
     const nextErrors: FormErrors = {};
     const parsedAmount = Number(amount);
@@ -146,7 +151,7 @@ export default function IncomeForm({
             <option value="" disabled>
               Select category
             </option>
-            {categories.map((category) => (
+            {sortedCategories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.icon} {category.name}
               </option>
