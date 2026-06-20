@@ -9,6 +9,7 @@ export function useDeleteExpense(month: string) {
     mutationFn: (id: string) => deleteExpense(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.expenses(month) })
+      void qc.invalidateQueries({ queryKey: queryKeys.expenseHeatmaps })
       void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
       void qc.invalidateQueries({ queryKey: queryKeys.accounts })
       void qc.invalidateQueries({ queryKey: queryKeys.goals })

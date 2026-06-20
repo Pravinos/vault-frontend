@@ -23,6 +23,7 @@ import type {
   CreateIncomePayload,
   CreateTransferPayload,
   Expense,
+  ExpenseHeatmap,
   ExpenseMonthlySummary,
   ExpenseStats,
   Goal,
@@ -261,6 +262,11 @@ export async function getExpenseStats(): Promise<ExpenseStats> {
   const response = await api.get<ExpenseStats>("/expenses/stats");
   return response.data;
 }
+
+export const getExpenseHeatmap = (year: number) =>
+  api
+    .get<ExpenseHeatmap>("/expenses/heatmap", { params: { year } })
+    .then((r) => r.data);
 
 // Accounts
 export async function getAccounts(): Promise<Account[]> {
