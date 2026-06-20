@@ -1,6 +1,6 @@
 # Vault Frontend
 
-> A personal finance app to track expenses and income, manage multiple accounts, set savings goals, and use AI for summaries and chat insights.
+> A personal finance app to track expenses and income, set category budgets, manage multiple accounts, set savings goals, and use AI for summaries and chat insights.
 
 Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind CSS v4**, **TanStack Query**, **Recharts**, and **Axios**. The app proxies API calls to a Spring Boot backend.
 
@@ -32,8 +32,9 @@ Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind
 
 ## What You Can Do In Vault
 
-- See your financial snapshot on the dashboard (net worth, cash flow, category focus, monthly comparisons, 6-month trend)
-- Track expenses by category, account, and month — with search and duplicate-from-entry
+- See your financial snapshot on the dashboard (net worth with optional trend chart, cash flow, budget highlights, category focus, monthly comparisons, 6-month trend)
+- Set monthly category budgets, track spending vs. plan, copy budgets from the prior month, and pin up to three budgets to the dashboard
+- Track expenses by category, account, and month — with a year-over-year spending heatmap, day-click filtering, search, and duplicate-from-entry
 - Track income entries by category and account — with search and duplicate-from-entry
 - Manage checking, savings, and investment accounts with calculated and manual balances
 - Create transfers between accounts, review per-account transfer history, and revert transfers
@@ -120,10 +121,12 @@ When you open the app:
 
 1. Create one or more accounts (checking, savings, or investment)
 2. Add income and expense entries linked to accounts
-3. Record transfers between accounts when moving money
-4. Review dashboard metrics, category focus, and monthly breakdowns
-5. Set goals, link accounts, and track progress
-6. Ask Vault AI questions or generate weekly summaries
+3. Set monthly category budgets and review progress on the Budgets page or dashboard highlights card
+4. Record transfers between accounts when moving money
+5. Review dashboard metrics — toggle the net worth chart, check budget alerts, and explore category focus and monthly breakdowns
+6. Use the expense heatmap to spot spending patterns and drill into a specific day
+7. Set goals, link accounts, and track progress
+8. Ask Vault AI questions or generate weekly summaries
 
 ---
 
@@ -131,8 +134,9 @@ When you open the app:
 
 | Route | Description |
 |---|---|
-| `/dashboard` | Net worth (calculated + manual drift), account strip, income/expense stats with month-over-month %, net cash flow, category focus donut chart, 6-month cash-flow trend, latest weekly summary card |
-| `/expenses` | CRUD expenses; filter by month, category, and account; text search; duplicate entries; monthly total and category breakdown |
+| `/dashboard` | Net worth card (calculated + manual drift, toggleable area chart from monthly cash flow), account strip, income/expense stats, net cash flow, budget highlights with alerts and pin picker, category focus donut chart, 6-month cash-flow trend, latest weekly summary card |
+| `/expenses` | CRUD expenses; collapsible year heatmap with day-click date filter; filter by month, category, and account; text search; duplicate entries; monthly total and category breakdown |
+| `/budgets` | Monthly category budgets — add/edit/delete limits, month summary bar, status badges (on track / warning / over budget), copy from last month, pin up to 3 budgets for the dashboard |
 | `/income` | CRUD income; filter by month and account; text search; duplicate entries; monthly summary by category |
 | `/accounts` | Two tabs — **Accounts** (grid with update balance, edit, details, delete; stale-balance warnings) and **Transfer** (create transfers, per-account history, revert flow) |
 | `/accounts/[id]` | Account detail — investment return metrics, value-over-time chart, manual balance update, investment checkpoints, transfer history |
@@ -161,13 +165,14 @@ src/
 │   ├── api/v1/[...path]/   # Catch-all proxy to backend /api/v1/*
 │   ├── dashboard/
 │   ├── expenses/
+│   ├── budgets/
 │   ├── income/
 │   ├── accounts/           # List + /[id] detail
 │   ├── goals/
 │   ├── chat/
 │   ├── ai/summaries/
 │   └── settings/ai/
-├── components/             # UI by domain (accounts, chat, dashboard, expenses, goals, income, settings, ui)
+├── components/             # UI by domain (accounts, budgets, chat, dashboard, expenses, goals, income, settings, ui)
 ├── lib/
 │   ├── api.ts              # Axios client + typed API functions
 │   ├── auth.ts             # Token helpers (localStorage)
@@ -195,6 +200,9 @@ All backend communication goes through `src/lib/api.ts` (Axios, base `/api/v1`) 
 - **UI simplification** — the previous Security settings tab was removed; a `Reset password` link is available on the login page. Auth and `/starting` pages render without the main sidebar.
 - **Accounts UX** — primary card action is **Update Balance**; secondary row has Edit, Details, Delete. Transfers live on the Accounts page Transfer tab (not a separate nav item). Revert is hidden for entries that are already reversals.
 - **Dashboard deduplication** — category details are centralized in the Category focus card instead of repeating top-category logic elsewhere.
+- **Net worth chart** — the dashboard Net Worth card toggles between summary and an area chart built from the last several months of net cash flow (estimated trend, not stored snapshots).
+- **Budget highlights** — pin up to three category budgets per month on the Budgets page; the dashboard card shows pinned budgets, auto-fills when fewer than three exist, and surfaces over-budget alerts. Pinned IDs persist in `localStorage`.
+- **Expense heatmap** — GitHub-style calendar on the Expenses page; click a day to filter the list and category breakdown to that date.
 - **Investment details** — account detail page shows asset type, platform, instrument, checkpoints, and return metrics when available.
 
 ---
@@ -237,7 +245,3 @@ npm run lint     # ESLint
 
 ---
 
-## Notes
-
-- This project is frontend-focused by design
-- For backend architecture, database schema, and full API endpoint reference, see [`ARCHITECTURE.md`](ARCHITECTURE.md)
