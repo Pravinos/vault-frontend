@@ -36,3 +36,14 @@ export function statusLabel(status: BudgetSummaryItem["status"]) {
 export function isValidBudgetAmount(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
+
+/** Match backend money-level status thresholds for aggregate totals. */
+export function aggregateBudgetStatus(
+  spentAmount: number,
+  budgetAmount: number
+): BudgetSummaryItem["status"] {
+  if (budgetAmount <= 0) return "ON_TRACK";
+  if (spentAmount >= budgetAmount) return "OVER_BUDGET";
+  if (spentAmount >= budgetAmount * 0.8) return "WARNING";
+  return "ON_TRACK";
+}

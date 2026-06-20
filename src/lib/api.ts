@@ -33,7 +33,7 @@ import type {
   Transfer,
   WeeklySummary,
 } from "@/types";
-import type { Budget, BudgetSummaryItem } from "@/types/budget";
+import type { BudgetRequest, BudgetResponse, BudgetSummaryItem } from "@/types/budget";
 import type { DashboardData } from "@/types/dashboard";
 
 export function fetchOptions(extra?: RequestInit): RequestInit {
@@ -394,17 +394,13 @@ export async function getIncomeCategories(): Promise<IncomeCategory[]> {
 }
 
 // Budgets
-export async function getBudgets(month: string): Promise<Budget[]> {
-  const response = await api.get<Budget[]>("/budgets", { params: { month } });
+export async function getBudgets(month: string): Promise<BudgetResponse[]> {
+  const response = await api.get<BudgetResponse[]>("/budgets", { params: { month } });
   return response.data;
 }
 
-export async function upsertBudget(data: {
-  categoryId: number;
-  month: string;
-  amount: number;
-}): Promise<Budget> {
-  const response = await api.post<Budget>("/budgets", data);
+export async function upsertBudget(data: BudgetRequest): Promise<BudgetResponse> {
+  const response = await api.post<BudgetResponse>("/budgets", data);
   return response.data;
 }
 

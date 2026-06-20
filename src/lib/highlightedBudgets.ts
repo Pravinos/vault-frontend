@@ -1,4 +1,4 @@
-import type { Budget, BudgetSummaryItem } from "@/types/budget";
+import type { BudgetResponse, BudgetSummaryItem } from "@/types/budget";
 
 export const HIGHLIGHTED_BUDGETS_KEY = "vault-highlighted-budget-ids-v2";
 export const HIGHLIGHTED_BUDGETS_CHANGED_EVENT = "vault-highlighted-budgets-changed";
@@ -48,7 +48,7 @@ export function writeHighlightedBudgetIds(month: string, ids: number[]): void {
 }
 
 export function mergeBudgetSummaryItems(
-  budgets: Budget[],
+  budgets: BudgetResponse[],
   summary: BudgetSummaryItem[]
 ): BudgetSummaryItem[] {
   if (budgets.length === 0) return summary;

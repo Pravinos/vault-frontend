@@ -21,6 +21,7 @@ import {
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { useHighlightedBudgets } from "@/lib/hooks/useHighlightedBudgets";
+import { aggregateBudgetStatus, statusBarColor } from "@/lib/budgetStatus";
 import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
 
 function getPreviousMonth(month: string): string {
@@ -122,7 +123,8 @@ export default function BudgetsPage() {
     const totalSpent = budgetItems.reduce((sum, item) => sum + item.spentAmount, 0);
     const percentageUsed =
       totalBudgeted > 0 ? Math.min((totalSpent / totalBudgeted) * 100, 100) : 0;
-    return { totalBudgeted, totalSpent, percentageUsed };
+    const status = aggregateBudgetStatus(totalSpent, totalBudgeted);
+    return { totalBudgeted, totalSpent, percentageUsed, status };
   }, [budgetItems]);
 
   const handleSave = useCallback(
@@ -276,13 +278,7 @@ export default function BudgetsPage() {
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className={`h-full rounded-full transition-all ${
-                    totals.percentageUsed >= 100
-                      ? "bg-rose-500"
-                      : totals.percentageUsed >= 80
-                      ? "bg-amber-400"
-                      : "bg-teal-400"
-                  }`}
+                  className={`h-full rounded-full transition-all ${statusBarColor(totals.status)}`}
                   style={{ width: `${totals.percentageUsed}%` }}
                 />
               </div>

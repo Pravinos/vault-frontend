@@ -224,4 +224,9 @@ export interface ChatResponse {
   functionCallsUsed: string[];
 }
 
-export type { Budget, BudgetSummaryItem } from "@/types/budget";
+export type {
+  Budget,
+  BudgetRequest,
+  BudgetResponse,
+  BudgetSummaryItem,
+} from "@/types/budget";
