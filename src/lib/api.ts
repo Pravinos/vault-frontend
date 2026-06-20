@@ -23,6 +23,7 @@ import type {
   CreateIncomePayload,
   CreateTransferPayload,
   Expense,
+  ExpenseHeatmap,
   ExpenseMonthlySummary,
   ExpenseStats,
   Goal,
@@ -33,6 +34,7 @@ import type {
   Transfer,
   WeeklySummary,
 } from "@/types";
+import type { BudgetRequest, BudgetResponse, BudgetSummaryItem } from "@/types/budget";
 import type { DashboardData } from "@/types/dashboard";
 
 export function fetchOptions(extra?: RequestInit): RequestInit {
@@ -261,6 +263,11 @@ export async function getExpenseStats(): Promise<ExpenseStats> {
   return response.data;
 }
 
+export const getExpenseHeatmap = (year: number) =>
+  api
+    .get<ExpenseHeatmap>("/expenses/heatmap", { params: { year } })
+    .then((r) => r.data);
+
 // Accounts
 export async function getAccounts(): Promise<Account[]> {
   const response = await api.get<Account[]>("/accounts");
@@ -389,6 +396,28 @@ export async function getIncomeSummary(
 
 export async function getIncomeCategories(): Promise<IncomeCategory[]> {
   const response = await api.get<IncomeCategory[]>("/income-categories");
+  return response.data;
+}
+
+// Budgets
+export async function getBudgets(month: string): Promise<BudgetResponse[]> {
+  const response = await api.get<BudgetResponse[]>("/budgets", { params: { month } });
+  return response.data;
+}
+
+export async function upsertBudget(data: BudgetRequest): Promise<BudgetResponse> {
+  const response = await api.post<BudgetResponse>("/budgets", data);
+  return response.data;
+}
+
+export async function deleteBudget(id: string): Promise<void> {
+  await api.delete<void>(`/budgets/${id}`);
+}
+
+export async function getBudgetSummary(month: string): Promise<BudgetSummaryItem[]> {
+  const response = await api.get<BudgetSummaryItem[]>("/budgets/summary", {
+    params: { month },
+  });
   return response.data;
 }
 

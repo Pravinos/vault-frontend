@@ -52,6 +52,11 @@ export default function ExpenseForm({
 
   const isEditMode = useMemo(() => Boolean(expense), [expense]);
 
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
+    [categories]
+  );
+
   const validate = (): boolean => {
     const nextErrors: FormErrors = {};
     const parsedAmount = Number(amount);
@@ -152,7 +157,7 @@ export default function ExpenseForm({
             <option value="" disabled>
               Select category
             </option>
-            {categories.map((category) => (
+            {sortedCategories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>

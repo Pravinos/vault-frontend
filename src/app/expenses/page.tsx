@@ -1,11 +1,12 @@
 ﻿"use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { ChevronDown, Plus, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
+import ExpenseHeatmap from "@/components/expenses/ExpenseHeatmap";
 import ExpenseList from "@/components/expenses/ExpenseList";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
@@ -21,9 +22,11 @@ import type { Expense, CreateExpenseRequest } from "@/types";
 export default function ExpensesPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
+  const [showHeatmap, setShowHeatmap] = useState<boolean>(true);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const [initialExpenseValues, setInitialExpenseValues] = useState<
     CreateExpenseRequest | undefined
@@ -74,6 +77,7 @@ export default function ExpensesPage() {
 
   const handleFormSuccess = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: queryKeys.expenses(selectedMonth) });
+    await qc.invalidateQueries({ queryKey: queryKeys.expenseHeatmaps });
     await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
     await qc.invalidateQueries({ queryKey: queryKeys.accounts });
     await qc.invalidateQueries({ queryKey: queryKeys.goals });
@@ -83,8 +87,11 @@ export default function ExpensesPage() {
     let data = expenses;
     if (selectedCategoryId !== null) data = data.filter((e) => e.category.id === selectedCategoryId);
     if (selectedAccountId) data = data.filter((e) => e.accountId === selectedAccountId);
+    if (selectedDate) {
+      data = data.filter((e) => e.expenseDate.slice(0, 10) === selectedDate);
+    }
     return data;
-  }, [expenses, selectedCategoryId, selectedAccountId]);
+  }, [expenses, selectedCategoryId, selectedAccountId, selectedDate]);
 
   const displayedExpenses = useMemo(() => {
     if (!searchQuery.trim()) return baseFilteredExpenses;
@@ -106,7 +113,8 @@ export default function ExpensesPage() {
 
   const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
 
-  const hasActiveFilters = selectedCategoryId !== null || selectedAccountId !== null;
+  const hasActiveFilters =
+    selectedCategoryId !== null || selectedAccountId !== null || selectedDate !== null;
 
   const categorySummary = useMemo(() => {
     if (hasActiveFilters) {
@@ -149,7 +157,28 @@ export default function ExpensesPage() {
   const clearFilters = () => {
     setSelectedCategoryId(null);
     setSelectedAccountId(null);
+    setSelectedDate(null);
   };
+
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+    if (selectedDate && !selectedDate.startsWith(month)) {
+      setSelectedDate(null);
+    }
+  };
+
+  const handleHeatmapDayClick = (date: string) => {
+    setSelectedDate(date);
+    setSelectedMonth(date.slice(0, 7));
+  };
+
+  const selectedDateLabel = selectedDate
+    ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "";
 
   const handleCategoryChipClick = (categoryId: number | undefined) => {
     if (!categoryId) {
@@ -177,7 +206,11 @@ export default function ExpensesPage() {
         <div className="border-b border-gray-800 px-0 py-2">
           <p className="mb-4 text-sm text-gray-400">
             <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
-            {" "}spent in {monthLabel}
+            {selectedDate ? (
+              <> spent on {selectedDateLabel}</>
+            ) : (
+              <> spent in {monthLabel}</>
+            )}
             <span className="text-gray-600">
               {" "}· {baseFilteredExpenses.length} {baseFilteredExpenses.length === 1 ? "entry" : "entries"}
             </span>
@@ -190,13 +223,63 @@ export default function ExpensesPage() {
           <TransactionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search expenses..." />
         </div>
 
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowHeatmap((open) => !open)}
+            aria-expanded={showHeatmap}
+            className="mb-3 inline-flex items-center gap-1.5 text-xs text-gray-400 transition-colors hover:text-gray-300"
+          >
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform duration-300 ease-in-out ${
+                showHeatmap ? "rotate-0" : "-rotate-90"
+              }`}
+            />
+            {showHeatmap ? "Hide heatmap" : "Show heatmap"}
+          </button>
+
+          <div
+            className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+              showHeatmap ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div
+              className={`overflow-hidden ${showHeatmap ? "" : "pointer-events-none"}`}
+              aria-hidden={!showHeatmap}
+              inert={!showHeatmap}
+            >
+              <ExpenseHeatmap
+                onDayClick={handleHeatmapDayClick}
+                selectedDate={selectedDate}
+                enabled={showHeatmap}
+              />
+            </div>
+          </div>
+        </div>
+
+        {selectedDate ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs text-teal-200">
+              Filtered by: {selectedDateLabel}
+              <button
+                type="button"
+                onClick={() => setSelectedDate(null)}
+                className="text-teal-300 transition-colors hover:text-white"
+                aria-label="Clear date filter"
+              >
+                ✕
+              </button>
+            </span>
+          </div>
+        ) : null}
+
         <ExpenseFilters
           month={selectedMonth}
           categoryId={selectedCategoryId}
           categories={categories}
           accountId={selectedAccountId}
           accounts={accounts}
-          onMonthChange={setSelectedMonth}
+          onMonthChange={handleMonthChange}
           onCategoryChange={setSelectedCategoryId}
           onAccountChange={setSelectedAccountId}
         />
@@ -204,7 +287,8 @@ export default function ExpensesPage() {
         {!error && categorySummary.length > 0 && (
           <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              {monthLabel} - Breakdown{hasActiveFilters ? " (filtered)" : ""}
+              {selectedDate ? `${selectedDateLabel} - Breakdown` : `${monthLabel} - Breakdown`}
+              {hasActiveFilters ? " (filtered)" : ""}
             </p>
 
             <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">

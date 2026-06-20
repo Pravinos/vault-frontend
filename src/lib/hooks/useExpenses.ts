@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { getExpenses, getExpenseSummary } from '@/lib/api'
+import { getExpenseHeatmap, getExpenses, getExpenseSummary } from '@/lib/api'
 import { queryKeys } from '@/lib/queryKeys'
 
 export function useExpenses(month: string) {
@@ -15,5 +15,14 @@ export function useExpenses(month: string) {
     },
     staleTime: 3 * 60 * 1000,
     enabled: !!month,
+  })
+}
+
+export function useExpenseHeatmap(year: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.expenseHeatmap(year),
+    queryFn: () => getExpenseHeatmap(year),
+    staleTime: 3 * 60 * 1000,
+    enabled,
   })
 }

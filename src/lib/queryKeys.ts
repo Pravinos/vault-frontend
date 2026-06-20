@@ -7,9 +7,15 @@ export const queryKeys = {
 
   // Expenses
   expenses: (month: string) => ['expenses', month] as const,
+  expenseHeatmaps: ['expenses', 'heatmap'] as const,
+  expenseHeatmap: (year: number) => ['expenses', 'heatmap', year] as const,
 
   // Income
   income: (month: string) => ['income', month] as const,
+
+  // Budgets
+  budgets: (month: string) => ['budgets', month] as const,
+  budgetSummary: (month: string) => ['budgets', 'summary', month] as const,
 
   // Dashboard
   dashboard:     ['dashboard']      as const,

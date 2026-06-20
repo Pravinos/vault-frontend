@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { fetchDashboard, getExpenseSummary, getIncomeSummary } from '@/lib/api'
+import {
+  fetchDashboard,
+  getBudgets,
+  getBudgetSummary,
+  getExpenseSummary,
+  getIncomeSummary,
+} from '@/lib/api'
+import { mergeBudgetSummaryItems } from '@/lib/highlightedBudgets'
 import { queryKeys } from '@/lib/queryKeys'
 
 function toYearMonth(date: Date): string {
@@ -20,12 +27,25 @@ export function getLastNMonths(count: number): string[] {
 
 export async function fetchDashboardData() {
   const monthRange = getLastNMonths(6)
-  const [dashboard, expenseSummaries, incomeSummaries] = await Promise.all([
-    fetchDashboard(),
-    Promise.all(monthRange.map((month) => getExpenseSummary(month))),
-    Promise.all(monthRange.map((month) => getIncomeSummary(month))),
-  ])
-  return { dashboard, expenseSummaries, incomeSummaries, monthRange }
+  const currentMonth = monthRange[monthRange.length - 1] ?? toYearMonth(new Date())
+
+  const [dashboard, expenseSummaries, incomeSummaries, budgetsList, budgetSummary] =
+    await Promise.all([
+      fetchDashboard(),
+      Promise.all(monthRange.map((month) => getExpenseSummary(month))),
+      Promise.all(monthRange.map((month) => getIncomeSummary(month))),
+      getBudgets(currentMonth),
+      getBudgetSummary(currentMonth),
+    ])
+
+  return {
+    dashboard,
+    expenseSummaries,
+    incomeSummaries,
+    monthRange,
+    currentMonth,
+    budgetItems: mergeBudgetSummaryItems(budgetsList, budgetSummary),
+  }
 }
 
 export const dashboardQueryOptions = {

@@ -29,6 +29,12 @@ export interface ExpenseStats {
   totalExpensesThisMonth: number;
 }
 
+export interface ExpenseHeatmap {
+  year: number;
+  days: { date: string; totalAmount: number }[];
+  maxDayAmount: number;
+}
+
 export interface CreateExpenseRequest {
   amount: number;
   note?: string;
@@ -223,3 +229,10 @@ export interface ChatResponse {
   model: string;
   functionCallsUsed: string[];
 }
+
+export type {
+  Budget,
+  BudgetRequest,
+  BudgetResponse,
+  BudgetSummaryItem,
+} from "@/types/budget";
