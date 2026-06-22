@@ -4,29 +4,7 @@
 
 Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind CSS v4**, **TanStack Query**, **Recharts**, and **Axios**. The app proxies API calls to a Spring Boot backend.
 
-#### 🔐 Login
-<img src="screenshots/login.png" width="75%"/>
-
-#### 📊 Dashboard
-<img src="screenshots/dashboard.png" width="75%"/>
-
-#### 💸 Expenses
-<img src="screenshots/expenses.png" width="75%"/>
-
-#### 💰 Income
-<img src="screenshots/income.png" width="75%"/>
-
-#### 🏦 Accounts
-<img src="screenshots/accounts.png" width="75%"/>
-
-#### 🔁 Transfers
-<img src="screenshots/transfers.png" width="75%"/>
-
-#### 🤖 AI Chat
-<img src="screenshots/chat.png" width="75%"/>
-
-#### 📋 Weekly Summaries
-<img src="screenshots/summaries.png" width="75%"/>
+**Page screenshots:** see [`PAGES.md`](PAGES.md) for a visual walkthrough of each screen.
 
 ---
 
