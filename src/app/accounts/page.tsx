@@ -406,7 +406,7 @@ export default function AccountsPage() {
                               <Pencil className="h-4 w-4" />
                             </button>
                             <Link
-                              href={account.accountType === "INVESTMENT" ? `/accounts/${account.id}` : "/expenses"}
+                              href={`/accounts/${account.id}`}
                               className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
                               title="Details"
                             >

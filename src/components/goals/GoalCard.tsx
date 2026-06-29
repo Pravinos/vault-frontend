@@ -69,7 +69,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
   }, [goal.progressPercentage, goal.name]);
 
   return (
-    <div className={`flex flex-col rounded-xl p-5 ${completed ? 'border border-emerald-600 bg-emerald-900/30' : 'border border-gray-800 bg-gray-900/60'}`}>
+    <div className={`animate-card-enter flex flex-col rounded-xl p-5 ${completed ? 'border border-emerald-600 bg-emerald-900/30' : 'border border-gray-800 bg-gray-900/60'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base font-semibold text-white">{goal.name}</span>

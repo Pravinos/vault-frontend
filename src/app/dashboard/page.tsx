@@ -21,6 +21,7 @@ import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import BudgetHighlightsCard from "@/components/dashboard/BudgetHighlightsCard";
 import NetWorthCard from "@/components/dashboard/NetWorthCard";
 import AccountCard from "@/components/accounts/AccountCard";
+import AnimatedCard from "@/components/ui/AnimatedCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
@@ -89,7 +90,7 @@ function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
   return (
     <div className="relative">
       <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-0">
-        {accounts.slice(0, 8).map((account) => (
+        {accounts.slice(0, 8).map((account, index) => (
           <Link
             key={account.id}
             href={`/accounts/${account.id}`}
@@ -98,6 +99,7 @@ function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
             <AccountCard
               account={account}
               compact
+              staggerIndex={index}
               className="h-full transition-colors hover:border-gray-700"
             />
           </Link>
@@ -116,6 +118,7 @@ function StatCard({
   momPositiveIsGood,
   monthLabel,
   isText,
+  staggerIndex,
 }: {
   label: string;
   value: number | string;
@@ -123,6 +126,7 @@ function StatCard({
   momPositiveIsGood?: boolean;
   monthLabel?: string;
   isText?: boolean;
+  staggerIndex?: number;
 }) {
   const formattedValue = typeof value === "number" ? formatCurrency(value) : value;
   const trendPositive = momPercent !== null && momPercent !== undefined ? momPercent >= 0 : null;
@@ -134,7 +138,7 @@ function StatCard({
       : !trendPositive;
 
   return (
-    <div className="rounded-2xl bg-[#1a2332] p-4">
+    <AnimatedCard staggerIndex={staggerIndex} className="rounded-2xl bg-[#1a2332] p-4">
       <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
       <p className={`truncate font-bold ${isText ? "text-base" : "text-lg"} text-white`}>{formattedValue}</p>
       {momPercent !== null && momPercent !== undefined ? (
@@ -143,11 +147,21 @@ function StatCard({
           {momPercent.toFixed(1)}% vs {monthLabel ?? "last month"}
         </p>
       ) : null}
-    </div>
+    </AnimatedCard>
   );
 }
 
-function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; animatedValue?: number; subtitle: string }) {
+function NetCashFlowCard({
+  value,
+  animatedValue,
+  subtitle,
+  staggerIndex,
+}: {
+  value: number;
+  animatedValue?: number;
+  subtitle: string;
+  staggerIndex?: number;
+}) {
   const displayValue = typeof animatedValue === "number" ? animatedValue : value;
   const tintClass =
     displayValue > 0
@@ -157,7 +171,7 @@ function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; an
       : "bg-[#1a2332] border border-transparent";
 
   return (
-    <div className={`rounded-2xl p-4 ${tintClass}`}>
+    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-2xl p-4 ${tintClass}`}>
       <div className="mb-2 flex items-center gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Net Cash Flow</p>
 
@@ -184,11 +198,11 @@ function NetCashFlowCard({ value, animatedValue, subtitle }: { value: number; an
       >
         {formatCurrency(displayValue)}
       </p>
-    </div>
+    </AnimatedCard>
   );
 }
 
-function MonthlyTrendCard({ data }: { data: CashFlowBarDatum[] }) {
+function MonthlyTrendCard({ data, staggerIndex }: { data: CashFlowBarDatum[]; staggerIndex?: number }) {
   function formatYAxisTick(value: number) {
     const abs = Math.abs(Number(value) || 0);
     if (value === 0) return "0";
@@ -197,7 +211,7 @@ function MonthlyTrendCard({ data }: { data: CashFlowBarDatum[] }) {
   }
 
   return (
-    <div className="rounded-2xl bg-[#1a2332] p-5">
+    <AnimatedCard staggerIndex={staggerIndex} className="rounded-2xl bg-[#1a2332] p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-white">Monthly Trend</h2>
         <span className="text-xs text-gray-500">Last 6 months</span>
@@ -248,7 +262,7 @@ function MonthlyTrendCard({ data }: { data: CashFlowBarDatum[] }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </AnimatedCard>
   );
 }
 
@@ -259,6 +273,7 @@ function CategoryFocusCard({
   total,
   monthLabel,
   donutData,
+  staggerIndex,
 }: {
   className?: string;
   category: string;
@@ -266,6 +281,7 @@ function CategoryFocusCard({
   total: number;
   monthLabel: string;
   donutData: DonutSlice[];
+  staggerIndex?: number;
 }) {
   const hasTopCategory = Boolean(category) && amount > 0;
   const share = total > 0 ? (amount / total) * 100 : 0;
@@ -281,7 +297,7 @@ function CategoryFocusCard({
   const remainingSpend = Math.max(total - listedTotal, 0);
 
   return (
-    <div className={`rounded-2xl bg-[#1a2332] p-5 ${className ?? ""}`.trim()}>
+    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-2xl bg-[#1a2332] p-5 ${className ?? ""}`.trim()}>
       <h2 className="text-lg font-semibold text-white">Category focus</h2>
       <p className="mt-1 text-sm text-gray-400">{monthLabel}</p>
 
@@ -375,7 +391,7 @@ function CategoryFocusCard({
       >
         View all expenses →
       </Link>
-    </div>
+    </AnimatedCard>
   );
 }
 
@@ -490,12 +506,19 @@ export default function DashboardPage() {
             <StatCard
               label="Income This Month"
               value={incomeAnimated}
+              staggerIndex={0}
             />
             <StatCard
               label="Expenses This Month"
               value={expensesAnimated}
+              staggerIndex={1}
             />
-            <NetCashFlowCard value={dashboardData.netCashFlow} animatedValue={netCashAnimated} subtitle="Income - Expenses · transfers excluded" />
+            <NetCashFlowCard
+              value={dashboardData.netCashFlow}
+              animatedValue={netCashAnimated}
+              subtitle="Income - Expenses · transfers excluded"
+              staggerIndex={2}
+            />
           </div>
         </div>
 
@@ -516,9 +539,10 @@ export default function DashboardPage() {
               total={dashboardData.expensesThisMonth}
               monthLabel={dashboardData.currentMonthLabel}
               donutData={categoryDonutData}
+              staggerIndex={0}
             />
             <div className="space-y-4 xl:col-span-2">
-              <MonthlyTrendCard data={monthlyTrendData} />
+              <MonthlyTrendCard data={monthlyTrendData} staggerIndex={1} />
               <WeeklySummaryCard summary={summary} />
             </div>
           </div>

@@ -15,7 +15,7 @@ const variantStyles: Record<string, string> = {
 export default function Skeleton({ variant, className = "" }: SkeletonProps) {
   return (
     <div
-      className={`bg-gray-700 animate-pulse rounded ${variantStyles[variant]} ${className}`}
+      className={`skeleton-shimmer rounded bg-gray-700 ${variantStyles[variant]} ${className}`}
     />
   );
 }

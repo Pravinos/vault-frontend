@@ -4,29 +4,15 @@
 
 Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind CSS v4**, **TanStack Query**, **Recharts**, and **Axios**. The app proxies API calls to a Spring Boot backend.
 
-#### 🔐 Login
-<img src="screenshots/login.png" width="75%"/>
+### Dashboard
 
-#### 📊 Dashboard
-<img src="screenshots/dashboard.png" width="75%"/>
+<img src="media/dashboard-1.png" width="75%"/>
 
-#### 💸 Expenses
-<img src="screenshots/expenses.png" width="75%"/>
+### 🤖 AI Chat
 
-#### 💰 Income
-<img src="screenshots/income.png" width="75%"/>
+<img src="media/chat.png" width="75%"/>
 
-#### 🏦 Accounts
-<img src="screenshots/accounts.png" width="75%"/>
-
-#### 🔁 Transfers
-<img src="screenshots/transfers.png" width="75%"/>
-
-#### 🤖 AI Chat
-<img src="screenshots/chat.png" width="75%"/>
-
-#### 📋 Weekly Summaries
-<img src="screenshots/summaries.png" width="75%"/>
+For a full visual walkthrough visit [`PAGES.md`](PAGES.md).
 
 ---
 
@@ -50,7 +36,7 @@ Built with **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind
 
 You need two things running:
 
-1. Vault backend API (Spring Boot)
+1. [Vault backend API (Spring Boot)](https://github.com/Pravinos/vault-api)
 2. This frontend (Next.js)
 
 The frontend talks to the backend for all data and authentication.
@@ -61,8 +47,6 @@ From the backend architecture:
 - JWT is stored in both `localStorage` (Bearer token for API calls) and an HttpOnly `vault_token` cookie (page gating)
 - First-time users must run setup and create a vault password
 - Regular users log in with that password
-
-For backend architecture and endpoint details, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ---
 

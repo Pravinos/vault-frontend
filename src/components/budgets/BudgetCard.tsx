@@ -37,7 +37,9 @@ export default function BudgetCard({
 }: BudgetCardProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(item.budgetAmount));
+  const [statusPulse, setStatusPulse] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const prevStatusRef = useRef(item.status);
 
   useEffect(() => {
     if (editing) {
@@ -51,6 +53,13 @@ export default function BudgetCard({
       setEditValue(String(item.budgetAmount));
     }
   }, [item.budgetAmount, editing]);
+
+  useEffect(() => {
+    if (prevStatusRef.current !== "OVER_BUDGET" && item.status === "OVER_BUDGET") {
+      setStatusPulse(true);
+    }
+    prevStatusRef.current = item.status;
+  }, [item.status]);
 
   const progressWidth = Math.min(Math.max(item.percentageUsed, 0), 100);
 
@@ -85,7 +94,7 @@ export default function BudgetCard({
 
   return (
     <div
-      className={`rounded-xl border bg-[#1a1a1a] p-4 ${
+      className={`animate-card-enter rounded-xl border bg-[#1a1a1a] p-4 ${
         isHighlighted ? "border-teal-500/40 ring-1 ring-teal-500/20" : "border-white/10"
       }`}
     >
@@ -209,7 +218,9 @@ export default function BudgetCard({
           </p>
         </div>
         <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeClasses(item.status)}`}
+          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors duration-200 ${statusBadgeClasses(item.status)} ${
+            statusPulse && item.status === "OVER_BUDGET" ? "status-pulse" : ""
+          }`}
         >
           {statusLabel(item.status)}
         </span>

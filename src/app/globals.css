@@ -10,7 +10,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-space-grotesk);
-  --animate-fadeIn: fadeIn 150ms ease forwards;
+  --animate-page-enter: pageEnter 220ms ease-out forwards;
+  --animate-card-enter: cardEnter 220ms ease-out backwards;
+  --animate-status-pulse: statusPulse 600ms ease-in-out 1;
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
 }
 
 @keyframes fadeIn {
@@ -19,6 +22,49 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes cardEnter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes statusPulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.65;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
   }
 }
 
@@ -33,6 +79,15 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 html,
@@ -73,6 +128,74 @@ input[type="time"] {
 select option {
   background-color: #1a2332;
   color: #ffffff;
+}
+
+@layer components {
+  .btn-interactive {
+    transition-property: color, background-color, border-color, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  .btn-interactive:active {
+    transform: scale(0.97);
+  }
+
+  .input-interactive {
+    transition-property: border-color, box-shadow;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  .nav-link-interactive {
+    transition-property: color, background-color, opacity, transform;
+    transition-duration: 200ms;
+    transition-timing-function: ease-in-out;
+  }
+
+  .modal-overlay {
+    transition: opacity 250ms ease-out;
+  }
+
+  .modal-panel {
+    transition:
+      opacity 250ms ease-out,
+      transform 250ms ease-out;
+  }
+
+  .toast-panel {
+    transition:
+      opacity 250ms ease-out,
+      transform 250ms ease-out;
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgb(55 65 81 / 0.55) 0%,
+      rgb(75 85 99 / 0.85) 50%,
+      rgb(55 65 81 / 0.55) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .status-pulse {
+    animation: statusPulse 600ms ease-in-out 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer,
+  .status-pulse {
+    animation: none;
+  }
+
+  .modal-overlay,
+  .modal-panel,
+  .toast-panel {
+    transition: none;
+  }
 }
 
 /* Vault icon entrance + pulse animations (respect prefers-reduced-motion) */

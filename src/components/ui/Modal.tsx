@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
+import { useEnterExitAnimation } from "@/lib/hooks/useEnterExitAnimation";
+
 type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -15,6 +17,7 @@ const focusableSelector =
 
 export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const { mounted, visible } = useEnterExitAnimation(isOpen);
 
   const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
@@ -23,7 +26,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
   };
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!mounted) {
       return;
     }
 
@@ -69,15 +72,17 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [mounted]);
 
-  if (!isOpen) {
+  if (!mounted) {
     return null;
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      className={`modal-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
       onMouseDown={handleBackdropMouseDown}
       role="dialog"
       aria-modal="true"
@@ -85,7 +90,9 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
     >
       <div
         ref={panelRef}
-        className="w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[#1a2332] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white shadow-xl sm:mx-auto sm:w-full sm:max-w-md sm:rounded-2xl"
+        className={`modal-panel w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[#1a2332] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white shadow-xl sm:mx-auto sm:w-full sm:max-w-md sm:rounded-2xl ${
+          visible ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
+        }`}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
@@ -94,7 +101,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-gray-300 transition hover:text-white"
+            className="btn-interactive rounded-md p-1 text-gray-300 hover:text-white"
             aria-label="Close modal"
           >
             <X className="h-4 w-4" />

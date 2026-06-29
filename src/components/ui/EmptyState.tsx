@@ -37,7 +37,7 @@ export default function EmptyState({
           type="button"
           onClick={onAction}
           disabled={actionDisabled}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-interactive inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {actionLabel}
         </button>
