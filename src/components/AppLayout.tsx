@@ -28,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <TokenRefresher />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
-      <div className="min-h-screen lg:ml-[220px]">
+      <div className="min-h-screen overflow-x-hidden lg:ml-[220px]">
         <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-white/5 bg-[#0f1923] px-4 py-4 lg:hidden">
           <SidebarMenuButton onClick={() => setSidebarOpen(true)} />
           <Link

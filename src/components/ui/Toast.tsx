@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle, XCircle } from "lucide-react";
+
+import { useEnterExitAnimation } from "@/lib/hooks/useEnterExitAnimation";
 
 type ToastProps = {
   message: string;
@@ -10,14 +12,33 @@ type ToastProps = {
 };
 
 export default function Toast({ message, type, onClose }: ToastProps) {
+  const [dismissing, setDismissing] = useState(false);
+  const { mounted, visible } = useEnterExitAnimation(!dismissing);
+
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
+    const timer = setTimeout(() => setDismissing(true), 3000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted && dismissing) {
+      onClose();
+    }
+  }, [mounted, dismissing, onClose]);
+
+  const handleDismiss = () => {
+    setDismissing(true);
+  };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div
-      className={`fixed top-4 left-1/2 z-[100] -translate-x-1/2 flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg sm:left-auto sm:right-4 sm:translate-x-0
+      className={`toast-panel fixed top-4 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-3 rounded-lg border px-4 py-3 shadow-lg sm:left-auto sm:right-4 sm:translate-x-0 ${
+        visible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+      }
         ${type === "success" ? "border-green-500 bg-gray-900" : "border-red-500 bg-gray-900"}`}
       role="alert"
     >
@@ -29,8 +50,8 @@ export default function Toast({ message, type, onClose }: ToastProps) {
       <span className="text-sm text-gray-100">{message}</span>
       <button
         type="button"
-        onClick={onClose}
-        className="ml-2 text-gray-400 hover:text-gray-200"
+        onClick={handleDismiss}
+        className="btn-interactive ml-2 text-gray-400 hover:text-gray-200"
         aria-label="Close notification"
       >
         ×

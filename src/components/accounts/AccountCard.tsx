@@ -21,6 +21,7 @@ interface AccountCardProps {
   account: AccountCardData;
   compact?: boolean;
   className?: string;
+  staggerIndex?: number;
   footer?: ReactNode;
   details?: ReactNode;
   detailsDefaultOpen?: boolean;
@@ -83,6 +84,7 @@ export default function AccountCard({
   account,
   compact = false,
   className,
+  staggerIndex,
   footer,
   details,
   detailsDefaultOpen = false,
@@ -116,9 +118,10 @@ export default function AccountCard({
 
   return (
     <div
-      className={`rounded-2xl border border-gray-800 border-l-4 ${getAccentClass(account.accountType)} bg-[#1a2332] p-4 ${
+      className={`animate-card-enter rounded-2xl border border-gray-800 border-l-4 ${getAccentClass(account.accountType)} bg-[#1a2332] p-4 ${
         className ?? ""
       }`.trim()}
+      style={staggerIndex !== undefined ? { animationDelay: `${staggerIndex * 50}ms` } : undefined}
     >
       <div className="flex items-start justify-between gap-3">
         <p className="truncate text-sm font-semibold text-white">{account.name}</p>

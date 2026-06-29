@@ -30,7 +30,7 @@ type NavItem = {
 
 const navRowWrapper = "flex w-full";
 const navRowPill =
-  "inline-flex items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium transition-colors";
+  "nav-link-interactive inline-flex items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium";
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -73,8 +73,8 @@ function SidebarNavLink({
       <span
         className={
           active
-            ? `${navRowPill} bg-vault-green-muted text-vault-green`
-            : `${navRowPill} text-gray-400 hover:bg-white/4 hover:text-white`
+            ? `${navRowPill} translate-x-0.5 bg-vault-green-muted text-vault-green`
+            : `${navRowPill} text-gray-400 hover:translate-x-0.5 hover:bg-white/4 hover:text-white`
         }
       >
         <Icon className="h-[18px] w-[18px] shrink-0" />

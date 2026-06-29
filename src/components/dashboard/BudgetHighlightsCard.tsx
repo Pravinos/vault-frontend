@@ -107,7 +107,7 @@ export default function BudgetHighlightsCard({
 
   return (
     <>
-      <div className="rounded-2xl border border-white/10 bg-[#1a1a1a] p-5">
+      <div className="animate-card-enter rounded-2xl border border-white/10 bg-[#1a1a1a] p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-white">Budgets</h2>

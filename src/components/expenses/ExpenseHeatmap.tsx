@@ -69,7 +69,7 @@ function HeatmapSkeleton({ weekColumnCount }: { weekColumnCount: number }) {
     <div className="overflow-x-auto">
       <div className="inline-block w-fit">
         <div
-          className="mb-2 h-3 animate-pulse rounded bg-gray-700"
+          className="mb-2 h-3 skeleton-shimmer rounded"
           style={{
             marginLeft: `calc(${DAY_LABEL_WIDTH} + ${CELL_GAP})`,
             width: getGridWidth(weekColumnCount),
@@ -91,7 +91,7 @@ function HeatmapSkeleton({ weekColumnCount }: { weekColumnCount: number }) {
             }}
           >
             {Array.from({ length: 7 * weekColumnCount }).map((_, index) => (
-              <div key={index} className="h-3 w-3 animate-pulse rounded-sm bg-gray-700" />
+              <div key={index} className="h-3 w-3 skeleton-shimmer rounded-sm" />
             ))}
           </div>
         </div>
@@ -261,7 +261,7 @@ export default function ExpenseHeatmap({
                       type="button"
                       title={cell.tooltip}
                       onClick={() => onDayClick?.(cell.date)}
-                      className={`h-3 w-3 rounded-sm transition-opacity hover:opacity-80 ${cell.colorClass} ${
+                      className={`h-3 w-3 rounded-sm opacity-[0.85] transition-opacity duration-150 hover:opacity-100 ${cell.colorClass} ${
                         isSelected
                           ? "ring-1 ring-white ring-offset-1 ring-offset-[#161616]"
                           : ""
