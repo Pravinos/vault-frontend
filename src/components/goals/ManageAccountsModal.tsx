@@ -4,6 +4,7 @@ import { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
 import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import { linkAccountToGoal, unlinkAccountFromGoal } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
@@ -17,6 +18,7 @@ type Props = {
 
 export default function ManageAccountsModal({ goal, onClose, onSuccess }: Props) {
   const qc = useQueryClient();
+  const { isOpen, requestClose } = useModalDismiss();
   const { data: accounts = [], isLoading } = useAccounts();
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
@@ -52,7 +54,12 @@ export default function ManageAccountsModal({ goal, onClose, onSuccess }: Props)
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={`Manage accounts for ${goal.name}`}>
+    <Modal
+      isOpen={isOpen}
+      onClose={requestClose}
+      onClosed={onClose}
+      title={`Manage accounts for ${goal.name}`}
+    >
       <div className="space-y-4">
         <div>
           <p className="text-sm text-gray-300">Linked accounts</p>
@@ -127,8 +134,8 @@ export default function ManageAccountsModal({ goal, onClose, onSuccess }: Props)
         <div className="flex justify-end gap-2 pt-2">
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-200"
+            onClick={requestClose}
+            className="btn-interactive rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-200"
           >
             Close
           </button>

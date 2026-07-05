@@ -13,9 +13,10 @@ import {
 import { LayoutDashboard, LineChart as LineChartIcon } from "lucide-react";
 
 import { useFormatCurrency } from "@/lib/currencyContext";
+import { DURATION_MODAL, DURATION_SLOW, prefersReducedMotion } from "@/lib/motion";
 import type { NetWorthHistoryDatum } from "@/lib/netWorthHistory";
 
-const VIEW_TRANSITION_MS = 300;
+const VIEW_TRANSITION_MS = DURATION_MODAL;
 
 function formatYAxisTick(value: number) {
   const abs = Math.abs(Number(value) || 0);
@@ -84,7 +85,7 @@ export default function NetWorthCard({
             onClick={handleToggle}
             aria-pressed={showChart}
             aria-label={showChart ? "Show net worth summary" : "Show net worth chart"}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-gray-300 transition-colors duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-[0.98]"
+            className="btn-interactive inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-gray-300 hover:border-white/20 hover:bg-white/10 hover:text-white"
           >
             {showChart ? (
               <>
@@ -104,7 +105,7 @@ export default function NetWorthCard({
       {/* Only the in-flow panel sets height; the hidden panel is absolute and ignored for layout */}
       <div className="relative overflow-hidden">
         <div
-          className={`transition-opacity duration-300 ease-out ${
+          className={`transition-opacity duration-modal ease-standard ${
             chartVisible
               ? "pointer-events-none absolute inset-x-0 top-0 opacity-0"
               : "relative opacity-100"
@@ -145,7 +146,7 @@ export default function NetWorthCard({
 
         {chartMounted ? (
           <div
-            className={`transition-opacity duration-300 ease-out ${
+            className={`transition-opacity duration-modal ease-standard ${
               chartVisible
                 ? "relative opacity-100"
                 : "pointer-events-none absolute inset-x-0 top-0 opacity-0"
@@ -212,7 +213,9 @@ export default function NetWorthCard({
                     fill={`url(#${gradientId})`}
                     dot={false}
                     activeDot={{ r: 4, fill: "#10b981", stroke: "#0f172a", strokeWidth: 2 }}
-                    isAnimationActive={chartVisible}
+                    isAnimationActive={chartVisible && !prefersReducedMotion()}
+                    animationDuration={DURATION_SLOW}
+                    animationEasing="ease-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>

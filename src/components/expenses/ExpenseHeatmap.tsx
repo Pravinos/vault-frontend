@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useExpenseHeatmap } from "@/lib/hooks/useExpenses";
 import { useFormatCurrency } from "@/lib/currencyContext";
+import { getStaggerDelayMs } from "@/lib/motion";
 
 const ROW_LABELS = ["M", "", "W", "", "F", "", ""] as const;
 const CELL_SIZE = "0.75rem";
@@ -266,7 +267,7 @@ export default function ExpenseHeatmap({
                       type="button"
                       title={cell.tooltip}
                       onClick={() => onDayClick?.(cell.date)}
-                      className={`h-3 w-3 rounded-sm opacity-[0.85] transition-opacity duration-150 hover:opacity-100 ${cell.colorClass} ${
+                      className={`animate-list-item-enter h-3 w-3 rounded-sm opacity-[0.85] transition-opacity duration-fast hover:opacity-100 ${cell.colorClass} ${
                         isSelected
                           ? "ring-1 ring-white ring-offset-1 ring-offset-[#161616]"
                           : ""
@@ -274,6 +275,7 @@ export default function ExpenseHeatmap({
                       style={{
                         gridColumn: cell.column,
                         gridRow: cell.row,
+                        animationDelay: `${getStaggerDelayMs(cell.column)}ms`,
                       }}
                       aria-label={cell.tooltip}
                       aria-pressed={isSelected}

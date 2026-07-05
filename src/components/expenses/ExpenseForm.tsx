@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { createExpense, updateExpense } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
+import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import SelectField from "@/components/ui/SelectField";
 import { getLocalDateString } from "@/lib/utils";
 import { useFormatCurrency } from "@/lib/currencyContext";
@@ -35,6 +36,7 @@ export default function ExpenseForm({
   onClose,
 }: ExpenseFormProps) {
   const formatCurrency = useFormatCurrency();
+  const { isOpen, requestClose } = useModalDismiss();
   const [amount, setAmount] = useState<string>(
     expense?.amount.toString() ?? initialValues?.amount?.toString() ?? ""
   );
@@ -113,7 +115,7 @@ export default function ExpenseForm({
       }
 
       onSuccess();
-      onClose();
+      requestClose();
     } catch {
       setFormError("Unable to save expense.");
     } finally {
@@ -123,8 +125,9 @@ export default function ExpenseForm({
 
   return (
     <Modal
-      isOpen={true}
-      onClose={onClose}
+      isOpen={isOpen}
+      onClose={requestClose}
+      onClosed={onClose}
       title={isEditMode ? "Edit Expense" : "Add Expense"}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -223,15 +226,15 @@ export default function ExpenseForm({
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={onClose}
-            className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 transition-all duration-150 hover:border-gray-500 active:scale-95 sm:w-auto sm:text-sm"
+            onClick={requestClose}
+            className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 active:scale-95 sm:w-auto sm:text-sm"
+            className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}

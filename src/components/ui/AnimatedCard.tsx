@@ -2,6 +2,8 @@
 
 import type { CSSProperties, ElementType, ReactNode } from "react";
 
+import { getStaggerDelayMs } from "@/lib/motion";
+
 type AnimatedCardProps = {
   children: ReactNode;
   className?: string;
@@ -19,7 +21,7 @@ export default function AnimatedCard({
 }: AnimatedCardProps) {
   const staggerStyle =
     staggerIndex !== undefined
-      ? { animationDelay: `${staggerIndex * 50}ms`, ...style }
+      ? { animationDelay: `${getStaggerDelayMs(staggerIndex)}ms`, ...style }
       : style;
 
   return (

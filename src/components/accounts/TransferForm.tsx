@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createTransfer } from "@/lib/api";
 import { useCurrency } from "@/lib/currencyContext";
+import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Account, CreateTransferPayload } from "@/types";
 
 type TransferFormProps = {
@@ -63,6 +64,7 @@ export default function TransferForm({
   onClose,
 }: TransferFormProps) {
   const { currency } = useCurrency();
+  const { isOpen, requestClose } = useModalDismiss();
   const [fromAccountId, setFromAccountId] = useState<string>(preselectedAccountId ?? "");
   const [toAccountId, setToAccountId] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
@@ -138,7 +140,7 @@ export default function TransferForm({
     try {
       await createTransfer(payload);
       await onSuccess({ fromAccountId, toAccountId });
-      onClose();
+      requestClose();
     } catch (error) {
       setFormError(getApiErrorMessage(error));
     } finally {
@@ -147,7 +149,7 @@ export default function TransferForm({
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Record Transfer">
+    <Modal isOpen={isOpen} onClose={requestClose} onClosed={onClose} title="Record Transfer">
       <form onSubmit={handleSubmit} className="space-y-4">
         {formError ? (
           <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -233,15 +235,15 @@ export default function TransferForm({
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={onClose}
-            className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+            onClick={requestClose}
+            className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+            className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Recording..." : "Record transfer"}

@@ -4,6 +4,7 @@ import { Edit, MinusCircle } from "lucide-react";
 import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
 import { getGoalPace } from "@/lib/utils";
 import { useCurrency, useFormatCurrency } from "@/lib/currencyContext";
+import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import type { Goal } from "@/types";
 import { useState, useEffect, useRef } from "react";
@@ -59,6 +60,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
   const { handleDelete: confirmDeactivate, isPendingConfirm } = useConfirmDelete();
   const [showManage, setShowManage] = useState(false);
   const progress = Math.min(goal.progressPercentage, 100);
+  const animatedProgress = useAnimatedProgress(progress);
   const prevProgressRef = useRef<number>(goal.progressPercentage);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -88,7 +90,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
           <button
             type="button"
             onClick={() => onEdit(goal)}
-            className="rounded-md p-1.5 text-gray-400 transition-all duration-150 hover:text-white active:scale-95"
+            className="btn-interactive rounded-md p-1.5 text-gray-400 hover:text-white"
             aria-label="Edit goal"
           >
             <Edit className="h-4 w-4" />
@@ -98,7 +100,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
             onClick={() =>
               confirmDeactivate(goal.id, () => onDeactivate(goal.id))
             }
-            className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${
+            className={`btn-interactive rounded-md px-2 py-1 text-xs font-medium ${
               isPendingConfirm(goal.id)
                 ? "bg-red-500/20 text-red-300"
                 : "text-gray-400 hover:text-red-400"
@@ -114,7 +116,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
           <button
             type="button"
             onClick={() => setShowManage(true)}
-            className="rounded-md p-1.5 text-gray-400 transition-all duration-150 hover:text-white active:scale-95"
+            className="btn-interactive rounded-md p-1.5 text-gray-400 hover:text-white"
             aria-label="Manage linked accounts"
           >
             Manage
@@ -125,8 +127,8 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
       <div className="mt-4">
         <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-700">
           <div
-            className={`h-2 rounded-full transition-all duration-300 ${completed ? 'bg-green-500' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`}
-            style={{ width: `${progress}%` }}
+            className={`progress-bar-fill h-2 rounded-full ${completed ? 'bg-green-500' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`}
+            style={{ width: `${animatedProgress}%` }}
           />
         </div>
         {pace ? (

@@ -214,7 +214,7 @@ export default function ExpensesPage() {
             type="button"
             onClick={handleExportCsv}
             disabled={loading || displayedExpenses.length === 0}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 transition-all duration-150 hover:border-emerald-400 hover:text-emerald-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:text-sm"
+            className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 hover:border-emerald-400 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:text-sm"
           >
             <Download className="h-4 w-4" />
             Export CSV
@@ -222,7 +222,7 @@ export default function ExpensesPage() {
           <button
             type="button"
             onClick={handleAddClick}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
+            className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400 sm:w-auto sm:text-sm"
           >
             <Plus className="h-4 w-4" />
             Add Expense
@@ -259,7 +259,7 @@ export default function ExpensesPage() {
             className="mb-3 inline-flex items-center gap-1.5 text-xs text-gray-400 transition-colors hover:text-gray-300"
           >
             <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-300 ease-in-out ${
+              className={`h-3.5 w-3.5 transition-transform duration-modal ease-standard ${
                 showHeatmap ? "rotate-0" : "-rotate-90"
               }`}
             />
@@ -267,7 +267,7 @@ export default function ExpensesPage() {
           </button>
 
           <div
-            className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+            className={`grid transition-[grid-template-rows,opacity] duration-modal ease-standard ${
               showHeatmap ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
             }`}
           >

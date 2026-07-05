@@ -6,6 +6,7 @@ import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createAccount, updateAccount } from "@/lib/api";
 import { useCurrency } from "@/lib/currencyContext";
+import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Account, AccountType, CreateAccountPayload } from "@/types";
 
 type AccountFormProps = {
@@ -21,6 +22,7 @@ type FormErrors = {
 
 export default function AccountForm({ account, onSuccess, onClose }: AccountFormProps) {
   const { currency } = useCurrency();
+  const { isOpen, requestClose } = useModalDismiss();
   const isEditMode = useMemo(() => Boolean(account), [account]);
 
   const [name, setName] = useState<string>(account?.name ?? "");
@@ -83,7 +85,7 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
         onSuccess("Account created");
       }
 
-      onClose();
+      requestClose();
     } catch (error) {
       setFormError("Unable to save account.");
     } finally {
@@ -92,7 +94,12 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={isEditMode ? "Edit Account" : "Add Account"}>
+    <Modal
+      isOpen={isOpen}
+      onClose={requestClose}
+      onClosed={onClose}
+      title={isEditMode ? "Edit Account" : "Add Account"}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         {formError ? (
           <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
@@ -185,15 +192,15 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={onClose}
-            className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+            onClick={requestClose}
+            className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+            className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}

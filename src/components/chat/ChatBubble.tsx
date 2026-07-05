@@ -109,7 +109,7 @@ export default function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} gap-1`}>
+    <div className={`animate-list-item-enter flex flex-col ${isUser ? "items-end" : "items-start"} gap-1`}>
       <div className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
         {!isUser && (
           <div className="mb-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center">

@@ -27,7 +27,9 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import { getCategoryChartColor } from "@/lib/categoryChartColors";
 import { useFormatCurrency } from "@/lib/currencyContext";
+import { DURATION_SLOW, prefersReducedMotion } from "@/lib/motion";
 import { buildNetWorthHistory, formatShortMonth, type NetWorthHistoryDatum } from "@/lib/netWorthHistory";
+import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useDashboard } from "@/lib/hooks/useDashboard";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
@@ -261,7 +263,14 @@ function MonthlyTrendCard({ data, staggerIndex }: { data: CashFlowBarDatum[]; st
                 );
               }}
             />
-            <Bar dataKey="net" radius={[6, 6, 0, 0]} minPointSize={3}>
+            <Bar
+              dataKey="net"
+              radius={[6, 6, 0, 0]}
+              minPointSize={3}
+              isAnimationActive={!prefersReducedMotion()}
+              animationDuration={DURATION_SLOW}
+              animationEasing="ease-out"
+            >
               {data.map((entry) => (
                 <Cell key={entry.month} fill={entry.net >= 0 ? "#10b981" : "#ef4444"} />
               ))}
@@ -294,6 +303,7 @@ function CategoryFocusCard({
   const formatCurrency = useFormatCurrency();
   const hasTopCategory = Boolean(category) && amount > 0;
   const share = total > 0 ? (amount / total) * 100 : 0;
+  const animatedShare = useAnimatedProgress(Math.min(Math.max(share, 0), 100));
   const donutSource =
     donutData.length > 0
       ? donutData
@@ -322,8 +332,8 @@ function CategoryFocusCard({
               <p className="mt-1 text-sm text-gray-300">{formatCurrency(amount)}</p>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-emerald-400"
-                  style={{ width: `${Math.min(Math.max(share, 0), 100)}%` }}
+                  className="progress-bar-fill h-full rounded-full bg-emerald-400"
+                  style={{ width: `${animatedShare}%` }}
                 />
               </div>
             </div>
@@ -342,6 +352,9 @@ function CategoryFocusCard({
                       innerRadius={34}
                       outerRadius={52}
                       paddingAngle={2}
+                      isAnimationActive={!prefersReducedMotion()}
+                      animationDuration={DURATION_SLOW}
+                      animationEasing="ease-out"
                     >
                       {donutSource.map((entry, index) => (
                         <Cell
@@ -480,7 +493,7 @@ export default function DashboardPage() {
   }, [monthRange, monthlyTrendData, dashboardData?.calculatedNetWorth])
 
   // Call count-up hooks unconditionally to preserve Hooks order across renders.
-  const calculatedAnimated = useCountUp(dashboardData?.calculatedNetWorth ?? 0, 600);
+  const calculatedAnimated = useCountUp(dashboardData?.calculatedNetWorth ?? 0);
   const manualAnimated = useCountUp(dashboardData?.manualNetWorth ?? 0);
   const incomeAnimated = useCountUp(dashboardData?.incomeThisMonth ?? 0);
   const expensesAnimated = useCountUp(dashboardData?.expensesThisMonth ?? 0);

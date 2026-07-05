@@ -6,6 +6,7 @@ import axios from "axios";
 import Modal from "@/components/ui/Modal";
 import { updateManualBalance } from "@/lib/api";
 import { useFormatCurrency } from "@/lib/currencyContext";
+import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Account } from "@/types";
 
 type ManualBalanceModalProps = {
@@ -20,6 +21,7 @@ export default function ManualBalanceModal({
   onClose,
 }: ManualBalanceModalProps) {
   const formatCurrency = useFormatCurrency();
+  const { isOpen, requestClose } = useModalDismiss();
   const [manualBalance, setManualBalance] = useState<string>(
     account.manualBalance?.toString() ?? ""
   );
@@ -78,7 +80,7 @@ export default function ManualBalanceModal({
 
       const updatedAccount = await updateManualBalance(account.id, payload);
       await onSuccess(updatedAccount);
-      onClose();
+      requestClose();
     } catch (apiError) {
       setError(getApiErrorMessage(apiError));
     } finally {
@@ -87,7 +89,7 @@ export default function ManualBalanceModal({
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Update Manual Balance">
+    <Modal isOpen={isOpen} onClose={requestClose} onClosed={onClose} title="Update Manual Balance">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <p className="text-sm text-gray-300">{account.name}</p>
@@ -133,15 +135,15 @@ export default function ManualBalanceModal({
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={onClose}
-            className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+            onClick={requestClose}
+            className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+            className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : "Update"}

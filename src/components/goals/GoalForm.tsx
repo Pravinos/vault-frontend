@@ -5,6 +5,7 @@ import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createGoal, updateGoal } from "@/lib/api";
 import { useAccounts } from "@/lib/hooks/useAccounts";
+import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Goal, CreateGoalRequest } from "@/types";
 
 type GoalFormProps = {
@@ -22,6 +23,7 @@ type FormErrors = {
 };
 
 export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
+  const { isOpen, requestClose } = useModalDismiss();
   const [name, setName] = useState(goal?.name ?? "");
   const [description, setDescription] = useState(goal?.description ?? "");
   const [targetAmount, setTargetAmount] = useState(goal?.targetAmount.toString() ?? "");
@@ -70,7 +72,7 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
         await createGoal(payload);
       }
       onSuccess();
-      onClose();
+      requestClose();
     } catch (error) {
       setFormError("Unable to save goal.");
     } finally {
@@ -79,7 +81,12 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={isEditMode ? "Edit Goal" : "Add Goal"}>
+    <Modal
+      isOpen={isOpen}
+      onClose={requestClose}
+      onClosed={onClose}
+      title={isEditMode ? "Edit Goal" : "Add Goal"}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         {formError ? (
           <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">{formError}</p>
@@ -145,15 +152,15 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={onClose}
-            className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+            onClick={requestClose}
+            className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+            className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}

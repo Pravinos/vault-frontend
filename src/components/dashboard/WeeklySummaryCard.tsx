@@ -53,7 +53,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
               type="button"
               onClick={generate}
               disabled={isGenerating}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-300 transition-all duration-150 hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
+              className="btn-interactive inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-300 hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw className={`h-3 w-3 ${isGenerating ? "animate-spin" : ""}`} />
               {isGenerating ? "Generating..." : "Generate now"}

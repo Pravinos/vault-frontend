@@ -100,14 +100,14 @@ export default function AddBudgetModal({
           <button
             type="button"
             onClick={handleClose}
-            className="flex-1 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 transition hover:bg-white/5"
+            className="btn-interactive flex-1 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting || categoryId === "" || !amount}
-            className="flex-1 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-400 disabled:opacity-50"
+            className="btn-interactive flex-1 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-400 disabled:opacity-50"
           >
             {isSubmitting ? "Saving…" : "Add Budget"}
           </button>

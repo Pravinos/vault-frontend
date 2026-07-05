@@ -95,7 +95,7 @@ export default function MonthNavigator({ value, onChange }: MonthNavigatorProps)
       <button
         type="button"
         onClick={prev}
-        className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm text-white bg-transparent border border-white/10 hover:bg-white/5 focus:outline-none"
+        className="btn-interactive inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm text-white bg-transparent border border-white/10 hover:bg-white/5 focus:outline-none"
         aria-label="Previous month"
       >
         ‹
@@ -105,7 +105,7 @@ export default function MonthNavigator({ value, onChange }: MonthNavigatorProps)
         <button
           type="button"
           onClick={openPicker}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-base text-white transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          className="input-interactive rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-base text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
         >
           {toLabel(value)}
         </button>
@@ -123,7 +123,7 @@ export default function MonthNavigator({ value, onChange }: MonthNavigatorProps)
         onClick={() => !disabledNext && next()}
         disabled={disabledNext}
         className={
-          "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm bg-transparent border border-white/10 focus:outline-none " +
+          "btn-interactive inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm bg-transparent border border-white/10 focus:outline-none " +
           (disabledNext
             ? "text-slate-600 cursor-not-allowed"
             : "text-slate-300 hover:bg-white/5")
