@@ -10,7 +10,8 @@ import {
   Tooltip,
 } from "recharts";
 
-import { formatCurrency, formatMonth } from "@/lib/utils";
+import { formatMonth } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { ExpenseMonthlySummary } from "@/types";
 
 type CategoryChartProps = {
@@ -29,6 +30,7 @@ const chartColors = [
 ];
 
 export default function CategoryChart({ summary }: CategoryChartProps) {
+  const formatCurrency = useFormatCurrency();
   const total = summary.total;
 
   if (summary.byCategory.length === 0) {

@@ -4,7 +4,7 @@ import { ChevronDown, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { AccountType } from "@/types";
 
 export interface AccountCardData {
@@ -40,7 +40,10 @@ function getSinceOpening(account: AccountCardData): number {
   return account.calculatedBalance - opening;
 }
 
-function formatSignedCurrency(value: number): string {
+function formatSignedCurrency(
+  value: number,
+  formatCurrency: (amount: number) => string,
+): string {
   const absolute = formatCurrency(Math.abs(value));
   if (value > 0) return `+${absolute}`;
   if (value < 0) return `-${absolute}`;
@@ -66,6 +69,7 @@ export default function AccountCard({
   detailsOpen: controlledDetailsOpen,
   onDetailsOpenChange,
 }: AccountCardProps) {
+  const formatCurrency = useFormatCurrency();
   const [internalDetailsOpen, setInternalDetailsOpen] = useState(detailsDefaultOpen);
   const isControlled = controlledDetailsOpen !== undefined;
   const detailsOpen = isControlled ? controlledDetailsOpen : internalDetailsOpen;
@@ -87,8 +91,8 @@ export default function AccountCard({
     if (isInvestment) {
       return `${formatSignedPercent(account.returnPercentage)} return`;
     }
-    return `${formatSignedCurrency(sinceOpening)} since opening`;
-  }, [account.returnPercentage, isInvestment, sinceOpening]);
+    return `${formatSignedCurrency(sinceOpening, formatCurrency)} since opening`;
+  }, [account.returnPercentage, formatCurrency, isInvestment, sinceOpening]);
   const showDetailsToggle = Boolean(details);
 
   return (

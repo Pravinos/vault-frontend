@@ -2,7 +2,8 @@
 
 import { Edit, MinusCircle } from "lucide-react";
 import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
-import { formatCurrency } from "@/lib/utils";
+import { getGoalPace } from "@/lib/utils";
+import { useCurrency, useFormatCurrency } from "@/lib/currencyContext";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import type { Goal } from "@/types";
 import { useState, useEffect, useRef } from "react";
@@ -53,6 +54,8 @@ type GoalCardProps = {
 };
 
 export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: GoalCardProps) {
+  const formatCurrency = useFormatCurrency();
+  const { currency } = useCurrency();
   const { handleDelete: confirmDeactivate, isPendingConfirm } = useConfirmDelete();
   const [showManage, setShowManage] = useState(false);
   const progress = Math.min(goal.progressPercentage, 100);
@@ -60,6 +63,10 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const completed = goal.progressPercentage >= 100;
+  const pace =
+    goal.deadline || goal.savedAmount >= goal.targetAmount
+      ? getGoalPace(goal.targetAmount, goal.savedAmount, goal.daysRemaining, currency)
+      : null;
 
   useEffect(() => {
     const prev = prevProgressRef.current;
@@ -122,6 +129,19 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
             style={{ width: `${progress}%` }}
           />
         </div>
+        {pace ? (
+          <p
+            className={`mt-1.5 text-xs ${
+              pace.kind === "overdue"
+                ? "text-amber-400"
+                : pace.kind === "reached"
+                  ? "text-emerald-400/80"
+                  : "text-gray-500"
+            }`}
+          >
+            {pace.message}
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 text-xs text-gray-400">
           <div>
             <div className="tabular-nums font-medium text-white">

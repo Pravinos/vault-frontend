@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
 ];
 
 const settingsItems: NavItem[] = [
-  { href: "/settings/ai", label: "AI Settings", icon: Settings },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function isActiveRoute(pathname: string, href: string) {
@@ -187,12 +187,6 @@ export default function Sidebar({
             onMouseEnter={item.href === "/dashboard" ? prefetchDashboard : undefined}
           />
         ))}
-
-        <div className="pb-1 pt-4">
-          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Settings
-          </p>
-        </div>
 
         {settingsItems.map((item) => (
           <SidebarNavLink key={item.href} {...item} pathname={pathname} />

@@ -5,7 +5,7 @@ import axios from "axios";
 
 import Modal from "@/components/ui/Modal";
 import { updateManualBalance } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { Account } from "@/types";
 
 type ManualBalanceModalProps = {
@@ -19,6 +19,7 @@ export default function ManualBalanceModal({
   onSuccess,
   onClose,
 }: ManualBalanceModalProps) {
+  const formatCurrency = useFormatCurrency();
   const [manualBalance, setManualBalance] = useState<string>(
     account.manualBalance?.toString() ?? ""
   );

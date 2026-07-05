@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useExpenseHeatmap } from "@/lib/hooks/useExpenses";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 
 const ROW_LABELS = ["M", "", "W", "", "F", "", ""] as const;
 const CELL_SIZE = "0.75rem";
@@ -35,7 +35,11 @@ function getMondayBasedDay(date: Date): number {
   return (date.getDay() + 6) % 7;
 }
 
-function formatHeatmapTooltip(dateStr: string, amount: number): string {
+function formatHeatmapTooltip(
+  dateStr: string,
+  amount: number,
+  formatCurrency: (amount: number) => string,
+): string {
   const date = new Date(`${dateStr}T00:00:00`);
   const formattedDate = date.toLocaleDateString("en-GB", {
     weekday: "short",
@@ -105,6 +109,7 @@ export default function ExpenseHeatmap({
   selectedDate = null,
   enabled = true,
 }: ExpenseHeatmapProps) {
+  const formatCurrency = useFormatCurrency();
   const [year, setYear] = useState(() => new Date().getFullYear());
   const { data, isLoading, error, refetch } = useExpenseHeatmap(year, enabled);
   const weekColumnCount = getWeekColumnCount(year);
@@ -155,12 +160,12 @@ export default function ExpenseHeatmap({
         date: dateStr,
         totalAmount,
         colorClass: getCellColor(totalAmount, maxDayAmount),
-        tooltip: formatHeatmapTooltip(dateStr, totalAmount),
+        tooltip: formatHeatmapTooltip(dateStr, totalAmount, formatCurrency),
       });
     }
 
     return { monthLabels: monthLabelEntries, cells: dayCells };
-  }, [data, year]);
+  }, [data, formatCurrency, year]);
 
   return (
     <div className="w-fit max-w-full rounded-card border border-[#2a2a2a] bg-[#161616] p-card-sm">

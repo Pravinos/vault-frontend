@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createAccount, updateAccount } from "@/lib/api";
+import { useCurrency } from "@/lib/currencyContext";
 import type { Account, AccountType, CreateAccountPayload } from "@/types";
 
 type AccountFormProps = {
@@ -19,6 +20,7 @@ type FormErrors = {
 };
 
 export default function AccountForm({ account, onSuccess, onClose }: AccountFormProps) {
+  const { currency } = useCurrency();
   const isEditMode = useMemo(() => Boolean(account), [account]);
 
   const [name, setName] = useState<string>(account?.name ?? "");
@@ -126,7 +128,7 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
 
         {!isEditMode ? (
           <div>
-            <label className="text-sm text-gray-200">Opening Balance (EUR)</label>
+            <label className="text-sm text-gray-200">Opening Balance ({currency})</label>
             <input
               type="number"
               min="0"

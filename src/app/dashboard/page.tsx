@@ -26,7 +26,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import { getCategoryChartColor } from "@/lib/categoryChartColors";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { buildNetWorthHistory, formatShortMonth, type NetWorthHistoryDatum } from "@/lib/netWorthHistory";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useDashboard } from "@/lib/hooks/useDashboard";
@@ -127,6 +127,7 @@ function StatCard({
   isText?: boolean;
   staggerIndex?: number;
 }) {
+  const formatCurrency = useFormatCurrency();
   const formattedValue = typeof value === "number" ? formatCurrency(value) : value;
   const trendPositive = momPercent !== null && momPercent !== undefined ? momPercent >= 0 : null;
   const trendGood =
@@ -166,6 +167,7 @@ function NetCashFlowCard({
   subtitle: string;
   staggerIndex?: number;
 }) {
+  const formatCurrency = useFormatCurrency();
   const displayValue = typeof animatedValue === "number" ? animatedValue : value;
   const tintClass =
     displayValue > 0
@@ -207,6 +209,8 @@ function NetCashFlowCard({
 }
 
 function MonthlyTrendCard({ data, staggerIndex }: { data: CashFlowBarDatum[]; staggerIndex?: number }) {
+  const formatCurrency = useFormatCurrency();
+
   function formatYAxisTick(value: number) {
     const abs = Math.abs(Number(value) || 0);
     if (value === 0) return "0";
@@ -287,6 +291,7 @@ function CategoryFocusCard({
   donutData: DonutSlice[];
   staggerIndex?: number;
 }) {
+  const formatCurrency = useFormatCurrency();
   const hasTopCategory = Boolean(category) && amount > 0;
   const share = total > 0 ? (amount / total) * 100 : 0;
   const donutSource =

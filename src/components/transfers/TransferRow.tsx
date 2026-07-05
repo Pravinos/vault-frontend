@@ -2,7 +2,8 @@
 
 import React from "react";
 import { ArrowRight, ArrowDown } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 
 interface AccountSummary {
   name: string;
@@ -30,6 +31,7 @@ export default function TransferRow({
   note,
   createdAt,
 }: TransferRowProps) {
+  const formatCurrency = useFormatCurrency();
   return (
     <div className="rounded-card border border-gray-800 bg-[#1a2332] p-3">
       <div className="relative flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">

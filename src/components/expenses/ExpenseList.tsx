@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Copy } from "lucide-react";
 
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { Expense } from "@/types";
 
 type ExpenseListProps = {
@@ -29,6 +30,7 @@ export default function ExpenseList({
   onAddClick,
   onClearFilters,
 }: ExpenseListProps) {
+  const formatCurrency = useFormatCurrency();
   const [activeConfirmId, setActiveConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});

@@ -1,11 +1,8 @@
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("el-GR", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
+import type { CurrencyCode } from "@/lib/currency";
+import { DEFAULT_CURRENCY, formatCurrency } from "@/lib/currency";
+
+export { formatCurrency } from "@/lib/currency";
+export type { CurrencyCode } from "@/lib/currency";
 
 export function formatDate(dateStr: string): string {
   if (!dateStr) return "-";
@@ -56,6 +53,46 @@ export function getLocalDateString(date = new Date()): string {
 
 export function getCurrentTimestamp(): number {
   return Date.now();
+}
+
+export type GoalPaceKind = "reached" | "overdue" | "pace";
+
+export interface GoalPace {
+  kind: GoalPaceKind;
+  message: string;
+}
+
+/** Suggested savings pace for a goal, based on target, current saved amount, and days left. */
+export function getGoalPace(
+  target: number,
+  current: number,
+  daysLeft: number,
+  currency: CurrencyCode = DEFAULT_CURRENCY,
+): GoalPace {
+  const remainingAmount = target - current;
+
+  if (remainingAmount <= 0) {
+    return { kind: "reached", message: "Goal reached 🎉" };
+  }
+
+  if (daysLeft <= 0) {
+    return {
+      kind: "overdue",
+      message: `Target date passed — ${formatCurrency(remainingAmount, currency)} still needed`,
+    };
+  }
+
+  const useWeekly = daysLeft < 90;
+  const pace = useWeekly
+    ? remainingAmount / (daysLeft / 7)
+    : remainingAmount / (daysLeft / 30.44);
+  const roundedPace = Math.round(pace);
+
+  const message = useWeekly
+    ? `Save ~${formatCurrency(roundedPace, currency)}/week to hit this on time`
+    : `Save ~${formatCurrency(roundedPace, currency)}/month to hit this on time`;
+
+  return { kind: "pace", message };
 }
 
 export const categoryColorMap: Record<string, string> = {

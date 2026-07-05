@@ -1,13 +1,24 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Bot } from "lucide-react";
 import type { ChatMessage } from "@/types";
+import { CURRENCY_OPTIONS } from "@/lib/currency";
 
 interface ChatBubbleProps {
   message: ChatMessage;
 }
 
+const CURRENCY_SYMBOLS = CURRENCY_OPTIONS.map((option) =>
+  option.symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+).join("");
+const CURRENCY_AMOUNT_REGEX = new RegExp(
+  `([${CURRENCY_SYMBOLS}]\\s*\\d[\\d,.]*|\\d[\\d,.]*\\s*[${CURRENCY_SYMBOLS}]|\\d[\\d,.]*)`,
+  "g",
+);
+
 function boldNumbers(text: string): ReactNode {
-  const regex = /(€\s*\d[\d,.]*|\d[\d,.]*\s*€|\d[\d,.]*)/g;
+  const regex = CURRENCY_AMOUNT_REGEX;
   const parts: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;

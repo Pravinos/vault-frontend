@@ -6,6 +6,7 @@ import axios from "axios";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createTransfer } from "@/lib/api";
+import { useCurrency } from "@/lib/currencyContext";
 import type { Account, CreateTransferPayload } from "@/types";
 
 type TransferFormProps = {
@@ -61,6 +62,7 @@ export default function TransferForm({
   onSuccess,
   onClose,
 }: TransferFormProps) {
+  const { currency } = useCurrency();
   const [fromAccountId, setFromAccountId] = useState<string>(preselectedAccountId ?? "");
   const [toAccountId, setToAccountId] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
@@ -190,7 +192,7 @@ export default function TransferForm({
         </div>
 
         <div>
-          <label className="text-sm text-gray-200">Amount (EUR)</label>
+          <label className="text-sm text-gray-200">Amount ({currency})</label>
           <input
             type="number"
             min="0.01"

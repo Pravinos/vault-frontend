@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { ChevronDown, Plus, Receipt, Search } from "lucide-react";
+import { ChevronDown, Download, Plus, Receipt, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
@@ -12,7 +12,9 @@ import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
-import { formatCurrency, formatMonth, getLocalDateString, getMonthString } from "@/lib/utils";
+import { exportToCsv, getVaultExportFilename } from "@/lib/csv";
+import { formatMonth, getLocalDateString, getMonthString } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { useExpenses } from "@/lib/hooks/useExpenses";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useCategories } from "@/lib/hooks/useCategories";
@@ -21,6 +23,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import type { Expense, CreateExpenseRequest } from "@/types";
 
 export default function ExpensesPage() {
+  const formatCurrency = useFormatCurrency();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -189,18 +192,42 @@ export default function ExpensesPage() {
     setSelectedCategoryId((prev) => (prev === categoryId ? null : categoryId));
   };
 
+  const handleExportCsv = () => {
+    exportToCsv(
+      displayedExpenses.map((expense) => ({
+        date: expense.expenseDate.slice(0, 10),
+        description: expense.note ?? "",
+        category: expense.category.name,
+        account: expense.accountName,
+        amount: expense.amount,
+      })),
+      getVaultExportFilename("expenses", selectedMonth)
+    );
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold text-white sm:text-2xl">Expenses</h1>
-        <button
-          type="button"
-          onClick={handleAddClick}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Add Expense
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={loading || displayedExpenses.length === 0}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 transition-all duration-150 hover:border-emerald-400 hover:text-emerald-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:text-sm"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={handleAddClick}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Add Expense
+          </button>
+        </div>
       </div>
 
       {!loading && !error && (

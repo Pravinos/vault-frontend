@@ -18,9 +18,9 @@ import SelectField from "@/components/ui/SelectField";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import {
-  formatCurrency,
   getCurrentTimestamp,
 } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
@@ -77,6 +77,7 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
 }
 
 export default function AccountsPage() {
+  const formatCurrency = useFormatCurrency();
   const [activeTab, setActiveTab] = useState<AccountsTab>("accounts");
 
   const [showForm, setShowForm] = useState<boolean>(false);

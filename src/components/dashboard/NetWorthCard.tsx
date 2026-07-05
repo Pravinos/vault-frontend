@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { LayoutDashboard, LineChart as LineChartIcon } from "lucide-react";
 
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { NetWorthHistoryDatum } from "@/lib/netWorthHistory";
 
 const VIEW_TRANSITION_MS = 300;
@@ -41,6 +41,7 @@ export default function NetWorthCard({
   manualAnimated,
   historyData,
 }: NetWorthCardProps) {
+  const formatCurrency = useFormatCurrency();
   const [showChart, setShowChart] = useState(false);
   const [chartMounted, setChartMounted] = useState(false);
   const [chartVisible, setChartVisible] = useState(false);

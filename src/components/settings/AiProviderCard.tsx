@@ -11,9 +11,9 @@ type Provider = "lmstudio" | "groq";
 interface AiProviderCardProps {
   title: string;
   task: "chat" | "summary";
-  initialConfig: AiTaskConfig;
+  config: AiTaskConfig;
   note?: string;
-  onChange?: (next: { provider: Provider; model: string }) => void;
+  onChange: (next: { provider: Provider; model: string }) => void;
 }
 
 const MODEL_DESCRIPTIONS: Record<string, string> = {
@@ -26,12 +26,12 @@ const MODEL_DESCRIPTIONS: Record<string, string> = {
 export default function AiProviderCard({
   title,
   task,
-  initialConfig,
+  config,
   note,
   onChange,
 }: AiProviderCardProps) {
-  const [provider, setProvider] = useState<Provider>(initialConfig.provider as Provider);
-  const [model, setModel] = useState(initialConfig.model);
+  const provider = config.provider as Provider;
+  const model = config.model;
   const [lmModels, setLmModels] = useState<string[]>([]);
   const [groqModels, setGroqModels] = useState<string[]>([]);
   const [lmStatus, setLmStatus] = useState<"loading" | "connected" | "disconnected">("loading");
@@ -42,10 +42,6 @@ export default function AiProviderCard({
       .then((models) => {
         setLmModels(models);
         setLmStatus("connected");
-        // if current provider is lmstudio and no model selected, pick first
-        if (provider === "lmstudio" && !model && models[0]) {
-          setModel(models[0]);
-        }
       })
       .catch(() => {
         setLmModels([]);
@@ -56,36 +52,35 @@ export default function AiProviderCard({
       .then((models) => {
         setGroqModels(models);
         setGroqStatus("connected");
-        if (provider === "groq" && !model && models[0]) {
-          setModel(models[0]);
-        }
       })
       .catch(() => {
         setGroqModels([]);
         setGroqStatus("disconnected");
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep internal state in sync if parent updates initialConfig
   useEffect(() => {
-    setProvider(initialConfig.provider as Provider);
-    setModel(initialConfig.model);
-  }, [initialConfig.provider, initialConfig.model]);
+    if (provider === "lmstudio" && !model && lmModels[0]) {
+      onChange({ provider: "lmstudio", model: lmModels[0] });
+    }
+  }, [provider, model, lmModels, onChange]);
+
+  useEffect(() => {
+    if (provider === "groq" && !model && groqModels[0]) {
+      onChange({ provider: "groq", model: groqModels[0] });
+    }
+  }, [provider, model, groqModels, onChange]);
 
   const activeModels = provider === "lmstudio" ? lmModels : groqModels;
 
   const handleProviderChange = (next: Provider) => {
-    setProvider(next);
     const nextModels = next === "lmstudio" ? lmModels : groqModels;
     const nextModel = nextModels[0] ?? "";
-    setModel(nextModel);
-    onChange?.({ provider: next, model: nextModel });
+    onChange({ provider: next, model: nextModel });
   };
 
-  const handleModelChange = (m: string) => {
-    setModel(m);
-    onChange?.({ provider, model: m });
+  const handleModelChange = (nextModel: string) => {
+    onChange({ provider, model: nextModel });
   };
 
   return (

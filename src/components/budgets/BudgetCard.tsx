@@ -9,7 +9,7 @@ import {
   statusBarColor,
   statusLabel,
 } from "@/lib/budgetStatus";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { BudgetSummaryItem } from "@/types/budget";
 
 type BudgetCardProps = {
@@ -35,6 +35,7 @@ export default function BudgetCard({
   isHighlighted = false,
   onToggleHighlight,
 }: BudgetCardProps) {
+  const formatCurrency = useFormatCurrency();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(item.budgetAmount));
   const [statusPulse, setStatusPulse] = useState(false);

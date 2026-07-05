@@ -19,7 +19,8 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import ManualBalanceModal from "@/components/accounts/ManualBalanceModal";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { deriveInvestmentMetrics } from "@/lib/investmentMetrics";
 import { useAccount } from "@/lib/hooks/useAccount";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
@@ -94,6 +95,7 @@ function AccountTransfersSection({
 }
 
 export default function AccountDetailPage() {
+  const formatCurrency = useFormatCurrency();
   const params = useParams<{ id: string }>();
   const accountId = params.id;
 

@@ -9,7 +9,9 @@ import ChatInput from "@/components/chat/ChatInput";
 import SuggestedPrompts from "@/components/chat/SuggestedPrompts";
 import TypingIndicator from "@/components/chat/TypingIndicator";
 import { useAiSettings } from "@/lib/hooks/useAiSettings";
+import NewConversationDialog from "@/components/chat/NewConversationDialog";
 import ProviderBadge from "@/components/ui/ProviderBadge";
+import InfoBanner from "@/components/ui/InfoBanner";
 
 const SCROLL_THRESHOLD = 120;
 
@@ -19,6 +21,8 @@ export default function ChatPage() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [vaultIconPulse, setVaultIconPulse] = useState(false);
+  const [showHistoryNotice, setShowHistoryNotice] = useState(true);
+  const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
 
   const conversationIdRef = useRef(crypto.randomUUID());
   const sendingRef = useRef(false);
@@ -109,7 +113,7 @@ export default function ChatPage() {
     }
   };
 
-  const handleNewConversation = () => {
+  const resetConversation = () => {
     conversationIdRef.current = crypto.randomUUID();
     sendingRef.current = false;
     shouldAutoScrollRef.current = true;
@@ -117,6 +121,19 @@ export default function ChatPage() {
     setInputValue("");
     setIsTyping(false);
     scrollToBottom("auto");
+  };
+
+  const handleNewConversation = () => {
+    if (messages.length > 0) {
+      setShowNewConversationDialog(true);
+      return;
+    }
+    resetConversation();
+  };
+
+  const handleConfirmNewConversation = () => {
+    setShowNewConversationDialog(false);
+    resetConversation();
   };
 
   const handlePromptClick = (prompt: string) => {
@@ -143,6 +160,13 @@ export default function ChatPage() {
           New conversation
         </button>
       </div>
+
+      {showHistoryNotice ? (
+        <InfoBanner
+          message="Chat history isn't saved yet — starting a new conversation will clear this one."
+          onDismiss={() => setShowHistoryNotice(false)}
+        />
+      ) : null}
 
       <div className="relative flex h-[70dvh] min-h-[520px] flex-col overflow-hidden rounded-2xl bg-[#1a2332]">
         <div
@@ -221,6 +245,12 @@ export default function ChatPage() {
           />
         </div>
       </div>
+
+      <NewConversationDialog
+        isOpen={showNewConversationDialog}
+        onClose={() => setShowNewConversationDialog(false)}
+        onConfirm={handleConfirmNewConversation}
+      />
     </div>
   );
 }

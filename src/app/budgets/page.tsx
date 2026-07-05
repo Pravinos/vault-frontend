@@ -23,7 +23,8 @@ import { useCategories } from "@/lib/hooks/useCategories";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { useHighlightedBudgets } from "@/lib/hooks/useHighlightedBudgets";
 import { aggregateBudgetStatus, statusBarColor } from "@/lib/budgetStatus";
-import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
+import { formatMonth, getMonthString } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 
 function getPreviousMonth(month: string): string {
   const [y, m] = month.split("-").map(Number);
@@ -50,6 +51,7 @@ function BudgetsPageSkeleton() {
 }
 
 export default function BudgetsPage() {
+  const formatCurrency = useFormatCurrency();
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCopyConfirm, setShowCopyConfirm] = useState(false);

@@ -14,7 +14,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { WeeklySummary } from "@/types";
 import { useSummaries } from "@/lib/hooks/useSummaries";
 import { useDeleteSummary } from "@/lib/hooks/useSummaryMutations";
@@ -35,6 +35,7 @@ type SummaryItemProps = {
 };
 
 function SummaryItem({ summary, isDeleting, isPendingConfirm, onDeleteClick }: SummaryItemProps) {
+  const formatCurrency = useFormatCurrency();
   const [expanded, setExpanded] = useState(false);
   const summaryText = summary.summaryText?.trim() ?? "";
   const canTruncate = isSummaryTruncatable(summaryText);

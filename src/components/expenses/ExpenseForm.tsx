@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 import { createExpense, updateExpense } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
-import { formatCurrency, getLocalDateString } from "@/lib/utils";
+import { getLocalDateString } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { Account, Category, CreateExpenseRequest, Expense } from "@/types";
 
 type ExpenseFormProps = {
@@ -33,6 +34,7 @@ export default function ExpenseForm({
   onSuccess,
   onClose,
 }: ExpenseFormProps) {
+  const formatCurrency = useFormatCurrency();
   const [amount, setAmount] = useState<string>(
     expense?.amount.toString() ?? initialValues?.amount?.toString() ?? ""
   );

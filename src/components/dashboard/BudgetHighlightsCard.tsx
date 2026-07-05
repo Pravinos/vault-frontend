@@ -11,7 +11,7 @@ import {
   MAX_HIGHLIGHTED_BUDGETS,
   resolveDashboardBudgets,
 } from "@/lib/highlightedBudgets";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { BudgetSummaryItem } from "@/types/budget";
 
 type BudgetHighlightsCardProps = {
@@ -23,9 +23,11 @@ type BudgetHighlightsCardProps = {
 function BudgetProgressRow({
   item,
   showHighlightedBadge,
+  formatCurrency,
 }: {
   item: BudgetSummaryItem;
   showHighlightedBadge: boolean;
+  formatCurrency: (amount: number) => string;
 }) {
   const progressWidth = Math.min(Math.max(item.percentageUsed, 0), 100);
 
@@ -66,6 +68,7 @@ export default function BudgetHighlightsCard({
   budgets,
   alerts,
 }: BudgetHighlightsCardProps) {
+  const formatCurrency = useFormatCurrency();
   const budgetCategoryIds = useMemo(
     () => budgets.map((item) => item.categoryId),
     [budgets]
@@ -162,6 +165,7 @@ export default function BudgetHighlightsCard({
                   key={item.categoryId}
                   item={item}
                   showHighlightedBadge={canCustomize}
+                  formatCurrency={formatCurrency}
                 />
               ))}
             </div>
