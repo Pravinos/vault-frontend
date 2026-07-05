@@ -25,6 +25,7 @@ import AnimatedCard from "@/components/ui/AnimatedCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
+import { getCategoryChartColor } from "@/lib/categoryChartColors";
 import { formatCurrency } from "@/lib/utils";
 import { buildNetWorthHistory, formatShortMonth, type NetWorthHistoryDatum } from "@/lib/netWorthHistory";
 import { useCountUp } from "@/lib/hooks/useCountUp";
@@ -33,8 +34,6 @@ import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useLatestSummary } from "@/lib/hooks/useLatestSummary";
 import { getMonthString } from "@/lib/utils";
 import type { AccountDashboardData } from "@/types/dashboard";
-
-const CHART_COLORS = ["#10b981", "#3b82f6", "#f43f5e", "#64748b", "#34d399", "#60a5fa"];
 
 type DonutSlice = {
   category: string;
@@ -48,7 +47,7 @@ type CashFlowBarDatum = {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 sm:space-y-10">
       <Skeleton variant="card" className="h-28 rounded-xl" />
       <div className="flex gap-3 overflow-x-auto pb-1">
         {Array.from({ length: 4 }).map((_, index) => (
@@ -138,9 +137,14 @@ function StatCard({
       : !trendPositive;
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className="rounded-2xl bg-[#1a2332] p-4">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
-      <p className={`truncate font-bold ${isText ? "text-base" : "text-lg"} text-white`}>{formattedValue}</p>
+    <AnimatedCard
+      staggerIndex={staggerIndex}
+      className="rounded-xl border border-white/[0.04] bg-[#111820] p-3.5"
+    >
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+      <p className={`truncate font-semibold tabular-nums ${isText ? "text-sm" : "text-base"} text-gray-200`}>
+        {formattedValue}
+      </p>
       {momPercent !== null && momPercent !== undefined ? (
         <p className={`mt-1 text-xs ${trendGood ? "text-emerald-400" : "text-red-400"}`}>
           {momPercent > 0 ? "+" : ""}
@@ -165,15 +169,15 @@ function NetCashFlowCard({
   const displayValue = typeof animatedValue === "number" ? animatedValue : value;
   const tintClass =
     displayValue > 0
-      ? "bg-emerald-900/20 border border-emerald-800/40"
+      ? "bg-emerald-950/25 border border-emerald-900/25"
       : displayValue < 0
-      ? "bg-rose-900/20 border border-rose-800/40"
-      : "bg-[#1a2332] border border-transparent";
+      ? "bg-rose-950/25 border border-rose-900/25"
+      : "bg-[#111820] border border-white/[0.04]";
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-2xl p-4 ${tintClass}`}>
-      <div className="mb-2 flex items-center gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Net Cash Flow</p>
+    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-xl p-3.5 ${tintClass}`}>
+      <div className="mb-1.5 flex items-center gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Net Cash Flow</p>
 
         <div className="relative inline-flex group">
           <button
@@ -192,8 +196,8 @@ function NetCashFlowCard({
       </div>
 
       <p
-        className={`text-xl font-bold ${
-          displayValue > 0 ? "text-emerald-400" : displayValue < 0 ? "text-red-400" : "text-white"
+        className={`text-lg font-semibold tabular-nums ${
+          displayValue > 0 ? "text-emerald-400/90" : displayValue < 0 ? "text-red-400/90" : "text-gray-200"
         }`}
       >
         {formatCurrency(displayValue)}
@@ -337,18 +341,45 @@ function CategoryFocusCard({
                       {donutSource.map((entry, index) => (
                         <Cell
                           key={`${entry.category}-${index}`}
-                          fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          fill={getCategoryChartColor(index)}
                         />
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#141c2a",
-                        border: "1px solid #334155",
-                        borderRadius: "8px",
-                        color: "#e2e8f0",
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+
+                        const point = payload[0];
+                        const categoryName = String(
+                          point.name ?? point.payload?.category ?? "",
+                        );
+                        const sliceTotal = Number(point.value ?? 0);
+                        const sliceIndex = donutSource.findIndex(
+                          (entry) => entry.category === categoryName,
+                        );
+                        const color = getCategoryChartColor(
+                          sliceIndex >= 0 ? sliceIndex : 0,
+                        );
+                        const sliceShare =
+                          total > 0 ? (sliceTotal / total) * 100 : 0;
+
+                        return (
+                          <div className="rounded-lg border border-slate-600 bg-[#141c2a] px-3 py-2 shadow-lg">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 flex-shrink-0 rounded-full"
+                                style={{ backgroundColor: color }}
+                              />
+                              <span className="text-sm font-medium text-slate-100">
+                                {categoryName}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm tabular-nums text-slate-300">
+                              {formatCurrency(sliceTotal)} · {sliceShare.toFixed(1)}%
+                            </p>
+                          </div>
+                        );
                       }}
-                      formatter={(value) => formatCurrency(Number(value ?? 0))}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -363,7 +394,13 @@ function CategoryFocusCard({
                 const entryShare = total > 0 ? (entry.total / total) * 100 : 0;
                 return (
                   <div key={`${entry.category}-${index}`} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate text-gray-200">{entry.category}</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2 w-2 flex-shrink-0 rounded-full"
+                        style={{ backgroundColor: getCategoryChartColor(index) }}
+                      />
+                      <span className="truncate text-gray-200">{entry.category}</span>
+                    </div>
                     <span className="whitespace-nowrap text-gray-400">
                       {formatCurrency(entry.total)} · {entryShare.toFixed(0)}%
                     </span>
@@ -468,11 +505,10 @@ export default function DashboardPage() {
       <div className="space-y-4 sm:space-y-6">
         <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
         <EmptyState
-          icon={<LayoutDashboard className="h-6 w-6" />}
+          icon={LayoutDashboard}
           title="No dashboard data"
           description="We couldn't load your financial overview. Try refreshing the page."
-          actionLabel="Refresh"
-          onAction={() => window.location.reload()}
+          action={{ label: "Refresh", onClick: () => window.location.reload() }}
         />
       </div>
     );
@@ -482,7 +518,7 @@ export default function DashboardPage() {
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
 
-      <div>
+      <div className="flex flex-col gap-8 sm:gap-10">
         <NetWorthCard
           calculated={dashboardData.calculatedNetWorth}
           manual={dashboardData.manualNetWorth}
@@ -492,59 +528,43 @@ export default function DashboardPage() {
           historyData={netWorthHistory}
         />
 
-        <div className="mt-6">
-          <AccountsStrip accounts={dashboardData.accounts.map((account) => {
+        <AccountsStrip
+          accounts={dashboardData.accounts.map((account) => {
             const metrics = investmentMetricsByAccountId.get(account.id);
-            return metrics
-              ? { ...account, ...metrics }
-              : account;
-          })} />
-        </div>
+            return metrics ? { ...account, ...metrics } : account;
+          })}
+        />
 
-        <div className="mt-6">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <StatCard
-              label="Income This Month"
-              value={incomeAnimated}
-              staggerIndex={0}
-            />
-            <StatCard
-              label="Expenses This Month"
-              value={expensesAnimated}
-              staggerIndex={1}
-            />
-            <NetCashFlowCard
-              value={dashboardData.netCashFlow}
-              animatedValue={netCashAnimated}
-              subtitle="Income - Expenses · transfers excluded"
-              staggerIndex={2}
-            />
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <BudgetHighlightsCard
-            month={currentMonth}
-            budgets={budgetItems}
-            alerts={dashboardData.budgetAlerts ?? []}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard label="Income This Month" value={incomeAnimated} staggerIndex={0} />
+          <StatCard label="Expenses This Month" value={expensesAnimated} staggerIndex={1} />
+          <NetCashFlowCard
+            value={dashboardData.netCashFlow}
+            animatedValue={netCashAnimated}
+            subtitle="Income - Expenses · transfers excluded"
+            staggerIndex={2}
           />
         </div>
 
-        <div className="mt-6">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-            <CategoryFocusCard
-              className="xl:col-span-3"
-              category={dashboardData.topExpenseCategory}
-              amount={dashboardData.topExpenseCategoryAmount}
-              total={dashboardData.expensesThisMonth}
-              monthLabel={dashboardData.currentMonthLabel}
-              donutData={categoryDonutData}
-              staggerIndex={0}
-            />
-            <div className="space-y-4 xl:col-span-2">
-              <MonthlyTrendCard data={monthlyTrendData} staggerIndex={1} />
-              <WeeklySummaryCard summary={summary} />
-            </div>
+        <BudgetHighlightsCard
+          month={currentMonth}
+          budgets={budgetItems}
+          alerts={dashboardData.budgetAlerts ?? []}
+        />
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <CategoryFocusCard
+            className="xl:col-span-3"
+            category={dashboardData.topExpenseCategory}
+            amount={dashboardData.topExpenseCategoryAmount}
+            total={dashboardData.expensesThisMonth}
+            monthLabel={dashboardData.currentMonthLabel}
+            donutData={categoryDonutData}
+            staggerIndex={0}
+          />
+          <div className="flex flex-col gap-6 xl:col-span-2">
+            <MonthlyTrendCard data={monthlyTrendData} staggerIndex={1} />
+            <WeeklySummaryCard summary={summary} />
           </div>
         </div>
       </div>

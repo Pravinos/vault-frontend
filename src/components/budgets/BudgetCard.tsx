@@ -94,7 +94,7 @@ export default function BudgetCard({
 
   return (
     <div
-      className={`animate-card-enter rounded-xl border bg-[#1a1a1a] p-4 ${
+      className={`animate-card-enter rounded-card border bg-[#1a1a1a] p-card-sm ${
         isHighlighted ? "border-teal-500/40 ring-1 ring-teal-500/20" : "border-white/10"
       }`}
     >

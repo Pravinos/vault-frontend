@@ -89,7 +89,7 @@ export default function AiProviderCard({
   };
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+    <div className="rounded-card border border-gray-800 bg-gray-900 p-card-md">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-semibold text-white">{title}</h3>
         {provider === "lmstudio" && <ConnectivityIndicator status={lmStatus} />}

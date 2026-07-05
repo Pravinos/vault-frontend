@@ -1,6 +1,7 @@
 "use client";
 
 import { Edit, MinusCircle } from "lucide-react";
+import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
 import { formatCurrency } from "@/lib/utils";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import type { Goal } from "@/types";
@@ -69,7 +70,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
   }, [goal.progressPercentage, goal.name]);
 
   return (
-    <div className={`animate-card-enter flex flex-col rounded-xl p-5 ${completed ? 'border border-emerald-600 bg-emerald-900/30' : 'border border-gray-800 bg-gray-900/60'}`}>
+    <div className={`animate-card-enter flex flex-col rounded-card p-card-md ${completed ? 'border border-emerald-600 bg-emerald-900/30' : 'border border-gray-800 bg-gray-900/60'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base font-semibold text-white">{goal.name}</span>
@@ -140,9 +141,19 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
         {goal.linkedAccounts && goal.linkedAccounts.length > 0 ? (
           <div className="space-y-2">
             {goal.linkedAccounts.map((a) => (
-              <div key={a.id} className="flex items-center justify-between text-sm text-gray-300">
-                <div>{a.name}</div>
-                <div className="tabular-nums text-gray-200">{formatCurrency(a.calculatedBalance)}</div>
+              <div
+                key={a.id}
+                className={`flex items-center justify-between rounded-lg border border-gray-800 border-l-4 ${getAccountAccent(a.accountType)} bg-[#1a2332]/60 px-3 py-2 text-sm text-gray-300`}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">{a.name}</span>
+                  <span
+                    className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClasses(a.accountType)}`}
+                  >
+                    {a.accountType}
+                  </span>
+                </div>
+                <div className="ml-3 shrink-0 tabular-nums text-gray-200">{formatCurrency(a.calculatedBalance)}</div>
               </div>
             ))}
           </div>

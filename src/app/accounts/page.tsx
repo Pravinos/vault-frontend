@@ -349,11 +349,10 @@ export default function AccountsPage() {
             </div>
           ) : accounts.length === 0 ? (
             <EmptyState
-              icon={<CreditCard className="w-12 h-12" />}
+              icon={CreditCard}
               title="No accounts yet"
-              description="Add your first account to get started"
-              actionLabel={<><PlusIcon className="h-4 w-4" /> Create your first account</>}
-              onAction={openCreate}
+              description="Add your first account to get started."
+              action={{ label: "Create your first account", onClick: openCreate }}
             />
           ) : (
             <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">

@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Wallet } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import IncomeFilters from "@/components/income/IncomeFilters";
 import IncomeForm from "@/components/income/IncomeForm";
 import IncomeList from "@/components/income/IncomeList";
+import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
@@ -249,6 +250,13 @@ export default function IncomePage() {
               <Skeleton key={i} variant="text" className="h-14 rounded-xl" />
             ))}
           </div>
+        ) : baseFilteredIncome.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={Wallet}
+            title={`No income in ${monthLabel}`}
+            description="Try a different month or add your first income entry."
+            action={{ label: "Add income", onClick: handleAddClick }}
+          />
         ) : (
           <IncomeList
             income={displayedIncome}

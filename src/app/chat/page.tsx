@@ -6,19 +6,12 @@ import { sendChatMessage } from "@/lib/api";
 import type { ChatMessage } from "@/types";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ChatInput from "@/components/chat/ChatInput";
+import SuggestedPrompts from "@/components/chat/SuggestedPrompts";
 import TypingIndicator from "@/components/chat/TypingIndicator";
 import { useAiSettings } from "@/lib/hooks/useAiSettings";
 import ProviderBadge from "@/components/ui/ProviderBadge";
 
 const SCROLL_THRESHOLD = 120;
-
-const SUGGESTED_PROMPTS = [
-  { emoji: "💸", text: "What did I spend the most on this month?" },
-  { emoji: "🔁", text: "How does this month compare to last month?" },
-  { emoji: "💰", text: "What's my current net cash flow?" },
-  { emoji: "📊", text: "Show my top 3 expense categories this month" },
-  { emoji: "💡", text: "Recommend 3 practical ways to reduce monthly expenses by ~15%" },
-];
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -136,9 +129,6 @@ export default function ChatPage() {
     }
   };
 
-  const promptButtonClass =
-    "flex items-start gap-2 rounded-xl px-4 py-3 text-left text-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
-
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -178,30 +168,10 @@ export default function ChatPage() {
                 >
                   <span className="text-2xl">🤖</span>
                 </div>
-                <div className="mt-6 grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    disabled={isTyping}
-                    onClick={() => handlePromptClick(SUGGESTED_PROMPTS[0].text)}
-                    className={`col-span-full border-[1px] border-[rgba(29,158,117,0.6)] bg-[rgba(29,158,117,0.08)] text-white ${promptButtonClass}`}
-                  >
-                    <span className="mt-0.5 text-base leading-none">{SUGGESTED_PROMPTS[0].emoji}</span>
-                    <span className="leading-snug">{SUGGESTED_PROMPTS[0].text}</span>
-                  </button>
-
-                  {SUGGESTED_PROMPTS.slice(1).map((prompt) => (
-                    <button
-                      key={prompt.text}
-                      type="button"
-                      disabled={isTyping}
-                      onClick={() => handlePromptClick(prompt.text)}
-                      className={`border border-gray-700 bg-[#0f1923] text-gray-200 hover:border-emerald-700/60 hover:bg-[#0f2430] hover:text-white ${promptButtonClass}`}
-                    >
-                      <span className="mt-0.5 text-base leading-none">{prompt.emoji}</span>
-                      <span className="leading-snug">{prompt.text}</span>
-                    </button>
-                  ))}
-                </div>
+                <SuggestedPrompts
+                  disabled={isTyping}
+                  onPromptClick={handlePromptClick}
+                />
               </div>
             ) : (
               <>
@@ -235,7 +205,11 @@ export default function ChatPage() {
           <div className="px-4 pb-3">
             <div className="flex items-center justify-end">
               {aiConfig?.chat?.provider && (
-                <ProviderBadge provider={aiConfig.chat.provider} model={aiConfig.chat.model} />
+                <ProviderBadge
+                  provider={aiConfig.chat.provider}
+                  model={aiConfig.chat.model}
+                  variant="subtle"
+                />
               )}
             </div>
           </div>

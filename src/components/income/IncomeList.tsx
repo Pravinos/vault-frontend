@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, PlusCircle, Trash2, Wallet, Copy } from "lucide-react";
-import EmptyState from "@/components/ui/EmptyState";
+import { Pencil, Trash2, Copy } from "lucide-react";
 
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Income } from "@/types";
@@ -80,7 +79,7 @@ export default function IncomeList({
   if (income.length === 0) {
     if (hasActiveFilters && onClearFilters) {
       return (
-        <div className="flex flex-col items-center rounded-2xl bg-[#1a2332] px-6 py-12 text-center">
+        <div className="flex flex-col items-center rounded-card-lg bg-[#1a2332] px-6 py-12 text-center">
           <span className="mb-3 text-4xl">💶</span>
           <p className="mb-1 font-semibold text-white">No income found</p>
           <p className="text-sm text-gray-400">Try clearing your filters</p>
@@ -95,19 +94,11 @@ export default function IncomeList({
       );
     }
 
-    return (
-      <EmptyState
-        icon={<Wallet className="w-12 h-12" />}
-        title={`No income in ${effectiveMonthLabel}`}
-        description={`Try a different month or add your first income entry`}
-        actionLabel={<><PlusCircle className="h-4 w-4" /> Add income</>}
-        onAction={onAddClick}
-      />
-    );
+    return null;
   }
 
   return (
-    <div className="flex flex-col gap-0 overflow-hidden rounded-xl border border-gray-800">
+    <div className="flex flex-col gap-0 overflow-hidden rounded-card border border-gray-800">
       {/* Mobile: card layout */}
       <div className="block sm:hidden">
         {income.map((entry, index) => {

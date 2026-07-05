@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Copy, Plus } from "lucide-react";
+import { Copy, PiggyBank, Plus } from "lucide-react";
 
 import AddBudgetModal from "@/components/budgets/AddBudgetModal";
 import BudgetCard from "@/components/budgets/BudgetCard";
+import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Modal from "@/components/ui/Modal";
 import MonthNavigator from "@/components/ui/MonthNavigator";
@@ -306,12 +307,12 @@ export default function BudgetsPage() {
           </div>
 
           {budgetItems.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
-              <p className="text-base font-medium text-gray-200">No budgets for {monthLabel}</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Set category budgets to track spending against your plan.
-              </p>
-            </div>
+            <EmptyState
+              icon={PiggyBank}
+              title={`No budgets for ${monthLabel}`}
+              description="Set category budgets to track spending against your plan."
+              action={{ label: "Add budget", onClick: () => setShowAddModal(true) }}
+            />
           ) : (
             <>
               {showHighlightControls ? (

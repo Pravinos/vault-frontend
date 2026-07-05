@@ -163,7 +163,7 @@ export default function ExpenseHeatmap({
   }, [data, year]);
 
   return (
-    <div className="w-fit max-w-full rounded-xl border border-[#2a2a2a] bg-[#161616] p-4">
+    <div className="w-fit max-w-full rounded-card border border-[#2a2a2a] bg-[#161616] p-card-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
           Spending Activity

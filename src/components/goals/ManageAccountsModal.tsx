@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
+import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { linkAccountToGoal, unlinkAccountFromGoal } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -60,9 +61,19 @@ export default function ManageAccountsModal({ goal, onClose, onSuccess }: Props)
           ) : (
             <div className="mt-2 space-y-2">
               {goal.linkedAccounts.map((a) => (
-                <div key={a.id} className="flex items-center justify-between">
-                  <div className="text-sm text-gray-200">{a.name}</div>
-                  <div className="flex items-center gap-2">
+                <div
+                  key={a.id}
+                  className={`flex items-center justify-between rounded-lg border border-gray-800 border-l-4 ${getAccountAccent(a.accountType)} bg-[#1a2332]/60 px-3 py-2`}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm text-gray-200">{a.name}</span>
+                    <span
+                      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClasses(a.accountType)}`}
+                    >
+                      {a.accountType}
+                    </span>
+                  </div>
+                  <div className="ml-3 flex shrink-0 items-center gap-2">
                     <div className="text-sm text-gray-300">{a.calculatedBalance.toFixed(2)}</div>
                     <button
                       type="button"
@@ -85,9 +96,19 @@ export default function ManageAccountsModal({ goal, onClose, onSuccess }: Props)
             {isLoading
               ? <p className="text-sm text-gray-400">Loading accounts...</p>
               : accounts.filter(a => !linkedIds.has(a.id)).map((a) => (
-                <div key={a.id} className="flex items-center justify-between">
-                  <div className="text-sm text-gray-200">{a.name}</div>
-                  <div className="flex items-center gap-2">
+                <div
+                  key={a.id}
+                  className={`flex items-center justify-between rounded-lg border border-gray-800 border-l-4 ${getAccountAccent(a.accountType)} bg-[#1a2332]/60 px-3 py-2`}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm text-gray-200">{a.name}</span>
+                    <span
+                      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClasses(a.accountType)}`}
+                    >
+                      {a.accountType}
+                    </span>
+                  </div>
+                  <div className="ml-3 flex shrink-0 items-center gap-2">
                     <div className="text-sm text-gray-300">{a.calculatedBalance?.toFixed?.(2) ?? "0.00"}</div>
                     <button
                       type="button"

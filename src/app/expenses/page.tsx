@@ -1,13 +1,14 @@
 ﻿"use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { ChevronDown, Plus, Search } from "lucide-react";
+import { ChevronDown, Plus, Receipt, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
 import ExpenseHeatmap from "@/components/expenses/ExpenseHeatmap";
 import ExpenseList from "@/components/expenses/ExpenseList";
+import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
@@ -361,6 +362,17 @@ export default function ExpensesPage() {
               <Skeleton key={i} variant="text" className="h-14 rounded-xl" />
             ))}
           </div>
+        ) : baseFilteredExpenses.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={Receipt}
+            title={
+              selectedDate
+                ? `No expenses on ${selectedDateLabel}`
+                : `No expenses in ${monthLabel}`
+            }
+            description="Try a different month or add your first expense."
+            action={{ label: "Add expense", onClick: handleAddClick }}
+          />
         ) : (
           <ExpenseList
             expenses={displayedExpenses}

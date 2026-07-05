@@ -3,6 +3,7 @@
 import { ChevronDown, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
+import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
 import { formatCurrency } from "@/lib/utils";
 import type { AccountType } from "@/types";
 
@@ -27,32 +28,6 @@ interface AccountCardProps {
   detailsDefaultOpen?: boolean;
   detailsOpen?: boolean;
   onDetailsOpenChange?: (open: boolean) => void;
-}
-
-function getAccentClass(type: AccountType): string {
-  switch (type) {
-    case "CHECKING":
-      return "border-l-emerald-400";
-    case "SAVINGS":
-      return "border-l-blue-400";
-    case "INVESTMENT":
-      return "border-l-violet-400";
-    default:
-      return "border-l-emerald-400";
-  }
-}
-
-function getBadgeClass(type: AccountType): string {
-  switch (type) {
-    case "CHECKING":
-      return "bg-emerald-500/10 text-emerald-400";
-    case "SAVINGS":
-      return "bg-blue-500/10 text-blue-400";
-    case "INVESTMENT":
-      return "bg-violet-500/10 text-violet-400";
-    default:
-      return "bg-emerald-500/10 text-emerald-400";
-  }
 }
 
 // sync status removed — visual indicator handled elsewhere if needed
@@ -118,7 +93,7 @@ export default function AccountCard({
 
   return (
     <div
-      className={`animate-card-enter rounded-2xl border border-gray-800 border-l-4 ${getAccentClass(account.accountType)} bg-[#1a2332] p-4 ${
+      className={`animate-card-enter rounded-card border border-gray-800 border-l-4 ${getAccountAccent(account.accountType)} bg-[#1a2332] p-card-sm ${
         className ?? ""
       }`.trim()}
       style={staggerIndex !== undefined ? { animationDelay: `${staggerIndex * 50}ms` } : undefined}
@@ -127,7 +102,7 @@ export default function AccountCard({
         <p className="truncate text-sm font-semibold text-white">{account.name}</p>
         <div className="mt-0.5 flex items-center gap-2">
           <span
-            className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getBadgeClass(account.accountType)}`}
+            className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClasses(account.accountType)}`}
           >
             {account.accountType}
           </span>

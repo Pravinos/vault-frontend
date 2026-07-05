@@ -74,7 +74,7 @@ export default function NetWorthCard({
   }, [showChart]);
 
   return (
-    <div className="animate-card-enter rounded-2xl bg-gradient-to-br from-[#1a2f2a] to-[#1a2332] p-5">
+    <div className="animate-card-enter rounded-card-lg bg-gradient-to-br from-[#1a2f2a] to-[#1a2332] p-card-md">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Net Worth</p>
         {hasHistory ? (
@@ -115,14 +115,14 @@ export default function NetWorthCard({
           </p>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-white/5 p-3">
+            <div className="rounded-card bg-white/5 p-3">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                 Calculated
               </p>
               <p className="text-base font-bold text-emerald-400">{formatCurrency(headlineValue)}</p>
             </div>
 
-            <div className="rounded-xl bg-white/5 p-3">
+            <div className="rounded-card bg-white/5 p-3">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                 Manual
               </p>
