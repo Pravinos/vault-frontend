@@ -20,7 +20,7 @@ import { Info, LayoutDashboard } from "lucide-react";
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import BudgetHighlightsCard from "@/components/dashboard/BudgetHighlightsCard";
 import NetWorthCard from "@/components/dashboard/NetWorthCard";
-import AccountCard from "@/components/accounts/AccountCard";
+import AccountsStrip from "@/components/dashboard/AccountsStrip";
 import AnimatedCard from "@/components/ui/AnimatedCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -35,7 +35,6 @@ import { useDashboard } from "@/lib/hooks/useDashboard";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useLatestSummary } from "@/lib/hooks/useLatestSummary";
 import { getMonthString } from "@/lib/utils";
-import type { AccountDashboardData } from "@/types/dashboard";
 
 type DonutSlice = {
   category: string;
@@ -49,7 +48,7 @@ type CashFlowBarDatum = {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8 sm:space-y-10">
+    <div className="space-y-4 sm:space-y-5">
       <Skeleton variant="card" className="h-28 rounded-xl" />
       <div className="flex gap-3 overflow-x-auto pb-1">
         {Array.from({ length: 4 }).map((_, index) => (
@@ -85,31 +84,6 @@ function DashboardSkeleton() {
 
 function ErrorState({ message }: { message: string }) {
   return <ErrorMessage message={message} onRetry={() => window.location.reload()} />;
-}
-
-function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
-  return (
-    <div className="relative">
-      <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-0">
-        {accounts.slice(0, 8).map((account, index) => (
-          <Link
-            key={account.id}
-            href={`/accounts/${account.id}`}
-            className="w-[220px] shrink-0 snap-start sm:w-64"
-          >
-            <AccountCard
-              account={account}
-              compact
-              staggerIndex={index}
-              className="h-full transition-colors hover:border-gray-700"
-            />
-          </Link>
-        ))}
-        <div className="w-1 shrink-0 sm:hidden" />
-      </div>
-      <div className="pointer-events-none absolute bottom-2 right-0 top-0 w-8 bg-gradient-to-l from-[#0d1520] to-transparent sm:hidden" />
-    </div>
-  );
 }
 
 function StatCard({
@@ -536,7 +510,7 @@ export default function DashboardPage() {
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
 
-      <div className="flex flex-col gap-8 sm:gap-10">
+      <div className="flex flex-col gap-4 sm:gap-5">
         <NetWorthCard
           calculated={dashboardData.calculatedNetWorth}
           manual={dashboardData.manualNetWorth}
