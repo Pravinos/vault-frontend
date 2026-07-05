@@ -2,7 +2,8 @@
 
 import React from "react";
 import { ArrowRight, ArrowDown } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 
 interface AccountSummary {
   name: string;
@@ -30,10 +31,11 @@ export default function TransferRow({
   note,
   createdAt,
 }: TransferRowProps) {
+  const formatCurrency = useFormatCurrency();
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#1a2332] p-3">
+    <div className="rounded-card border border-gray-800 bg-[#1a2332] p-3">
       <div className="relative flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1 rounded-lg bg-[#0f1923] p-3 border border-gray-800">
+        <div className="flex-1 rounded-sm bg-[#0f1923] p-3 border border-gray-800">
           <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">From</div>
           <div className="font-semibold text-white">{fromAccount.name}</div>
           {typeof fromAccount.balance === "number" ? (
@@ -51,7 +53,7 @@ export default function TransferRow({
           </div>
         </div>
 
-        <div className="flex-1 rounded-lg bg-[#0f1923] p-3 border border-gray-800">
+        <div className="flex-1 rounded-sm bg-[#0f1923] p-3 border border-gray-800">
           <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">To</div>
           <div className="font-semibold text-white">{toAccount.name}</div>
           {typeof toAccount.balance === "number" ? (

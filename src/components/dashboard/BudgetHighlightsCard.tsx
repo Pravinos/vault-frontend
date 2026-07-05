@@ -11,7 +11,7 @@ import {
   MAX_HIGHLIGHTED_BUDGETS,
   resolveDashboardBudgets,
 } from "@/lib/highlightedBudgets";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { BudgetSummaryItem } from "@/types/budget";
 
 type BudgetHighlightsCardProps = {
@@ -23,14 +23,16 @@ type BudgetHighlightsCardProps = {
 function BudgetProgressRow({
   item,
   showHighlightedBadge,
+  formatCurrency,
 }: {
   item: BudgetSummaryItem;
   showHighlightedBadge: boolean;
+  formatCurrency: (amount: number) => string;
 }) {
   const progressWidth = Math.min(Math.max(item.percentageUsed, 0), 100);
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+    <div className="rounded-card border border-white/5 bg-white/[0.03] p-3">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-base">{item.categoryIcon}</span>
@@ -66,6 +68,7 @@ export default function BudgetHighlightsCard({
   budgets,
   alerts,
 }: BudgetHighlightsCardProps) {
+  const formatCurrency = useFormatCurrency();
   const budgetCategoryIds = useMemo(
     () => budgets.map((item) => item.categoryId),
     [budgets]
@@ -107,7 +110,7 @@ export default function BudgetHighlightsCard({
 
   return (
     <>
-      <div className="animate-card-enter rounded-2xl border border-white/10 bg-[#1a1a1a] p-5">
+      <div className="animate-card-enter rounded-card-lg border border-white/10 bg-[#1a1a1a] p-card-md">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-white">Budgets</h2>
@@ -128,7 +131,7 @@ export default function BudgetHighlightsCard({
         </div>
 
         {budgets.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-700/70 p-4 text-center">
+          <div className="rounded-card border border-dashed border-gray-700/70 p-card-sm text-center">
             <p className="text-sm text-gray-400">No budgets set for this month.</p>
             <Link
               href="/budgets"
@@ -138,7 +141,7 @@ export default function BudgetHighlightsCard({
             </Link>
           </div>
         ) : canCustomize && !hasPinnedHighlights ? (
-          <div className="rounded-xl border border-dashed border-teal-500/20 bg-teal-500/5 p-4 text-center">
+          <div className="rounded-card border border-dashed border-teal-500/20 bg-teal-500/5 p-card-sm text-center">
             <p className="text-sm text-gray-300">
               Pin up to {MAX_HIGHLIGHTED_BUDGETS} budgets to track them here.
             </p>
@@ -162,6 +165,7 @@ export default function BudgetHighlightsCard({
                   key={item.categoryId}
                   item={item}
                   showHighlightedBadge={canCustomize}
+                  formatCurrency={formatCurrency}
                 />
               ))}
             </div>
@@ -202,7 +206,7 @@ export default function BudgetHighlightsCard({
                   type="button"
                   onClick={() => !disabled && toggleDraft(item.categoryId)}
                   disabled={disabled}
-                  className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
+                  className={`flex w-full items-center justify-between gap-3 rounded-card border px-3 py-2.5 text-left transition ${
                     selected
                       ? "border-teal-500/50 bg-teal-500/10"
                       : disabled

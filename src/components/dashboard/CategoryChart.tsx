@@ -10,7 +10,9 @@ import {
   Tooltip,
 } from "recharts";
 
-import { formatCurrency, formatMonth } from "@/lib/utils";
+import { formatMonth } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
+import { DURATION_SLOW, prefersReducedMotion } from "@/lib/motion";
 import type { ExpenseMonthlySummary } from "@/types";
 
 type CategoryChartProps = {
@@ -29,6 +31,7 @@ const chartColors = [
 ];
 
 export default function CategoryChart({ summary }: CategoryChartProps) {
+  const formatCurrency = useFormatCurrency();
   const total = summary.total;
 
   if (summary.byCategory.length === 0) {
@@ -78,6 +81,9 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
               innerRadius={summary.byCategory.length === 1 ? 0 : 60}
               outerRadius={90}
               paddingAngle={summary.byCategory.length === 1 ? 0 : 2}
+              isAnimationActive={!prefersReducedMotion()}
+              animationDuration={DURATION_SLOW}
+              animationEasing="ease-out"
             >
               {summary.byCategory.map((entry, index) => (
                 <Cell

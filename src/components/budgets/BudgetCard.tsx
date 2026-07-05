@@ -9,7 +9,8 @@ import {
   statusBarColor,
   statusLabel,
 } from "@/lib/budgetStatus";
-import { formatCurrency } from "@/lib/utils";
+import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import type { BudgetSummaryItem } from "@/types/budget";
 
 type BudgetCardProps = {
@@ -35,6 +36,7 @@ export default function BudgetCard({
   isHighlighted = false,
   onToggleHighlight,
 }: BudgetCardProps) {
+  const formatCurrency = useFormatCurrency();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(item.budgetAmount));
   const [statusPulse, setStatusPulse] = useState(false);
@@ -62,6 +64,7 @@ export default function BudgetCard({
   }, [item.status]);
 
   const progressWidth = Math.min(Math.max(item.percentageUsed, 0), 100);
+  const animatedProgressWidth = useAnimatedProgress(progressWidth);
 
   const startEdit = () => {
     setEditValue(String(item.budgetAmount));
@@ -94,7 +97,7 @@ export default function BudgetCard({
 
   return (
     <div
-      className={`animate-card-enter rounded-xl border bg-[#1a1a1a] p-4 ${
+      className={`animate-card-enter rounded-card border bg-[#1a1a1a] p-card-sm ${
         isHighlighted ? "border-teal-500/40 ring-1 ring-teal-500/20" : "border-white/10"
       }`}
     >
@@ -115,7 +118,7 @@ export default function BudgetCard({
             <button
               type="button"
               onClick={onToggleHighlight}
-              className={`rounded-md p-1.5 transition ${
+              className={`btn-interactive rounded-md p-1.5 ${
                 isHighlighted
                   ? "bg-teal-500/15 text-teal-300"
                   : "text-gray-400 hover:bg-white/5 hover:text-teal-300"
@@ -134,7 +137,7 @@ export default function BudgetCard({
             <button
               type="button"
               onClick={startEdit}
-              className="rounded-md p-1.5 text-gray-400 transition hover:bg-white/5 hover:text-white"
+              className="btn-interactive rounded-md p-1.5 text-gray-400 hover:bg-white/5 hover:text-white"
               aria-label={`Edit budget for ${item.categoryName}`}
             >
               <Pencil className="h-4 w-4" />
@@ -144,7 +147,7 @@ export default function BudgetCard({
               type="button"
               onClick={() => void saveEdit()}
               disabled={isSaving}
-              className="rounded-md p-1.5 text-teal-400 transition hover:bg-teal-500/10 disabled:opacity-50"
+              className="btn-interactive rounded-md p-1.5 text-teal-400 hover:bg-teal-500/10 disabled:opacity-50"
               aria-label="Save budget amount"
             >
               <Check className="h-4 w-4" />
@@ -154,7 +157,7 @@ export default function BudgetCard({
             <button
               type="button"
               onClick={() => onDelete(budgetId)}
-              className={`rounded-md p-1.5 transition ${
+              className={`btn-interactive rounded-md p-1.5 ${
                 isPendingConfirm
                   ? "bg-rose-500/20 text-rose-300"
                   : "text-gray-400 hover:bg-white/5 hover:text-rose-400"
@@ -173,8 +176,8 @@ export default function BudgetCard({
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
         <div
-          className={`h-full rounded-full transition-all ${statusBarColor(item.status)}`}
-          style={{ width: `${progressWidth}%` }}
+          className={`progress-bar-fill h-full rounded-full ${statusBarColor(item.status)}`}
+          style={{ width: `${animatedProgressWidth}%` }}
         />
       </div>
 

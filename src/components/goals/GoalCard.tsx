@@ -1,7 +1,10 @@
 "use client";
 
 import { Edit, MinusCircle } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { getAccountAccent, getAccountBadgeClasses } from "@/lib/accountColors";
+import { getGoalPace } from "@/lib/utils";
+import { useCurrency, useFormatCurrency } from "@/lib/currencyContext";
+import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import type { Goal } from "@/types";
 import { useState, useEffect, useRef } from "react";
@@ -52,13 +55,20 @@ type GoalCardProps = {
 };
 
 export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: GoalCardProps) {
+  const formatCurrency = useFormatCurrency();
+  const { currency } = useCurrency();
   const { handleDelete: confirmDeactivate, isPendingConfirm } = useConfirmDelete();
   const [showManage, setShowManage] = useState(false);
   const progress = Math.min(goal.progressPercentage, 100);
+  const animatedProgress = useAnimatedProgress(progress);
   const prevProgressRef = useRef<number>(goal.progressPercentage);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const completed = goal.progressPercentage >= 100;
+  const pace =
+    goal.deadline || goal.savedAmount >= goal.targetAmount
+      ? getGoalPace(goal.targetAmount, goal.savedAmount, goal.daysRemaining, currency)
+      : null;
 
   useEffect(() => {
     const prev = prevProgressRef.current;
@@ -69,7 +79,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
   }, [goal.progressPercentage, goal.name]);
 
   return (
-    <div className={`animate-card-enter flex flex-col rounded-xl p-5 ${completed ? 'border border-emerald-600 bg-emerald-900/30' : 'border border-gray-800 bg-gray-900/60'}`}>
+    <div className={`animate-card-enter flex flex-col rounded-card p-card-md ${completed ? 'border border-emerald-600 bg-emerald-900/30' : 'border border-gray-800 bg-gray-900/60'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base font-semibold text-white">{goal.name}</span>
@@ -80,7 +90,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
           <button
             type="button"
             onClick={() => onEdit(goal)}
-            className="rounded-md p-1.5 text-gray-400 transition-all duration-150 hover:text-white active:scale-95"
+            className="btn-interactive rounded-md p-1.5 text-gray-400 hover:text-white"
             aria-label="Edit goal"
           >
             <Edit className="h-4 w-4" />
@@ -90,7 +100,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
             onClick={() =>
               confirmDeactivate(goal.id, () => onDeactivate(goal.id))
             }
-            className={`rounded-md px-2 py-1 text-xs font-medium transition-all duration-150 active:scale-95 ${
+            className={`btn-interactive rounded-md px-2 py-1 text-xs font-medium ${
               isPendingConfirm(goal.id)
                 ? "bg-red-500/20 text-red-300"
                 : "text-gray-400 hover:text-red-400"
@@ -106,7 +116,7 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
           <button
             type="button"
             onClick={() => setShowManage(true)}
-            className="rounded-md p-1.5 text-gray-400 transition-all duration-150 hover:text-white active:scale-95"
+            className="btn-interactive rounded-md p-1.5 text-gray-400 hover:text-white"
             aria-label="Manage linked accounts"
           >
             Manage
@@ -117,10 +127,23 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
       <div className="mt-4">
         <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-700">
           <div
-            className={`h-2 rounded-full transition-all duration-300 ${completed ? 'bg-green-500' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`}
-            style={{ width: `${progress}%` }}
+            className={`progress-bar-fill h-2 rounded-full ${completed ? 'bg-green-500' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`}
+            style={{ width: `${animatedProgress}%` }}
           />
         </div>
+        {pace ? (
+          <p
+            className={`mt-1.5 text-xs ${
+              pace.kind === "overdue"
+                ? "text-amber-400"
+                : pace.kind === "reached"
+                  ? "text-emerald-400/80"
+                  : "text-gray-500"
+            }`}
+          >
+            {pace.message}
+          </p>
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 text-xs text-gray-400">
           <div>
             <div className="tabular-nums font-medium text-white">
@@ -140,9 +163,19 @@ export default function GoalCard({ goal, onEdit, onDeactivate, onUpdated }: Goal
         {goal.linkedAccounts && goal.linkedAccounts.length > 0 ? (
           <div className="space-y-2">
             {goal.linkedAccounts.map((a) => (
-              <div key={a.id} className="flex items-center justify-between text-sm text-gray-300">
-                <div>{a.name}</div>
-                <div className="tabular-nums text-gray-200">{formatCurrency(a.calculatedBalance)}</div>
+              <div
+                key={a.id}
+                className={`flex items-center justify-between rounded-lg border border-gray-800 border-l-4 ${getAccountAccent(a.accountType)} bg-[#1a2332]/60 px-3 py-2 text-sm text-gray-300`}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">{a.name}</span>
+                  <span
+                    className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getAccountBadgeClasses(a.accountType)}`}
+                  >
+                    {a.accountType}
+                  </span>
+                </div>
+                <div className="ml-3 shrink-0 tabular-nums text-gray-200">{formatCurrency(a.calculatedBalance)}</div>
               </div>
             ))}
           </div>

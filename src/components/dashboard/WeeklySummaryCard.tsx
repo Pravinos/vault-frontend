@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Calendar, RefreshCw } from "lucide-react";
 
-import ProviderBadge from "@/components/ui/ProviderBadge";
+import ProviderModelInfo from "@/components/ui/ProviderModelInfo";
 import { useState } from "react";
 import Toast from "@/components/ui/Toast";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
@@ -39,7 +39,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
   if (!summary) {
     return (
       <>
-        <div className="animate-card-enter flex h-full flex-col rounded-2xl border-l-4 border-emerald-500/60 bg-[#1a2332] p-5">
+        <div className="animate-card-enter flex h-full flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-[#1a2332] p-card-md">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-white">Weekly Summary</h2>
@@ -53,7 +53,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
               type="button"
               onClick={generate}
               disabled={isGenerating}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-300 transition-all duration-150 hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 active:scale-95"
+              className="btn-interactive inline-flex items-center gap-2 rounded-lg border border-gray-700 px-3 py-1.5 text-xs text-gray-300 hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               <RefreshCw className={`h-3 w-3 ${isGenerating ? "animate-spin" : ""}`} />
               {isGenerating ? "Generating..." : "Generate now"}
@@ -68,7 +68,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
 
   return (
     <>
-      <div className="animate-card-enter flex flex-col rounded-2xl border-l-4 border-emerald-500/60 bg-[#1a2332] p-5">
+      <div className="group animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-[#1a2332] p-card-md">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
@@ -122,7 +122,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
           >
             View history -&gt;
           </Link>
-          <ProviderBadge provider={summary.provider} model={summary.model} />
+          <ProviderModelInfo provider={summary.provider} model={summary.model} />
         </div>
       </div>
 

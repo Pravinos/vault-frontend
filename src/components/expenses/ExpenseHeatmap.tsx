@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useExpenseHeatmap } from "@/lib/hooks/useExpenses";
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
+import { getStaggerDelayMs } from "@/lib/motion";
 
 const ROW_LABELS = ["M", "", "W", "", "F", "", ""] as const;
 const CELL_SIZE = "0.75rem";
@@ -35,7 +36,11 @@ function getMondayBasedDay(date: Date): number {
   return (date.getDay() + 6) % 7;
 }
 
-function formatHeatmapTooltip(dateStr: string, amount: number): string {
+function formatHeatmapTooltip(
+  dateStr: string,
+  amount: number,
+  formatCurrency: (amount: number) => string,
+): string {
   const date = new Date(`${dateStr}T00:00:00`);
   const formattedDate = date.toLocaleDateString("en-GB", {
     weekday: "short",
@@ -105,6 +110,7 @@ export default function ExpenseHeatmap({
   selectedDate = null,
   enabled = true,
 }: ExpenseHeatmapProps) {
+  const formatCurrency = useFormatCurrency();
   const [year, setYear] = useState(() => new Date().getFullYear());
   const { data, isLoading, error, refetch } = useExpenseHeatmap(year, enabled);
   const weekColumnCount = getWeekColumnCount(year);
@@ -155,15 +161,15 @@ export default function ExpenseHeatmap({
         date: dateStr,
         totalAmount,
         colorClass: getCellColor(totalAmount, maxDayAmount),
-        tooltip: formatHeatmapTooltip(dateStr, totalAmount),
+        tooltip: formatHeatmapTooltip(dateStr, totalAmount, formatCurrency),
       });
     }
 
     return { monthLabels: monthLabelEntries, cells: dayCells };
-  }, [data, year]);
+  }, [data, formatCurrency, year]);
 
   return (
-    <div className="w-fit max-w-full rounded-xl border border-[#2a2a2a] bg-[#161616] p-4">
+    <div className="w-fit max-w-full rounded-card border border-[#2a2a2a] bg-[#161616] p-card-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
           Spending Activity
@@ -261,7 +267,7 @@ export default function ExpenseHeatmap({
                       type="button"
                       title={cell.tooltip}
                       onClick={() => onDayClick?.(cell.date)}
-                      className={`h-3 w-3 rounded-sm opacity-[0.85] transition-opacity duration-150 hover:opacity-100 ${cell.colorClass} ${
+                      className={`animate-list-item-enter h-3 w-3 rounded-sm opacity-[0.85] transition-opacity duration-fast hover:opacity-100 ${cell.colorClass} ${
                         isSelected
                           ? "ring-1 ring-white ring-offset-1 ring-offset-[#161616]"
                           : ""
@@ -269,6 +275,7 @@ export default function ExpenseHeatmap({
                       style={{
                         gridColumn: cell.column,
                         gridRow: cell.row,
+                        animationDelay: `${getStaggerDelayMs(cell.column)}ms`,
                       }}
                       aria-label={cell.tooltip}
                       aria-pressed={isSelected}

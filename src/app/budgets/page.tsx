@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Copy, Plus } from "lucide-react";
+import { Copy, PiggyBank, Plus } from "lucide-react";
 
 import AddBudgetModal from "@/components/budgets/AddBudgetModal";
 import BudgetCard from "@/components/budgets/BudgetCard";
+import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Modal from "@/components/ui/Modal";
 import MonthNavigator from "@/components/ui/MonthNavigator";
@@ -20,9 +21,11 @@ import {
 } from "@/lib/hooks/useBudgets";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
+import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
 import { useHighlightedBudgets } from "@/lib/hooks/useHighlightedBudgets";
 import { aggregateBudgetStatus, statusBarColor } from "@/lib/budgetStatus";
-import { formatCurrency, formatMonth, getMonthString } from "@/lib/utils";
+import { formatMonth, getMonthString } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 
 function getPreviousMonth(month: string): string {
   const [y, m] = month.split("-").map(Number);
@@ -49,6 +52,7 @@ function BudgetsPageSkeleton() {
 }
 
 export default function BudgetsPage() {
+  const formatCurrency = useFormatCurrency();
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCopyConfirm, setShowCopyConfirm] = useState(false);
@@ -126,6 +130,7 @@ export default function BudgetsPage() {
     const status = aggregateBudgetStatus(totalSpent, totalBudgeted);
     return { totalBudgeted, totalSpent, percentageUsed, status };
   }, [budgetItems]);
+  const mountedTotalsWidth = useAnimatedProgress(totals.percentageUsed);
 
   const handleSave = useCallback(
     async (categoryId: number, amount: number) => {
@@ -278,8 +283,8 @@ export default function BudgetsPage() {
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className={`h-full rounded-full transition-all ${statusBarColor(totals.status)}`}
-                  style={{ width: `${totals.percentageUsed}%` }}
+                  className={`progress-bar-fill h-full rounded-full ${statusBarColor(totals.status)}`}
+                  style={{ width: `${mountedTotalsWidth}%` }}
                 />
               </div>
             </div>
@@ -306,12 +311,12 @@ export default function BudgetsPage() {
           </div>
 
           {budgetItems.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
-              <p className="text-base font-medium text-gray-200">No budgets for {monthLabel}</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Set category budgets to track spending against your plan.
-              </p>
-            </div>
+            <EmptyState
+              icon={PiggyBank}
+              title={`No budgets for ${monthLabel}`}
+              description="Set category budgets to track spending against your plan."
+              action={{ label: "Add budget", onClick: () => setShowAddModal(true) }}
+            />
           ) : (
             <>
               {showHighlightControls ? (
@@ -372,7 +377,7 @@ export default function BudgetsPage() {
             type="button"
             onClick={() => setShowCopyConfirm(false)}
             disabled={copying}
-            className="flex-1 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 transition hover:bg-white/5 disabled:opacity-50"
+            className="btn-interactive flex-1 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -380,7 +385,7 @@ export default function BudgetsPage() {
             type="button"
             onClick={() => void handleCopyFromLastMonth()}
             disabled={copying}
-            className="flex-1 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-400 disabled:opacity-50"
+            className="btn-interactive flex-1 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-400 disabled:opacity-50"
           >
             {copying ? "Copying…" : "Copy budgets"}
           </button>

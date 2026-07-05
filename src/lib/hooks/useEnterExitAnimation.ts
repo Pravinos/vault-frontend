@@ -2,16 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-const EXIT_DURATION_MS = 250;
+import { DURATION_MODAL, prefersReducedMotion } from "@/lib/motion";
 
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
-
-export function useEnterExitAnimation(isOpen: boolean, durationMs = EXIT_DURATION_MS) {
+export function useEnterExitAnimation(isOpen: boolean, durationMs = DURATION_MODAL) {
   const [mounted, setMounted] = useState(isOpen);
   const [visible, setVisible] = useState(false);
 

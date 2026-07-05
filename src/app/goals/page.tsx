@@ -2,9 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, Target } from "lucide-react";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalForm from "@/components/goals/GoalForm";
+import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
@@ -61,7 +62,7 @@ export default function GoalsPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-400"
+          className="btn-interactive inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-400"
         >
           <Plus className="h-4 w-4" /> Add Goal
         </button>
@@ -80,10 +81,12 @@ export default function GoalsPage() {
             ))}
           </div>
         ) : goals.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
-            <p className="text-base font-medium text-gray-200">No goals yet</p>
-            <p className="mt-1 text-sm text-gray-500">Create a goal to get started.</p>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="No goals yet"
+            description="Create a savings goal and track your progress over time."
+            action={{ label: "Add goal", onClick: openCreate }}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {goals.map((g) => (

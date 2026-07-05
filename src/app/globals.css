@@ -3,6 +3,15 @@
 :root {
   --background: #0d1117;
   --foreground: #ededed;
+
+  /* Radius scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Card padding */
+  --card-padding-sm: 16px;
+  --card-padding-md: 24px;
 }
 
 @theme inline {
@@ -10,10 +19,38 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-space-grotesk);
-  --animate-page-enter: pageEnter 220ms ease-out forwards;
-  --animate-card-enter: cardEnter 220ms ease-out backwards;
+
+  /*
+   * Motion tokens — single source of truth for animation timing across the app.
+   * Usage: `duration-fast`, `duration-base`, `duration-modal`, `duration-slow`,
+   * `ease-standard` Tailwind utilities, or `var(--duration-base)` etc. in CSS.
+   *   fast   → micro-interactions (hover/focus/press)
+   *   base   → small UI transitions (tabs, dropdown chrome, list items)
+   *   modal  → modal/dialog/toast open+close
+   *   slow   → progress bar fills, chart entrances, count-up-adjacent motion
+   */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-modal: 250ms;
+  --duration-slow: 400ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-page-enter: pageEnter var(--duration-base) var(--ease-standard) forwards;
+  --animate-card-enter: cardEnter var(--duration-base) var(--ease-standard) backwards;
+  --animate-list-item-enter: listItemEnter var(--duration-base) var(--ease-standard) backwards;
   --animate-status-pulse: statusPulse 600ms ease-in-out 1;
   --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+
+  /* Radius tokens → rounded-sm, rounded-card, rounded-card-lg */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-card: var(--radius-md);
+  --radius-card-lg: var(--radius-lg);
+
+  /* Card padding tokens → p-card-sm, p-card-md */
+  --spacing-card-sm: var(--card-padding-sm);
+  --spacing-card-md: var(--card-padding-md);
 }
 
 @keyframes fadeIn {
@@ -45,6 +82,17 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  /* Pure opacity fade — used for list rows, heatmap cells, chat bubbles.
+     Deliberately has no transform so staggered lists read as a fade, not a "reveal" slide. */
+  @keyframes listItemEnter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 
@@ -131,10 +179,13 @@ select option {
 }
 
 @layer components {
+  /* Shared micro-interaction transition for buttons/icon-buttons: hover color/bg/border + a
+     subtle press scale. Use this instead of ad hoc `transition-* duration-*` on interactive
+     controls so every button in the app shares the same timing. */
   .btn-interactive {
     transition-property: color, background-color, border-color, transform;
-    transition-duration: 150ms;
-    transition-timing-function: ease-in-out;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
   }
 
   .btn-interactive:active {
@@ -143,30 +194,44 @@ select option {
 
   .input-interactive {
     transition-property: border-color, box-shadow;
-    transition-duration: 150ms;
-    transition-timing-function: ease-in-out;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
   }
 
   .nav-link-interactive {
     transition-property: color, background-color, opacity, transform;
-    transition-duration: 200ms;
-    transition-timing-function: ease-in-out;
+    transition-duration: var(--duration-base);
+    transition-timing-function: var(--ease-standard);
   }
 
   .modal-overlay {
-    transition: opacity 250ms ease-out;
+    transition: opacity var(--duration-modal) var(--ease-standard);
   }
 
   .modal-panel {
     transition:
-      opacity 250ms ease-out,
-      transform 250ms ease-out;
+      opacity var(--duration-modal) var(--ease-standard),
+      transform var(--duration-modal) var(--ease-standard);
   }
 
   .toast-panel {
     transition:
-      opacity 250ms ease-out,
-      transform 250ms ease-out;
+      opacity var(--duration-modal) var(--ease-standard),
+      transform var(--duration-modal) var(--ease-standard);
+  }
+
+  /* Dropdown/menu chrome (e.g. custom popovers) — quick fade + scale from trigger point. */
+  .dropdown-panel {
+    transform-origin: top;
+    transition:
+      opacity var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
+  }
+
+  /* Progress bar fill (Budget/Goal/Category share bars). One shared duration for the
+     "grow to value" animation so equivalent bars never disagree on timing. */
+  .progress-bar-fill {
+    transition: width var(--duration-slow) var(--ease-standard);
   }
 
   .skeleton-shimmer {
@@ -193,8 +258,20 @@ select option {
 
   .modal-overlay,
   .modal-panel,
-  .toast-panel {
+  .toast-panel,
+  .dropdown-panel,
+  .progress-bar-fill {
     transition: none;
+  }
+
+  /* Keep color/background fades (allowed), drop transform-based motion (press scale, slide). */
+  .btn-interactive,
+  .nav-link-interactive {
+    transition-property: color, background-color, border-color, opacity;
+  }
+
+  .btn-interactive:active {
+    transform: none;
   }
 }
 

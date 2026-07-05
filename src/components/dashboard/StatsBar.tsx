@@ -2,7 +2,7 @@
 
 import { CalendarDays, CalendarCheck, TrendingDown, TrendingUp, Tag, BarChart2 } from "lucide-react";
 
-import { formatCurrency } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import AnimatedCard from "@/components/ui/AnimatedCard";
 import type { ExpenseStats } from "@/types";
@@ -18,12 +18,16 @@ function getMonthLabel(offset: number): string {
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
-function displayAmount(amount: number): React.ReactNode {
+function displayAmount(
+  amount: number,
+  formatCurrency: (amount: number) => string,
+): React.ReactNode {
   if (amount === 0) return <span className="text-gray-500">—</span>;
   return <>{formatCurrency(amount)}</>;
 }
 
 export default function StatsBar({ stats }: StatsBarProps) {
+  const formatCurrency = useFormatCurrency();
   const isUp = stats.totalThisMonth > stats.totalLastMonth;
   const isDown = stats.totalThisMonth < stats.totalLastMonth;
   const showPct = stats.totalLastMonth > 0;
@@ -39,7 +43,7 @@ export default function StatsBar({ stats }: StatsBarProps) {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <AnimatedCard staggerIndex={0} className="rounded-xl bg-gray-800 p-4">
+      <AnimatedCard staggerIndex={0} className="rounded-card bg-gray-800 p-card-sm">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-gray-400" />
@@ -61,12 +65,12 @@ export default function StatsBar({ stats }: StatsBarProps) {
           ) : null}
         </div>
         <p className="mt-2 text-xl font-semibold tabular-nums text-white">
-          {displayAmount(stats.totalThisMonth)}
+          {displayAmount(stats.totalThisMonth, formatCurrency)}
         </p>
         <p className="mt-1 text-[10px] text-gray-500">{getMonthLabel(0)}</p>
       </AnimatedCard>
 
-      <AnimatedCard staggerIndex={1} className="rounded-xl bg-gray-800 p-4">
+      <AnimatedCard staggerIndex={1} className="rounded-card bg-gray-800 p-card-sm">
         <div className="flex items-center gap-2">
           <CalendarCheck className="h-4 w-4 text-gray-400" />
           <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
@@ -85,7 +89,7 @@ export default function StatsBar({ stats }: StatsBarProps) {
         <p className="mt-1 text-[10px] text-gray-500">{getMonthLabel(-1)}</p>
       </AnimatedCard>
 
-      <AnimatedCard staggerIndex={2} className="rounded-xl bg-gray-800 p-4">
+      <AnimatedCard staggerIndex={2} className="rounded-card bg-gray-800 p-card-sm">
         <div className="flex items-center gap-2">
           <BarChart2 className="h-4 w-4 text-gray-400" />
           <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
@@ -102,7 +106,7 @@ export default function StatsBar({ stats }: StatsBarProps) {
         <p className="mt-1 text-[10px] text-gray-500">{getMonthLabel(0)}</p>
       </AnimatedCard>
 
-      <AnimatedCard staggerIndex={3} className="rounded-xl bg-gray-800 p-4">
+      <AnimatedCard staggerIndex={3} className="rounded-card bg-gray-800 p-card-sm">
         <div className="flex items-center gap-2">
           <Tag className="h-4 w-4 text-gray-400" />
           <p className="text-xs font-medium uppercase tracking-wider text-gray-400">

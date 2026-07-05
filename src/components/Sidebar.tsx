@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
 ];
 
 const settingsItems: NavItem[] = [
-  { href: "/settings/ai", label: "AI Settings", icon: Settings },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function isActiveRoute(pathname: string, href: string) {
@@ -165,7 +165,7 @@ export default function Sidebar({
           <img
             src="/vault-logo.svg"
             alt="Vault"
-            className="h-6 w-auto cursor-pointer transform transition-transform hover:scale-105 hover:-rotate-2"
+            className="h-6 w-auto cursor-pointer transform transition-transform duration-base ease-standard hover:scale-105 hover:-rotate-2"
           />
         </Link>
         <button
@@ -188,12 +188,6 @@ export default function Sidebar({
           />
         ))}
 
-        <div className="pb-1 pt-4">
-          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Settings
-          </p>
-        </div>
-
         {settingsItems.map((item) => (
           <SidebarNavLink key={item.href} {...item} pathname={pathname} />
         ))}
@@ -208,7 +202,7 @@ export default function Sidebar({
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-base ease-standard lg:hidden ${
           open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setOpen(false)}
@@ -217,7 +211,7 @@ export default function Sidebar({
 
       <aside
         aria-label="Navigation"
-        className={`fixed left-0 top-0 z-50 h-full w-[220px] border-r border-white/5 bg-vault-surface shadow-2xl transition-transform duration-300 ease-out lg:z-30 lg:translate-x-0 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-50 h-full w-[220px] border-r border-white/5 bg-vault-surface shadow-2xl transition-transform duration-base ease-standard lg:z-30 lg:translate-x-0 lg:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

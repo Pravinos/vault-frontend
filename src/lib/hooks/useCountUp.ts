@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-export function useCountUp(target: number, duration = 400): number {
+import { DURATION_SLOW, prefersReducedMotion } from "@/lib/motion";
+
+export function useCountUp(target: number, duration = DURATION_SLOW): number {
   const [value, setValue] = useState(0);
   const startTime = useRef<number | null>(null);
   const rafId = useRef<number | null>(null);
@@ -13,11 +15,7 @@ export function useCountUp(target: number, duration = 400): number {
       return;
     }
 
-    const prefersReduced =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-    if (prefersReduced) {
+    if (prefersReducedMotion()) {
       setValue(target);
       hasAnimated.current = true;
       return;

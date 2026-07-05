@@ -20,21 +20,21 @@ import { Info, LayoutDashboard } from "lucide-react";
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import BudgetHighlightsCard from "@/components/dashboard/BudgetHighlightsCard";
 import NetWorthCard from "@/components/dashboard/NetWorthCard";
-import AccountCard from "@/components/accounts/AccountCard";
+import AccountsStrip from "@/components/dashboard/AccountsStrip";
 import AnimatedCard from "@/components/ui/AnimatedCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Skeleton from "@/components/ui/Skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { getCategoryChartColor } from "@/lib/categoryChartColors";
+import { useFormatCurrency } from "@/lib/currencyContext";
+import { DURATION_SLOW, prefersReducedMotion } from "@/lib/motion";
 import { buildNetWorthHistory, formatShortMonth, type NetWorthHistoryDatum } from "@/lib/netWorthHistory";
+import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { useDashboard } from "@/lib/hooks/useDashboard";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useLatestSummary } from "@/lib/hooks/useLatestSummary";
 import { getMonthString } from "@/lib/utils";
-import type { AccountDashboardData } from "@/types/dashboard";
-
-const CHART_COLORS = ["#10b981", "#3b82f6", "#f43f5e", "#64748b", "#34d399", "#60a5fa"];
 
 type DonutSlice = {
   category: string;
@@ -48,7 +48,7 @@ type CashFlowBarDatum = {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       <Skeleton variant="card" className="h-28 rounded-xl" />
       <div className="flex gap-3 overflow-x-auto pb-1">
         {Array.from({ length: 4 }).map((_, index) => (
@@ -86,31 +86,6 @@ function ErrorState({ message }: { message: string }) {
   return <ErrorMessage message={message} onRetry={() => window.location.reload()} />;
 }
 
-function AccountsStrip({ accounts }: { accounts: AccountDashboardData[] }) {
-  return (
-    <div className="relative">
-      <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-0">
-        {accounts.slice(0, 8).map((account, index) => (
-          <Link
-            key={account.id}
-            href={`/accounts/${account.id}`}
-            className="w-[220px] shrink-0 snap-start sm:w-64"
-          >
-            <AccountCard
-              account={account}
-              compact
-              staggerIndex={index}
-              className="h-full transition-colors hover:border-gray-700"
-            />
-          </Link>
-        ))}
-        <div className="w-1 shrink-0 sm:hidden" />
-      </div>
-      <div className="pointer-events-none absolute bottom-2 right-0 top-0 w-8 bg-gradient-to-l from-[#0d1520] to-transparent sm:hidden" />
-    </div>
-  );
-}
-
 function StatCard({
   label,
   value,
@@ -128,6 +103,7 @@ function StatCard({
   isText?: boolean;
   staggerIndex?: number;
 }) {
+  const formatCurrency = useFormatCurrency();
   const formattedValue = typeof value === "number" ? formatCurrency(value) : value;
   const trendPositive = momPercent !== null && momPercent !== undefined ? momPercent >= 0 : null;
   const trendGood =
@@ -138,9 +114,14 @@ function StatCard({
       : !trendPositive;
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className="rounded-2xl bg-[#1a2332] p-4">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
-      <p className={`truncate font-bold ${isText ? "text-base" : "text-lg"} text-white`}>{formattedValue}</p>
+    <AnimatedCard
+      staggerIndex={staggerIndex}
+      className="rounded-xl border border-white/[0.04] bg-[#111820] p-3.5"
+    >
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+      <p className={`truncate font-semibold tabular-nums ${isText ? "text-sm" : "text-base"} text-gray-200`}>
+        {formattedValue}
+      </p>
       {momPercent !== null && momPercent !== undefined ? (
         <p className={`mt-1 text-xs ${trendGood ? "text-emerald-400" : "text-red-400"}`}>
           {momPercent > 0 ? "+" : ""}
@@ -162,18 +143,19 @@ function NetCashFlowCard({
   subtitle: string;
   staggerIndex?: number;
 }) {
+  const formatCurrency = useFormatCurrency();
   const displayValue = typeof animatedValue === "number" ? animatedValue : value;
   const tintClass =
     displayValue > 0
-      ? "bg-emerald-900/20 border border-emerald-800/40"
+      ? "bg-emerald-950/25 border border-emerald-900/25"
       : displayValue < 0
-      ? "bg-rose-900/20 border border-rose-800/40"
-      : "bg-[#1a2332] border border-transparent";
+      ? "bg-rose-950/25 border border-rose-900/25"
+      : "bg-[#111820] border border-white/[0.04]";
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-2xl p-4 ${tintClass}`}>
-      <div className="mb-2 flex items-center gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Net Cash Flow</p>
+    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-xl p-3.5 ${tintClass}`}>
+      <div className="mb-1.5 flex items-center gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Net Cash Flow</p>
 
         <div className="relative inline-flex group">
           <button
@@ -192,8 +174,8 @@ function NetCashFlowCard({
       </div>
 
       <p
-        className={`text-xl font-bold ${
-          displayValue > 0 ? "text-emerald-400" : displayValue < 0 ? "text-red-400" : "text-white"
+        className={`text-lg font-semibold tabular-nums ${
+          displayValue > 0 ? "text-emerald-400/90" : displayValue < 0 ? "text-red-400/90" : "text-gray-200"
         }`}
       >
         {formatCurrency(displayValue)}
@@ -203,6 +185,8 @@ function NetCashFlowCard({
 }
 
 function MonthlyTrendCard({ data, staggerIndex }: { data: CashFlowBarDatum[]; staggerIndex?: number }) {
+  const formatCurrency = useFormatCurrency();
+
   function formatYAxisTick(value: number) {
     const abs = Math.abs(Number(value) || 0);
     if (value === 0) return "0";
@@ -253,7 +237,14 @@ function MonthlyTrendCard({ data, staggerIndex }: { data: CashFlowBarDatum[]; st
                 );
               }}
             />
-            <Bar dataKey="net" radius={[6, 6, 0, 0]} minPointSize={3}>
+            <Bar
+              dataKey="net"
+              radius={[6, 6, 0, 0]}
+              minPointSize={3}
+              isAnimationActive={!prefersReducedMotion()}
+              animationDuration={DURATION_SLOW}
+              animationEasing="ease-out"
+            >
               {data.map((entry) => (
                 <Cell key={entry.month} fill={entry.net >= 0 ? "#10b981" : "#ef4444"} />
               ))}
@@ -283,8 +274,10 @@ function CategoryFocusCard({
   donutData: DonutSlice[];
   staggerIndex?: number;
 }) {
+  const formatCurrency = useFormatCurrency();
   const hasTopCategory = Boolean(category) && amount > 0;
   const share = total > 0 ? (amount / total) * 100 : 0;
+  const animatedShare = useAnimatedProgress(Math.min(Math.max(share, 0), 100));
   const donutSource =
     donutData.length > 0
       ? donutData
@@ -313,8 +306,8 @@ function CategoryFocusCard({
               <p className="mt-1 text-sm text-gray-300">{formatCurrency(amount)}</p>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-emerald-400"
-                  style={{ width: `${Math.min(Math.max(share, 0), 100)}%` }}
+                  className="progress-bar-fill h-full rounded-full bg-emerald-400"
+                  style={{ width: `${animatedShare}%` }}
                 />
               </div>
             </div>
@@ -333,22 +326,52 @@ function CategoryFocusCard({
                       innerRadius={34}
                       outerRadius={52}
                       paddingAngle={2}
+                      isAnimationActive={!prefersReducedMotion()}
+                      animationDuration={DURATION_SLOW}
+                      animationEasing="ease-out"
                     >
                       {donutSource.map((entry, index) => (
                         <Cell
                           key={`${entry.category}-${index}`}
-                          fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          fill={getCategoryChartColor(index)}
                         />
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#141c2a",
-                        border: "1px solid #334155",
-                        borderRadius: "8px",
-                        color: "#e2e8f0",
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+
+                        const point = payload[0];
+                        const categoryName = String(
+                          point.name ?? point.payload?.category ?? "",
+                        );
+                        const sliceTotal = Number(point.value ?? 0);
+                        const sliceIndex = donutSource.findIndex(
+                          (entry) => entry.category === categoryName,
+                        );
+                        const color = getCategoryChartColor(
+                          sliceIndex >= 0 ? sliceIndex : 0,
+                        );
+                        const sliceShare =
+                          total > 0 ? (sliceTotal / total) * 100 : 0;
+
+                        return (
+                          <div className="rounded-lg border border-slate-600 bg-[#141c2a] px-3 py-2 shadow-lg">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 flex-shrink-0 rounded-full"
+                                style={{ backgroundColor: color }}
+                              />
+                              <span className="text-sm font-medium text-slate-100">
+                                {categoryName}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm tabular-nums text-slate-300">
+                              {formatCurrency(sliceTotal)} · {sliceShare.toFixed(1)}%
+                            </p>
+                          </div>
+                        );
                       }}
-                      formatter={(value) => formatCurrency(Number(value ?? 0))}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -363,7 +386,13 @@ function CategoryFocusCard({
                 const entryShare = total > 0 ? (entry.total / total) * 100 : 0;
                 return (
                   <div key={`${entry.category}-${index}`} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate text-gray-200">{entry.category}</span>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2 w-2 flex-shrink-0 rounded-full"
+                        style={{ backgroundColor: getCategoryChartColor(index) }}
+                      />
+                      <span className="truncate text-gray-200">{entry.category}</span>
+                    </div>
                     <span className="whitespace-nowrap text-gray-400">
                       {formatCurrency(entry.total)} · {entryShare.toFixed(0)}%
                     </span>
@@ -438,7 +467,7 @@ export default function DashboardPage() {
   }, [monthRange, monthlyTrendData, dashboardData?.calculatedNetWorth])
 
   // Call count-up hooks unconditionally to preserve Hooks order across renders.
-  const calculatedAnimated = useCountUp(dashboardData?.calculatedNetWorth ?? 0, 600);
+  const calculatedAnimated = useCountUp(dashboardData?.calculatedNetWorth ?? 0);
   const manualAnimated = useCountUp(dashboardData?.manualNetWorth ?? 0);
   const incomeAnimated = useCountUp(dashboardData?.incomeThisMonth ?? 0);
   const expensesAnimated = useCountUp(dashboardData?.expensesThisMonth ?? 0);
@@ -468,11 +497,10 @@ export default function DashboardPage() {
       <div className="space-y-4 sm:space-y-6">
         <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
         <EmptyState
-          icon={<LayoutDashboard className="h-6 w-6" />}
+          icon={LayoutDashboard}
           title="No dashboard data"
           description="We couldn't load your financial overview. Try refreshing the page."
-          actionLabel="Refresh"
-          onAction={() => window.location.reload()}
+          action={{ label: "Refresh", onClick: () => window.location.reload() }}
         />
       </div>
     );
@@ -482,7 +510,7 @@ export default function DashboardPage() {
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
 
-      <div>
+      <div className="flex flex-col gap-4 sm:gap-5">
         <NetWorthCard
           calculated={dashboardData.calculatedNetWorth}
           manual={dashboardData.manualNetWorth}
@@ -492,59 +520,43 @@ export default function DashboardPage() {
           historyData={netWorthHistory}
         />
 
-        <div className="mt-6">
-          <AccountsStrip accounts={dashboardData.accounts.map((account) => {
+        <AccountsStrip
+          accounts={dashboardData.accounts.map((account) => {
             const metrics = investmentMetricsByAccountId.get(account.id);
-            return metrics
-              ? { ...account, ...metrics }
-              : account;
-          })} />
-        </div>
+            return metrics ? { ...account, ...metrics } : account;
+          })}
+        />
 
-        <div className="mt-6">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <StatCard
-              label="Income This Month"
-              value={incomeAnimated}
-              staggerIndex={0}
-            />
-            <StatCard
-              label="Expenses This Month"
-              value={expensesAnimated}
-              staggerIndex={1}
-            />
-            <NetCashFlowCard
-              value={dashboardData.netCashFlow}
-              animatedValue={netCashAnimated}
-              subtitle="Income - Expenses · transfers excluded"
-              staggerIndex={2}
-            />
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <BudgetHighlightsCard
-            month={currentMonth}
-            budgets={budgetItems}
-            alerts={dashboardData.budgetAlerts ?? []}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard label="Income This Month" value={incomeAnimated} staggerIndex={0} />
+          <StatCard label="Expenses This Month" value={expensesAnimated} staggerIndex={1} />
+          <NetCashFlowCard
+            value={dashboardData.netCashFlow}
+            animatedValue={netCashAnimated}
+            subtitle="Income - Expenses · transfers excluded"
+            staggerIndex={2}
           />
         </div>
 
-        <div className="mt-6">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-            <CategoryFocusCard
-              className="xl:col-span-3"
-              category={dashboardData.topExpenseCategory}
-              amount={dashboardData.topExpenseCategoryAmount}
-              total={dashboardData.expensesThisMonth}
-              monthLabel={dashboardData.currentMonthLabel}
-              donutData={categoryDonutData}
-              staggerIndex={0}
-            />
-            <div className="space-y-4 xl:col-span-2">
-              <MonthlyTrendCard data={monthlyTrendData} staggerIndex={1} />
-              <WeeklySummaryCard summary={summary} />
-            </div>
+        <BudgetHighlightsCard
+          month={currentMonth}
+          budgets={budgetItems}
+          alerts={dashboardData.budgetAlerts ?? []}
+        />
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <CategoryFocusCard
+            className="xl:col-span-3"
+            category={dashboardData.topExpenseCategory}
+            amount={dashboardData.topExpenseCategoryAmount}
+            total={dashboardData.expensesThisMonth}
+            monthLabel={dashboardData.currentMonthLabel}
+            donutData={categoryDonutData}
+            staggerIndex={0}
+          />
+          <div className="flex flex-col gap-6 xl:col-span-2">
+            <MonthlyTrendCard data={monthlyTrendData} staggerIndex={1} />
+            <WeeklySummaryCard summary={summary} />
           </div>
         </div>
       </div>

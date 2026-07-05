@@ -18,9 +18,9 @@ import SelectField from "@/components/ui/SelectField";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
 import {
-  formatCurrency,
   getCurrentTimestamp,
 } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useInvestmentMetricsMap } from "@/lib/hooks/useInvestmentMetricsMap";
 import { useAccountTransfers } from "@/lib/hooks/useAccountTransfers";
@@ -77,6 +77,7 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
 }
 
 export default function AccountsPage() {
+  const formatCurrency = useFormatCurrency();
   const [activeTab, setActiveTab] = useState<AccountsTab>("accounts");
 
   const [showForm, setShowForm] = useState<boolean>(false);
@@ -87,11 +88,13 @@ export default function AccountsPage() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [deleteTargetAccount, setDeleteTargetAccount] = useState<Account | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState<string>("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [selectedTransferAccountId, setSelectedTransferAccountId] = useState<string | null>(null);
   const [revertTargetTransfer, setRevertTargetTransfer] = useState<Transfer | null>(null);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [expandedAccountId, setExpandedAccountId] = useState<string | null>(null);
 
   const qc = useQueryClient();
@@ -144,18 +147,19 @@ export default function AccountsPage() {
 
   const openDeleteDialog = (account: Account) => {
     setDeleteTargetAccount(account);
+    setDeleteDialogOpen(true);
     setDeleteConfirmInput("");
     setDeleteError(null);
   };
 
+  // Requests the close (exit) animation; the account data is cleared afterwards via
+  // the Modal's `onClosed`, once it has actually finished fading/scaling out.
   const closeDeleteDialog = () => {
     if (deleteAccountMutation.isPending) {
       return;
     }
 
-    setDeleteTargetAccount(null);
-    setDeleteConfirmInput("");
-    setDeleteError(null);
+    setDeleteDialogOpen(false);
   };
 
   const handleDeleteAccount = async () => {
@@ -173,7 +177,7 @@ export default function AccountsPage() {
         setSelectedTransferAccountId(null);
       }
       setToast({ message: "Account permanently deleted", type: "success" });
-      setDeleteTargetAccount(null);
+      setDeleteDialogOpen(false);
       setDeleteConfirmInput("");
     } catch (deleteErrorValue) {
       const message = getApiErrorMessage(deleteErrorValue, "Unable to delete account.");
@@ -201,7 +205,7 @@ export default function AccountsPage() {
 
     try {
       await revertTransferMutation.mutateAsync(revertTargetTransfer.id);
-      setRevertTargetTransfer(null);
+      setRevertDialogOpen(false);
       setToast({ message: "Transfer reverted", type: "success" });
     } catch (revertError) {
       const message = getApiErrorMessage(revertError, "Unable to revert transfer.");
@@ -259,7 +263,7 @@ export default function AccountsPage() {
             <button
               type="button"
               onClick={openCreate}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
+              className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400 sm:w-auto sm:text-sm"
             >
               <Plus className="h-4 w-4" />
               Add Account
@@ -267,7 +271,7 @@ export default function AccountsPage() {
             <button
               type="button"
               onClick={openTransferFlow}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 transition-all duration-150 hover:border-emerald-400 hover:text-emerald-300 active:scale-95 sm:w-auto sm:text-sm"
+              className="btn-interactive inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 hover:border-emerald-400 hover:text-emerald-300 sm:w-auto sm:text-sm"
             >
               <ArrowLeftRight className="h-4 w-4" />
               Transfer
@@ -277,7 +281,7 @@ export default function AccountsPage() {
           <button
             type="button"
             onClick={() => setShowTransferForm(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+            className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
             disabled={!canOpenTransferForm}
           >
             <Plus className="h-4 w-4" />
@@ -291,7 +295,7 @@ export default function AccountsPage() {
           <button
             type="button"
             onClick={() => setActiveTab("accounts")}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-fast ${
               activeTab === "accounts"
                 ? "bg-emerald-500/10 text-emerald-400"
                 : "text-gray-400 hover:bg-white/5 hover:text-white"
@@ -304,7 +308,7 @@ export default function AccountsPage() {
             onClick={() => {
               openTransferTab();
             }}
-            className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-fast ${
               activeTab === "transfer"
                 ? "bg-emerald-500/10 text-emerald-400"
                 : "text-gray-400 hover:bg-white/5 hover:text-white"
@@ -317,7 +321,7 @@ export default function AccountsPage() {
       </div>
 
       {activeTab === "accounts" ? (
-        <div className="space-y-6">
+        <div key="accounts-tab" className="animate-list-item-enter space-y-6">
           {staleAccounts.length > 0 ? (
             <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
               <p className="text-sm font-medium text-amber-200">Weekly update reminder</p>
@@ -349,11 +353,10 @@ export default function AccountsPage() {
             </div>
           ) : accounts.length === 0 ? (
             <EmptyState
-              icon={<CreditCard className="w-12 h-12" />}
+              icon={CreditCard}
               title="No accounts yet"
-              description="Add your first account to get started"
-              actionLabel={<><PlusIcon className="h-4 w-4" /> Create your first account</>}
-              onAction={openCreate}
+              description="Add your first account to get started."
+              action={{ label: "Create your first account", onClick: openCreate }}
             />
           ) : (
             <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -431,7 +434,7 @@ export default function AccountsPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-5">
+        <div key="transfer-tab" className="animate-list-item-enter space-y-5">
           {accounts.length < 2 ? (
             <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center">
               <p className="text-base font-medium text-gray-200">At least two accounts are required</p>
@@ -512,7 +515,14 @@ export default function AccountsPage() {
                           amount={transfer.amount}
                           date={transfer.transferDate}
                           isReversal={reversal}
-                          onRevert={!reversal ? () => setRevertTargetTransfer(transfer) : undefined}
+                          onRevert={
+                            !reversal
+                              ? () => {
+                                  setRevertTargetTransfer(transfer);
+                                  setRevertDialogOpen(true);
+                                }
+                              : undefined
+                          }
                           note={transfer.note}
                           createdAt={transfer.createdAt}
                         />
@@ -552,7 +562,16 @@ export default function AccountsPage() {
       ) : null}
 
       {deleteTargetAccount ? (
-        <Modal isOpen={true} onClose={closeDeleteDialog} title="Permanently delete account">
+        <Modal
+          isOpen={deleteDialogOpen}
+          onClose={closeDeleteDialog}
+          onClosed={() => {
+            setDeleteTargetAccount(null);
+            setDeleteConfirmInput("");
+            setDeleteError(null);
+          }}
+          title="Permanently delete account"
+        >
           <div className="space-y-4">
             <p className="text-sm text-gray-300">
               This action permanently deletes
@@ -567,7 +586,7 @@ export default function AccountsPage() {
               type="text"
               value={deleteConfirmInput}
               onChange={(event) => setDeleteConfirmInput(event.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
+              className="input-interactive w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
               placeholder={deleteTargetAccount.name}
               autoFocus
               disabled={deleteAccountMutation.isPending}
@@ -583,7 +602,7 @@ export default function AccountsPage() {
               <button
                 type="button"
                 onClick={closeDeleteDialog}
-                className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+                className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
                 disabled={deleteAccountMutation.isPending}
               >
                 Cancel
@@ -591,7 +610,7 @@ export default function AccountsPage() {
               <button
                 type="button"
                 onClick={() => void handleDeleteAccount()}
-                className="w-full rounded-lg bg-red-600 px-4 py-2 text-base font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+                className="btn-interactive w-full rounded-lg bg-red-600 px-4 py-2 text-base font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
                 disabled={
                   deleteAccountMutation.isPending ||
                   deleteConfirmInput.trim() !== deleteTargetAccount.name
@@ -606,12 +625,13 @@ export default function AccountsPage() {
 
       {revertTargetTransfer ? (
         <Modal
-          isOpen={true}
+          isOpen={revertDialogOpen}
           onClose={() => {
             if (!revertTransferMutation.isPending) {
-              setRevertTargetTransfer(null);
+              setRevertDialogOpen(false);
             }
           }}
+          onClosed={() => setRevertTargetTransfer(null)}
           title="Revert transfer"
         >
           <div className="space-y-4">
@@ -631,8 +651,8 @@ export default function AccountsPage() {
             <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setRevertTargetTransfer(null)}
-                className="w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+                onClick={() => setRevertDialogOpen(false)}
+                className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
                 disabled={revertTransferMutation.isPending}
               >
                 Cancel
@@ -640,7 +660,7 @@ export default function AccountsPage() {
               <button
                 type="button"
                 onClick={() => void handleRevertTransfer()}
-                className="w-full rounded-lg bg-red-600 px-4 py-2 text-base font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+                className="btn-interactive w-full rounded-lg bg-red-600 px-4 py-2 text-base font-semibold text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
                 disabled={revertTransferMutation.isPending}
               >
                 {revertTransferMutation.isPending ? "Reverting..." : "Confirm revert"}

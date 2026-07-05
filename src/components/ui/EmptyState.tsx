@@ -1,45 +1,41 @@
 "use client";
 
-import type React from "react";
+import type { LucideIcon } from "lucide-react";
 
 type EmptyStateProps = {
-  icon: React.ReactNode;
+  icon: LucideIcon;
   title: string;
-  description?: string;
-  actionLabel?: React.ReactNode;
-  onAction?: () => void;
-  hideAction?: boolean;
-  actionDisabled?: boolean;
+  description: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+  };
 };
 
 export default function EmptyState({
-  icon,
+  icon: Icon,
   title,
   description,
-  actionLabel,
-  onAction,
-  hideAction,
-  actionDisabled = false,
+  action,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[400px] rounded-xl px-6 py-12 text-center">
+    <div className="flex min-h-[400px] h-full flex-col items-center justify-center rounded-card px-6 py-12 text-center">
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-800 text-gray-400">
-        {icon}
+        <Icon className="h-6 w-6" strokeWidth={1.5} />
       </div>
 
-      <h2 className="text-lg font-semibold text-slate-200 mb-1">{title}</h2>
-      {description ? (
-        <p className="text-sm text-slate-400 mb-6">{description}</p>
-      ) : null}
+      <h2 className="mb-1 text-lg font-semibold text-slate-200">{title}</h2>
+      <p className="mb-6 text-sm text-slate-400">{description}</p>
 
-      {!hideAction && actionLabel && onAction ? (
+      {action ? (
         <button
           type="button"
-          onClick={onAction}
-          disabled={actionDisabled}
+          onClick={action.onClick}
+          disabled={action.disabled}
           className="btn-interactive inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {actionLabel}
+          {action.label}
         </button>
       ) : null}
     </div>

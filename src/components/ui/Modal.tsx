@@ -10,14 +10,31 @@ type ModalProps = {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /**
+   * Called once the close (exit) animation has fully finished and the modal has unmounted
+   * itself internally. Use this — instead of unmounting the modal from a parent's conditional
+   * render on `onClose` — to let the fade/scale-out transition actually play. See
+   * ExpenseForm/AccountForm/etc. for the pattern: they keep a local `isOpen` state, pass
+   * `onClose` for the request-to-close action, and pass the real parent unmount through
+   * `onClosed`.
+   */
+  onClosed?: () => void;
 };
 
 const focusableSelector =
   "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({ isOpen, onClose, onClosed, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const { mounted, visible } = useEnterExitAnimation(isOpen);
+  const wasMountedRef = useRef(mounted);
+
+  useEffect(() => {
+    if (wasMountedRef.current && !mounted) {
+      onClosed?.();
+    }
+    wasMountedRef.current = mounted;
+  }, [mounted, onClosed]);
 
   const handleBackdropMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {

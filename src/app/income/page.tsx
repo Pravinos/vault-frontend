@@ -1,17 +1,20 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Download, Plus, Search, Wallet } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import IncomeFilters from "@/components/income/IncomeFilters";
 import IncomeForm from "@/components/income/IncomeForm";
 import IncomeList from "@/components/income/IncomeList";
+import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
 import Toast from "@/components/ui/Toast";
-import { formatCurrency, formatMonth, getLocalDateString, getMonthString } from "@/lib/utils";
+import { exportToCsv, getVaultExportFilename } from "@/lib/csv";
+import { formatMonth, getLocalDateString, getMonthString } from "@/lib/utils";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { useIncome } from "@/lib/hooks/useIncome";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useIncomeCategories } from "@/lib/hooks/useIncomeCategories";
@@ -20,6 +23,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import type { Income, CreateIncomePayload } from "@/types";
 
 export default function IncomePage() {
+  const formatCurrency = useFormatCurrency();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -148,18 +152,42 @@ export default function IncomePage() {
     setSelectedAccountId(null);
   };
 
+  const handleExportCsv = () => {
+    exportToCsv(
+      displayedIncome.map((entry) => ({
+        date: entry.incomeDate.slice(0, 10),
+        description: entry.note ?? "",
+        category: entry.categoryName,
+        account: entry.accountName,
+        amount: entry.amount,
+      })),
+      getVaultExportFilename("income", selectedMonth)
+    );
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-bold text-white sm:text-2xl">Income</h1>
-        <button
-          type="button"
-          onClick={handleAddClick}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white transition-all duration-150 hover:bg-emerald-400 active:scale-95 sm:w-auto sm:text-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Add Income
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={loading || displayedIncome.length === 0}
+            className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 hover:border-emerald-400 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:text-sm"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={handleAddClick}
+            className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400 sm:w-auto sm:text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Add Income
+          </button>
+        </div>
       </div>
 
       {!loading && !error && (
@@ -249,6 +277,13 @@ export default function IncomePage() {
               <Skeleton key={i} variant="text" className="h-14 rounded-xl" />
             ))}
           </div>
+        ) : baseFilteredIncome.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={Wallet}
+            title={`No income in ${monthLabel}`}
+            description="Try a different month or add your first income entry."
+            action={{ label: "Add income", onClick: handleAddClick }}
+          />
         ) : (
           <IncomeList
             income={displayedIncome}
