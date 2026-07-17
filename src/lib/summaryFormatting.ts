@@ -1,20 +1,29 @@
 const SUMMARY_READ_MORE_THRESHOLD = 180;
+export const SUMMARY_COLLAPSED_LINE_CLAMP = 4;
 
 const INSIGHT_KEYWORDS = ["practical tip", "allocate", "recommend", "suggestion"];
 
+function parseDateOnlyUtc(value: string): Date {
+  return new Date(`${value}T00:00:00Z`);
+}
+
 export function formatWeekRange(start: string, end: string): string {
-  const startDate = new Date(`${start}T00:00:00`);
-  const endDate = new Date(`${end}T00:00:00`);
+  const startDate = parseDateOnlyUtc(start);
+  const endDate = parseDateOnlyUtc(end);
 
   if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
     return `Week of ${start} - ${end}`;
   }
 
+  const dateOptions: Intl.DateTimeFormatOptions = { timeZone: "UTC" };
+
   const startLabel = startDate.toLocaleDateString("en-US", {
+    ...dateOptions,
     month: "short",
     day: "numeric",
   });
   const endLabel = endDate.toLocaleDateString("en-US", {
+    ...dateOptions,
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -39,7 +48,11 @@ export function formatGeneratedDate(value: string): string {
 }
 
 export function isSummaryTruncatable(text: string): boolean {
-  return text.trim().length > SUMMARY_READ_MORE_THRESHOLD;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const lineCount = trimmed.split("\n").length;
+  return lineCount > SUMMARY_COLLAPSED_LINE_CLAMP || trimmed.length > SUMMARY_READ_MORE_THRESHOLD;
 }
 
 export function extractSummaryInsight(text: string): string | null {

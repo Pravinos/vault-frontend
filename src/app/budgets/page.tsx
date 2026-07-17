@@ -20,7 +20,6 @@ import {
   useUpsertBudget,
 } from "@/lib/hooks/useBudgets";
 import { useCategories } from "@/lib/hooks/useCategories";
-import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
 import { useHighlightedBudgets } from "@/lib/hooks/useHighlightedBudgets";
 import {
@@ -66,6 +65,7 @@ export default function BudgetsPage() {
     null
   );
   const [savingCategoryId, setSavingCategoryId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const {
     data: summary = [],
@@ -82,7 +82,6 @@ export default function BudgetsPage() {
   const { data: categories = [] } = useCategories();
   const upsertBudgetMutation = useUpsertBudget();
   const deleteBudgetMutation = useDeleteBudget();
-  const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
   const budgetCategoryIds = useMemo(
     () => budgets.map((budget) => budget.categoryId),
     [budgets]
@@ -179,19 +178,30 @@ export default function BudgetsPage() {
     [selectedMonth, upsertBudgetMutation]
   );
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      confirmDelete(id, async () => {
-        try {
-          await deleteBudgetMutation.mutateAsync(id);
-          setToast({ message: "Budget deleted", type: "success" });
-        } catch {
-          setToast({ message: "Unable to delete budget.", type: "error" });
-        }
-      });
-    },
-    [deleteBudgetMutation, confirmDelete]
-  );
+  const deleteTarget = useMemo(() => {
+    if (!deleteTargetId) return null;
+    const budget = budgets.find((entry) => entry.id === deleteTargetId);
+    return {
+      id: deleteTargetId,
+      categoryName: budget?.categoryName ?? "this category",
+    };
+  }, [deleteTargetId, budgets]);
+
+  const handleDeleteRequest = useCallback((id: string) => {
+    setDeleteTargetId(id);
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+
+    try {
+      await deleteBudgetMutation.mutateAsync(deleteTargetId);
+      setDeleteTargetId(null);
+      setToast({ message: "Budget deleted", type: "success" });
+    } catch {
+      setToast({ message: "Unable to delete budget.", type: "error" });
+    }
+  };
 
   const handleToggleHighlight = (categoryId: number) => {
     const result = toggleHighlight(categoryId);
@@ -372,10 +382,7 @@ export default function BudgetsPage() {
                     item={item}
                     budgetId={budgetIdByCategoryId.get(item.categoryId)}
                     onSave={handleSave}
-                    onDelete={handleDelete}
-                    isPendingConfirm={isPendingConfirm(
-                      budgetIdByCategoryId.get(item.categoryId) ?? ""
-                    )}
+                    onDelete={handleDeleteRequest}
                     isSaving={savingCategoryId === item.categoryId}
                     showHighlightToggle={showHighlightControls}
                     isHighlighted={highlightedIds.includes(item.categoryId)}
@@ -395,6 +402,36 @@ export default function BudgetsPage() {
         onSubmit={handleAdd}
         isSubmitting={upsertBudgetMutation.isPending}
       />
+
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => !deleteBudgetMutation.isPending && setDeleteTargetId(null)}
+        title="Delete budget"
+      >
+        <p className="text-sm text-gray-400">
+          Are you sure you want to delete the{" "}
+          <span className="font-medium text-white">{deleteTarget?.categoryName}</span> budget for{" "}
+          {monthLabel}? This cannot be undone.
+        </p>
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            onClick={() => setDeleteTargetId(null)}
+            disabled={deleteBudgetMutation.isPending}
+            className="btn-interactive flex-1 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleConfirmDelete()}
+            disabled={deleteBudgetMutation.isPending}
+            className="btn-interactive flex-1 rounded-lg bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-400 disabled:opacity-50"
+          >
+            {deleteBudgetMutation.isPending ? "Deleting…" : "Delete budget"}
+          </button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showCopyConfirm}

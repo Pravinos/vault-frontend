@@ -202,6 +202,7 @@ export interface ChatMessage {
   provider?: string;
   model?: string;
   timestamp: string;
+  isError?: boolean;
 }
 
 export interface AiTaskConfig {

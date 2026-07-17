@@ -18,7 +18,6 @@ type BudgetCardProps = {
   budgetId: string | undefined;
   onSave: (categoryId: number, amount: number) => Promise<void>;
   onDelete: (id: string) => void;
-  isPendingConfirm: boolean;
   isSaving: boolean;
   showHighlightToggle?: boolean;
   isHighlighted?: boolean;
@@ -30,7 +29,6 @@ export default function BudgetCard({
   budgetId,
   onSave,
   onDelete,
-  isPendingConfirm,
   isSaving,
   showHighlightToggle = false,
   isHighlighted = false,
@@ -160,16 +158,9 @@ export default function BudgetCard({
             <button
               type="button"
               onClick={() => onDelete(budgetId)}
-              className={`btn-interactive rounded-md p-1.5 ${
-                isPendingConfirm
-                  ? "bg-rose-500/20 text-rose-300"
-                  : "text-gray-400 hover:bg-white/5 hover:text-rose-400"
-              }`}
-              aria-label={
-                isPendingConfirm
-                  ? `Confirm delete budget for ${item.categoryName}`
-                  : `Delete budget for ${item.categoryName}`
-              }
+              className="btn-interactive rounded-md p-1.5 text-gray-400 hover:bg-white/5 hover:text-rose-400"
+              title="Delete budget"
+              aria-label={`Delete budget for ${item.categoryName}`}
             >
               <Trash2 className="h-4 w-4" />
             </button>

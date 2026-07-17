@@ -53,6 +53,11 @@ async function forward(req: NextRequest, path: string[]) {
     );
   }
 
+  // 204/205 responses must not include a body — NextResponse throws otherwise.
+  if (backendRes.status === 204 || backendRes.status === 205) {
+    return new NextResponse(null, { status: backendRes.status });
+  }
+
   const responseText = await backendRes.text();
   const responseContentType = backendRes.headers.get("content-type") ?? "application/json";
 

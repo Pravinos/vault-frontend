@@ -7,13 +7,14 @@ import Tooltip from "@/components/ui/Tooltip";
 type ProviderModelInfoProps = {
   provider: string;
   model: string;
+  alwaysVisible?: boolean;
 };
 
-export default function ProviderModelInfo({ provider, model }: ProviderModelInfoProps) {
+export default function ProviderModelInfo({ provider, model, alwaysVisible = false }: ProviderModelInfoProps) {
   const label = `${provider} / ${model}`;
 
   return (
-    <div className="opacity-0 transition-opacity group-hover:opacity-100">
+    <div className={alwaysVisible ? "opacity-60" : "opacity-0 transition-opacity group-hover:opacity-100"}>
       <Tooltip content={label}>
         <button
           type="button"

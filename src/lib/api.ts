@@ -501,8 +501,11 @@ export async function deleteWeeklySummary(id: string): Promise<void> {
 }
 
 // AI Chat & Config
-export async function sendChatMessage(req: ChatRequest): Promise<ChatResponse> {
-  const response = await api.post<ChatResponse>("/ai/chat", req);
+export async function sendChatMessage(
+  req: ChatRequest,
+  signal?: AbortSignal,
+): Promise<ChatResponse> {
+  const response = await api.post<ChatResponse>("/ai/chat", req, { signal });
   return response.data;
 }
 
