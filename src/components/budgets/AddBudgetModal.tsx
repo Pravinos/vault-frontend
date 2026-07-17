@@ -49,9 +49,13 @@ export default function AddBudgetModal({
     const parsed = Number.parseFloat(amount);
     if (!isValidBudgetAmount(parsed)) return;
 
-    await onSubmit(categoryId, parsed);
-    reset();
-    onClose();
+    try {
+      await onSubmit(categoryId, parsed);
+      reset();
+      onClose();
+    } catch {
+      // Parent handles error toast; keep modal open with current values.
+    }
   };
 
   return (

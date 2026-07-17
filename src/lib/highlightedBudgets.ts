@@ -51,7 +51,7 @@ export function mergeBudgetSummaryItems(
   budgets: BudgetResponse[],
   summary: BudgetSummaryItem[]
 ): BudgetSummaryItem[] {
-  if (budgets.length === 0) return summary;
+  if (budgets.length === 0) return [];
 
   const summaryByCategoryId = new Map(summary.map((item) => [item.categoryId, item]));
 
