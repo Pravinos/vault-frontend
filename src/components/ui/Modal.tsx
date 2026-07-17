@@ -65,6 +65,12 @@ export default function Modal({ isOpen, onClose, onClosed, title, children }: Mo
     first.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
       if (event.key !== "Tab") {
         return;
       }
@@ -89,7 +95,7 @@ export default function Modal({ isOpen, onClose, onClosed, title, children }: Mo
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [mounted]);
+  }, [mounted, onClose]);
 
   if (!mounted) {
     return null;

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronDown, Download, Plus, Receipt, Search } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -8,10 +8,13 @@ import ExpenseFilters from "@/components/expenses/ExpenseFilters";
 import ExpenseForm from "@/components/expenses/ExpenseForm";
 import ExpenseHeatmap from "@/components/expenses/ExpenseHeatmap";
 import ExpenseList from "@/components/expenses/ExpenseList";
+import ActiveFilterPills from "@/components/ui/ActiveFilterPills";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
 import Skeleton from "@/components/ui/Skeleton";
+import Toast from "@/components/ui/Toast";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 import { exportToCsv, getVaultExportFilename } from "@/lib/csv";
 import { formatMonth, getLocalDateString, getMonthString } from "@/lib/utils";
 import { useFormatCurrency } from "@/lib/currencyContext";
@@ -22,16 +25,29 @@ import { useDeleteExpense } from "@/lib/hooks/useExpenseMutations";
 import { queryKeys } from "@/lib/queryKeys";
 import type { Expense, CreateExpenseRequest } from "@/types";
 
+function findCategoryByName(
+  categories: { id: number; name: string; icon: string }[],
+  name: string
+) {
+  const normalized = name.toLowerCase().trim();
+  return categories.find((c) => c.name.toLowerCase().trim() === normalized);
+}
+
 export default function ExpensesPage() {
   const formatCurrency = useFormatCurrency();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(getMonthString());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<boolean>(false);
   const [showHeatmap, setShowHeatmap] = useState<boolean>(true);
+  const [heatmapYear, setHeatmapYear] = useState<number>(() =>
+    parseInt(getMonthString().slice(0, 4), 10)
+  );
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [initialExpenseValues, setInitialExpenseValues] = useState<
     CreateExpenseRequest | undefined
   >(undefined);
@@ -45,6 +61,10 @@ export default function ExpensesPage() {
 
   const expenses = data?.expenses ?? [];
   const summary = data?.summary ?? null;
+
+  useEffect(() => {
+    setHeatmapYear(parseInt(selectedMonth.slice(0, 4), 10));
+  }, [selectedMonth]);
 
   const handleAddClick = () => {
     setEditingExpense(undefined);
@@ -65,7 +85,16 @@ export default function ExpensesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteExpenseMutation.mutateAsync(id);
+    try {
+      await deleteExpenseMutation.mutateAsync(id);
+      setToast({ message: "Expense deleted", type: "success" });
+    } catch (error) {
+      setToast({
+        message: getApiErrorMessage(error, "Unable to delete expense."),
+        type: "error",
+      });
+      throw error;
+    }
   };
 
   const handleEdit = (expense: Expense) => {
@@ -79,23 +108,34 @@ export default function ExpensesPage() {
     setInitialExpenseValues(undefined);
   }, []);
 
-  const handleFormSuccess = useCallback(async () => {
-    await qc.invalidateQueries({ queryKey: queryKeys.expenses(selectedMonth) });
-    await qc.invalidateQueries({ queryKey: queryKeys.expenseHeatmaps });
-    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
-    await qc.invalidateQueries({ queryKey: queryKeys.goals });
-  }, [qc, selectedMonth]);
+  const handleFormSuccess = useCallback(
+    async (message: string) => {
+      setToast({ message, type: "success" });
+      await qc.invalidateQueries({ queryKey: queryKeys.expenses(selectedMonth) });
+      await qc.invalidateQueries({ queryKey: queryKeys.expenseHeatmaps });
+      await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+      await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+      await qc.invalidateQueries({ queryKey: queryKeys.goals });
+    },
+    [qc, selectedMonth]
+  );
 
   const baseFilteredExpenses = useMemo(() => {
     let data = expenses;
-    if (selectedCategoryId !== null) data = data.filter((e) => e.category.id === selectedCategoryId);
+    if (selectedCategoryId !== null) {
+      data = data.filter((e) => e.category.id === selectedCategoryId);
+    } else if (selectedCategoryName) {
+      const normalized = selectedCategoryName.toLowerCase().trim();
+      data = data.filter(
+        (e) => e.category.name.toLowerCase().trim() === normalized
+      );
+    }
     if (selectedAccountId) data = data.filter((e) => e.accountId === selectedAccountId);
     if (selectedDate) {
       data = data.filter((e) => e.expenseDate.slice(0, 10) === selectedDate);
     }
     return data;
-  }, [expenses, selectedCategoryId, selectedAccountId, selectedDate]);
+  }, [expenses, selectedCategoryId, selectedCategoryName, selectedAccountId, selectedDate]);
 
   const displayedExpenses = useMemo(() => {
     if (!searchQuery.trim()) return baseFilteredExpenses;
@@ -109,7 +149,6 @@ export default function ExpensesPage() {
     });
   }, [baseFilteredExpenses, searchQuery]);
 
-  // Totals intentionally exclude search — search only narrows the visible list.
   const totalAmount = useMemo(
     () => baseFilteredExpenses.reduce((sum, e) => sum + e.amount, 0),
     [baseFilteredExpenses]
@@ -118,7 +157,12 @@ export default function ExpensesPage() {
   const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
 
   const hasActiveFilters =
-    selectedCategoryId !== null || selectedAccountId !== null || selectedDate !== null;
+    selectedCategoryId !== null ||
+    selectedCategoryName !== null ||
+    selectedAccountId !== null ||
+    selectedDate !== null;
+
+  const hasExportFilter = searchQuery.trim() !== "" || hasActiveFilters;
 
   const categorySummary = useMemo(() => {
     if (hasActiveFilters) {
@@ -147,7 +191,7 @@ export default function ExpensesPage() {
 
     return (summary?.byCategory ?? [])
       .map((item) => {
-        const category = categories.find((c) => c.name === item.category);
+        const category = findCategoryByName(categories, item.category);
         return {
           categoryId: category?.id,
           categoryName: item.category,
@@ -160,6 +204,7 @@ export default function ExpensesPage() {
 
   const clearFilters = () => {
     setSelectedCategoryId(null);
+    setSelectedCategoryName(null);
     setSelectedAccountId(null);
     setSelectedDate(null);
   };
@@ -184,12 +229,77 @@ export default function ExpensesPage() {
       })
     : "";
 
-  const handleCategoryChipClick = (categoryId: number | undefined) => {
-    if (!categoryId) {
+  const selectedCategoryLabel = useMemo(() => {
+    if (selectedCategoryId !== null) {
+      return (
+        categories.find((c) => c.id === selectedCategoryId)?.name ??
+        categorySummary.find((c) => c.categoryId === selectedCategoryId)?.categoryName
+      );
+    }
+    return selectedCategoryName;
+  }, [selectedCategoryId, selectedCategoryName, categories, categorySummary]);
+
+  const selectedAccountLabel = useMemo(
+    () => accounts.find((a) => a.id === selectedAccountId)?.name ?? null,
+    [accounts, selectedAccountId]
+  );
+
+  const filterPills = useMemo(() => {
+    const pills: { key: string; label: string; onRemove: () => void }[] = [];
+
+    if (selectedDate) {
+      pills.push({
+        key: "date",
+        label: `Date: ${selectedDateLabel}`,
+        onRemove: () => setSelectedDate(null),
+      });
+    }
+
+    if (selectedCategoryLabel) {
+      pills.push({
+        key: "category",
+        label: `Category: ${selectedCategoryLabel}`,
+        onRemove: () => {
+          setSelectedCategoryId(null);
+          setSelectedCategoryName(null);
+        },
+      });
+    }
+
+    if (selectedAccountLabel) {
+      pills.push({
+        key: "account",
+        label: `Account: ${selectedAccountLabel}`,
+        onRemove: () => setSelectedAccountId(null),
+      });
+    }
+
+    return pills;
+  }, [selectedDate, selectedDateLabel, selectedCategoryLabel, selectedAccountLabel]);
+
+  const handleCategoryChipClick = (
+    categoryId: number | undefined,
+    categoryName: string
+  ) => {
+    if (categoryId !== undefined) {
+      setSelectedCategoryName(null);
+      setSelectedCategoryId((prev) => (prev === categoryId ? null : categoryId));
       return;
     }
 
-    setSelectedCategoryId((prev) => (prev === categoryId ? null : categoryId));
+    setSelectedCategoryId(null);
+    setSelectedCategoryName((prev) =>
+      prev?.toLowerCase().trim() === categoryName.toLowerCase().trim() ? null : categoryName
+    );
+  };
+
+  const isCategoryChipActive = (categoryId: number | undefined, categoryName: string) => {
+    if (categoryId !== undefined) {
+      return selectedCategoryId === categoryId;
+    }
+    return (
+      selectedCategoryName?.toLowerCase().trim() === categoryName.toLowerCase().trim()
+    );
   };
 
   const handleExportCsv = () => {
@@ -217,7 +327,9 @@ export default function ExpensesPage() {
             className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 hover:border-emerald-400 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:text-sm"
           >
             <Download className="h-4 w-4" />
-            Export CSV
+            {hasExportFilter
+              ? `Export CSV (${displayedExpenses.length})`
+              : "Export CSV"}
           </button>
           <button
             type="button"
@@ -230,8 +342,13 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {!loading && !error && (
-        <div className="border-b border-gray-800 px-0 py-2">
+      <div className="border-b border-gray-800 px-0 py-2">
+        {loading ? (
+          <div className="mb-4 space-y-2">
+            <Skeleton variant="text" className="h-5 w-48" />
+            <Skeleton variant="text" className="h-4 w-32" />
+          </div>
+        ) : !error ? (
           <p className="mb-4 text-sm text-gray-400">
             <span className="font-semibold text-white">{formatCurrency(totalAmount)}</span>
             {selectedDate ? (
@@ -240,15 +357,21 @@ export default function ExpensesPage() {
               <> spent in {monthLabel}</>
             )}
             <span className="text-gray-600">
-              {" "}· {baseFilteredExpenses.length} {baseFilteredExpenses.length === 1 ? "entry" : "entries"}
+              {" "}
+              · {baseFilteredExpenses.length}{" "}
+              {baseFilteredExpenses.length === 1 ? "entry" : "entries"}
             </span>
           </p>
-        </div>
-      )}
+        ) : null}
+      </div>
 
       <div className="space-y-5">
         <div>
-          <TransactionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search expenses..." />
+          <TransactionSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search expenses..."
+          />
         </div>
 
         <div>
@@ -277,6 +400,8 @@ export default function ExpensesPage() {
               inert={!showHeatmap}
             >
               <ExpenseHeatmap
+                year={heatmapYear}
+                onYearChange={setHeatmapYear}
                 onDayClick={handleHeatmapDayClick}
                 selectedDate={selectedDate}
                 enabled={showHeatmap}
@@ -285,22 +410,6 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        {selectedDate ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs text-teal-200">
-              Filtered by: {selectedDateLabel}
-              <button
-                type="button"
-                onClick={() => setSelectedDate(null)}
-                className="text-teal-300 transition-colors hover:text-white"
-                aria-label="Clear date filter"
-              >
-                ✕
-              </button>
-            </span>
-          </div>
-        ) : null}
-
         <ExpenseFilters
           month={selectedMonth}
           categoryId={selectedCategoryId}
@@ -308,9 +417,14 @@ export default function ExpensesPage() {
           accountId={selectedAccountId}
           accounts={accounts}
           onMonthChange={handleMonthChange}
-          onCategoryChange={setSelectedCategoryId}
+          onCategoryChange={(id) => {
+            setSelectedCategoryId(id);
+            setSelectedCategoryName(null);
+          }}
           onAccountChange={setSelectedAccountId}
         />
+
+        <ActiveFilterPills pills={filterPills} onClearAll={clearFilters} />
 
         {!error && categorySummary.length > 0 && (
           <div className="mb-4 rounded-card-lg bg-surface-raised p-4">
@@ -321,20 +435,19 @@ export default function ExpensesPage() {
 
             <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {categorySummary.map(({ categoryId, categoryName, icon, total }) => {
-                const active = categoryId !== undefined && selectedCategoryId === categoryId;
+                const active = isCategoryChipActive(categoryId, categoryName);
 
                 return (
                   <button
                     key={categoryId ?? categoryName}
                     type="button"
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
+                    className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${
                       active
                         ? "border-red-400/60 bg-red-500/10"
                         : "border-white/10 bg-white/5 hover:bg-white/10"
                     }`}
-                    onClick={() => handleCategoryChipClick(categoryId)}
+                    onClick={() => handleCategoryChipClick(categoryId, categoryName)}
                     title="Click to filter by this category"
-                    disabled={categoryId === undefined}
                   >
                     <span className="text-base">{icon}</span>
                     <div>
@@ -356,14 +469,11 @@ export default function ExpensesPage() {
         )}
 
         {error ? (
-          <ErrorMessage
-            message="Unable to load expenses."
-            onRetry={() => void refetch()}
-          />
+          <ErrorMessage message="Unable to load expenses." onRetry={() => void refetch()} />
         ) : searchQuery.trim().length > 0 && !loading && displayedExpenses.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
             <Search className="mb-3 h-8 w-8 opacity-50" />
-            <p className="text-sm">No transactions match &quot;{searchQuery}&quot;</p>
+            <p className="text-sm">No expenses match &quot;{searchQuery}&quot;</p>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
@@ -403,13 +513,11 @@ export default function ExpensesPage() {
         ) : (
           <ExpenseList
             expenses={displayedExpenses}
-            monthLabel={monthLabel}
             hasActiveFilters={hasActiveFilters}
             onEdit={handleEdit}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onClearFilters={clearFilters}
-            onAddClick={handleAddClick}
           />
         )}
       </div>
@@ -420,9 +528,14 @@ export default function ExpensesPage() {
           initialValues={initialExpenseValues}
           categories={categories}
           accounts={accounts}
+          viewMonth={selectedMonth}
           onSuccess={handleFormSuccess}
           onClose={handleFormClose}
         />
+      ) : null}
+
+      {toast ? (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       ) : null}
     </div>
   );

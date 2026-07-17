@@ -1,18 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createIncome, updateIncome } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
-import { getLocalDateString } from "@/lib/utils";
+import { formatMonth, getLocalDateString } from "@/lib/utils";
 import type { Account, CreateIncomePayload, Income, IncomeCategory } from "@/types";
+
+function normalizeDate(value: string | undefined): string {
+  return (value ?? "").slice(0, 10);
+}
 
 type IncomeFormProps = {
   income?: Income;
   categories: IncomeCategory[];
   accounts: Account[];
+  viewMonth: string;
   initialValues?: Partial<CreateIncomePayload>;
   onSuccess: (message: string) => void;
   onClose: () => void;
@@ -30,6 +37,7 @@ export default function IncomeForm({
   income,
   categories,
   accounts,
+  viewMonth,
   initialValues,
   onSuccess,
   onClose,
@@ -43,7 +51,7 @@ export default function IncomeForm({
   );
   const [accountId, setAccountId] = useState<string>(income?.accountId ?? initialValues?.accountId ?? "");
   const [incomeDate, setIncomeDate] = useState<string>(
-    income?.incomeDate ?? initialValues?.incomeDate ?? getLocalDateString()
+    normalizeDate(income?.incomeDate ?? initialValues?.incomeDate) || getLocalDateString()
   );
   const [note, setNote] = useState<string>(income?.note ?? initialValues?.note ?? "");
   const [errors, setErrors] = useState<FormErrors>({});
@@ -56,6 +64,10 @@ export default function IncomeForm({
     () => [...categories].sort((a, b) => a.name.localeCompare(b.name)),
     [categories]
   );
+
+  const entryMonth = incomeDate.slice(0, 7);
+  const isCrossMonth = Boolean(entryMonth && viewMonth && entryMonth !== viewMonth);
+  const crossMonthLabel = entryMonth ? formatMonth(entryMonth) : "";
 
   const validate = (): boolean => {
     const nextErrors: FormErrors = {};
@@ -92,6 +104,10 @@ export default function IncomeForm({
       return;
     }
 
+    if (accounts.length === 0) {
+      return;
+    }
+
     setFormError(null);
     setIsSubmitting(true);
 
@@ -114,7 +130,7 @@ export default function IncomeForm({
 
       requestClose();
     } catch (error) {
-      setFormError("Unable to save income.");
+      setFormError(getApiErrorMessage(error, "Unable to save income."));
     } finally {
       setIsSubmitting(false);
     }
@@ -134,9 +150,22 @@ export default function IncomeForm({
           </p>
         ) : null}
 
+        {accounts.length === 0 ? (
+          <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            No accounts yet.{" "}
+            <Link href="/accounts" className="font-medium text-emerald-400 hover:text-emerald-300">
+              Create an account
+            </Link>{" "}
+            before adding income.
+          </p>
+        ) : null}
+
         <div>
-          <label className="text-sm text-gray-200">Amount</label>
+          <label htmlFor="income-amount" className="text-sm text-gray-200">
+            Amount
+          </label>
           <input
+            id="income-amount"
             type="number"
             min="0.01"
             step="0.01"
@@ -150,6 +179,7 @@ export default function IncomeForm({
 
         <div>
           <SelectField
+            id="income-category"
             label="Category"
             value={incomeCategoryId}
             onChange={(event) => setIncomeCategoryId(event.target.value)}
@@ -171,10 +201,12 @@ export default function IncomeForm({
 
         <div>
           <SelectField
+            id="income-account"
             label="Account"
             value={accountId}
             onChange={(event) => setAccountId(event.target.value)}
             required
+            disabled={accounts.length === 0}
           >
             <option value="" disabled>
               Select account
@@ -189,8 +221,11 @@ export default function IncomeForm({
         </div>
 
         <div>
-          <label className="text-sm text-gray-200">Date</label>
+          <label htmlFor="income-date" className="text-sm text-gray-200">
+            Date
+          </label>
           <input
+            id="income-date"
             type="date"
             value={incomeDate}
             onChange={(event) => setIncomeDate(event.target.value)}
@@ -198,11 +233,20 @@ export default function IncomeForm({
             required
           />
           {errors.incomeDate ? <p className="mt-1 text-xs text-red-400">{errors.incomeDate}</p> : null}
+          {isCrossMonth ? (
+            <p className="mt-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-200">
+              This income will appear in <span className="font-medium">{crossMonthLabel}</span> after
+              saving.
+            </p>
+          ) : null}
         </div>
 
         <div>
-          <label className="text-sm text-gray-200">Note</label>
+          <label htmlFor="income-note" className="text-sm text-gray-200">
+            Note
+          </label>
           <input
+            id="income-note"
             type="text"
             value={note}
             onChange={(event) => setNote(event.target.value)}
@@ -225,7 +269,7 @@ export default function IncomeForm({
           <button
             type="submit"
             className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
-            disabled={isSubmitting}
+            disabled={isSubmitting || accounts.length === 0}
           >
             {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}
           </button>

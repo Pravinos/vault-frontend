@@ -10,25 +10,19 @@ import type { Expense } from "@/types";
 
 type ExpenseListProps = {
   expenses: Expense[];
-  month?: string;
-  monthLabel?: string;
   hasActiveFilters?: boolean;
   onEdit: (expense: Expense) => void;
   onDuplicate?: (expense: Expense) => void;
   onDelete: (id: string) => void | Promise<void>;
-  onAddClick?: () => void;
   onClearFilters?: () => void;
 };
 
 export default function ExpenseList({
   expenses,
-  month,
-  monthLabel,
   hasActiveFilters,
   onEdit,
   onDuplicate,
   onDelete,
-  onAddClick,
   onClearFilters,
 }: ExpenseListProps) {
   const formatCurrency = useFormatCurrency();
@@ -44,14 +38,6 @@ export default function ExpenseList({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [activeConfirmId]);
-
-  const computedMonthLabel = month
-    ? new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      })
-    : "this period";
-  const effectiveMonthLabel = monthLabel ?? computedMonthLabel;
 
   const handleDelete = async (id: string) => {
     try {
@@ -125,6 +111,7 @@ export default function ExpenseList({
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs">{expense.category.icon}</span>
                     <span className="text-xs text-gray-400">{expense.category.name}</span>
+                    <span className="text-xs text-gray-500">· {expense.accountName}</span>
                     <span className="text-xs text-gray-500">{formatDate(expense.expenseDate)}</span>
                   </div>
                 </div>
@@ -152,6 +139,7 @@ export default function ExpenseList({
                       onClick={() => setActiveConfirmId((cur) => (cur === expense.id ? null : expense.id))}
                       className={`btn-interactive rounded-md px-2 py-1 text-xs font-medium ${isConfirming ? "bg-red-500/20 text-red-300" : "text-gray-400 hover:text-red-300"}`}
                       aria-label="Delete expense"
+                      aria-expanded={isConfirming}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -238,6 +226,7 @@ export default function ExpenseList({
                       onClick={() => setActiveConfirmId((cur) => (cur === expense.id ? null : expense.id))}
                       className={`btn-interactive rounded-md px-2 py-1 text-xs font-medium ${isConfirming ? "bg-red-500/20 text-red-300" : "text-gray-400 hover:text-red-300"}`}
                       aria-label="Delete expense"
+                      aria-expanded={isConfirming}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
