@@ -24,7 +24,10 @@ export function useGenerateSummary(onSuccess?: (summary: WeeklySummary) => void)
       const summary = await mutation.mutateAsync(undefined)
       setToast({ message: "Weekly summary generated", type: "success" });
       onSuccess?.(summary);
-    } catch {
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Summary generation failed:", error);
+      }
       setToast({
         message: "Summary generation failed - check your AI provider settings",
         type: "error",

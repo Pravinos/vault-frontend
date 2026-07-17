@@ -5,14 +5,19 @@ interface SelectFieldProps extends React.SelectHTMLAttributes<HTMLSelectElement>
   children: React.ReactNode;
 }
 
-export default function SelectField({ label, children, className, ...props }: SelectFieldProps) {
+export default function SelectField({ label, children, className, id, ...props }: SelectFieldProps) {
+  const fieldId = id ?? (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined);
+
   return (
     <div className={`w-full ${className ?? ""}`}>
       {label ? (
-        <label className="mb-2 block text-sm font-medium text-gray-300">{label}</label>
+        <label htmlFor={fieldId} className="mb-2 block text-sm font-medium text-gray-300">
+          {label}
+        </label>
       ) : null}
       <div className="relative w-full">
         <select
+          id={fieldId}
           {...props}
           className="w-full cursor-pointer appearance-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-10 text-base text-white input-interactive focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-50"
         >

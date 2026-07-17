@@ -97,7 +97,7 @@ export default function AccountCard({
 
   return (
     <div
-      className={`animate-card-enter rounded-card border border-gray-800 border-l-4 ${getAccountAccent(account.accountType)} bg-[#1a2332] p-card-sm ${
+      className={`animate-card-enter rounded-card border border-border border-l-4 ${getAccountAccent(account.accountType)} bg-surface-raised p-card-sm ${
         className ?? ""
       }`.trim()}
       style={staggerIndex !== undefined ? { animationDelay: `${staggerIndex * 50}ms` } : undefined}

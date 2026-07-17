@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, RefreshCw } from "lucide-react";
+import { Calendar, ChevronRight, RefreshCw } from "lucide-react";
 
 import ProviderModelInfo from "@/components/ui/ProviderModelInfo";
-import { useState } from "react";
+import SummaryTextExpandable from "@/components/summaries/SummaryTextExpandable";
 import Toast from "@/components/ui/Toast";
 import { useGenerateSummary } from "@/lib/hooks/useGenerateSummary";
 import { formatWeekRange } from "@/lib/summaryFormatting";
@@ -34,12 +34,10 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
     onGenerated?.(nextSummary);
   });
 
-  const [expanded, setExpanded] = useState(false);
-
   if (!summary) {
     return (
       <>
-        <div className="animate-card-enter flex h-full flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-[#1a2332] p-card-md">
+        <div className="animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md xl:h-full">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-white">Weekly Summary</h2>
@@ -48,7 +46,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
           <p className="mt-4 text-sm font-medium text-gray-200">No summary yet</p>
           <p className="mt-1 text-sm text-gray-400">Next summary: {getNextMondayLabel()}</p>
 
-          <div className="mt-5">
+          <div className="mt-5 xl:mt-auto xl:pt-5">
             <button
               type="button"
               onClick={generate}
@@ -68,7 +66,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
 
   return (
     <>
-      <div className="group animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-[#1a2332] p-card-md">
+      <div className="group animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md xl:h-full">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
@@ -87,40 +85,21 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
           </button>
         </div>
 
-        <div className="mt-4 text-sm leading-relaxed text-gray-200">
-          <p
-            className="whitespace-normal text-sm leading-relaxed text-gray-200"
-            style={
-              expanded
-                ? undefined
-                : {
-                    display: "-webkit-box",
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }
-            }
-          >
-            {summary.summaryText?.trim()}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => setExpanded((s) => !s)}
-            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
-          >
-            {expanded ? "Read less" : "Read more"}
-          </button>
-        </div>
+        <SummaryTextExpandable
+          text={summary.summaryText ?? ""}
+          showInsight={false}
+          className="mt-4"
+        />
 
         <div className="mt-3 text-sm text-gray-400">{formatWeekRange(summary.weekStart, summary.weekEnd)}</div>
 
-        <div className="flex items-center justify-between pt-3">
+        <div className="mt-4 flex items-center justify-between pt-3 xl:mt-auto">
           <Link
             href="/ai/summaries"
-            className="text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+            className="btn-interactive inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
           >
-            View history -&gt;
+            View history
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
           <ProviderModelInfo provider={summary.provider} model={summary.model} />
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Bot } from "lucide-react";
+import { AlertCircle, Bot } from "lucide-react";
 import type { ChatMessage } from "@/types";
 import { CURRENCY_OPTIONS } from "@/lib/currency";
 
@@ -9,16 +9,19 @@ interface ChatBubbleProps {
   message: ChatMessage;
 }
 
-const CURRENCY_SYMBOLS = CURRENCY_OPTIONS.map((option) =>
-  option.symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-).join("");
-const CURRENCY_AMOUNT_REGEX = new RegExp(
-  `([${CURRENCY_SYMBOLS}]\\s*\\d[\\d,.]*|\\d[\\d,.]*\\s*[${CURRENCY_SYMBOLS}]|\\d[\\d,.]*)`,
-  "g",
-);
+const CURRENCY_SYMBOLS = [...new Set(CURRENCY_OPTIONS.map((option) => option.symbol))]
+  .map((symbol) => symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+  .join("|");
 
-function boldNumbers(text: string): ReactNode {
-  const regex = CURRENCY_AMOUNT_REGEX;
+function createCurrencyAmountRegex(): RegExp {
+  return new RegExp(
+    `(?:${CURRENCY_SYMBOLS})\\s*\\d[\\d,]*(?:\\.\\d+)?|\\d[\\d,]*(?:\\.\\d+)?\\s*(?:${CURRENCY_SYMBOLS})`,
+    "g",
+  );
+}
+
+function boldCurrencyAmounts(text: string): ReactNode {
+  const regex = createCurrencyAmountRegex();
   const parts: ReactNode[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
@@ -44,7 +47,7 @@ function renderInline(text: string): ReactNode {
   let k = 0;
   while ((m = regex.exec(text)) !== null) {
     if (m.index > last) {
-      parts.push(<span key={k++}>{boldNumbers(text.slice(last, m.index))}</span>);
+      parts.push(<span key={k++}>{boldCurrencyAmounts(text.slice(last, m.index))}</span>);
     }
     if (m[1] !== undefined) {
       parts.push(
@@ -65,7 +68,7 @@ function renderInline(text: string): ReactNode {
     last = m.index + m[0].length;
   }
   if (last < text.length) {
-    parts.push(<span key={k++}>{boldNumbers(text.slice(last))}</span>);
+    parts.push(<span key={k++}>{boldCurrencyAmounts(text.slice(last))}</span>);
   }
   return <>{parts}</>;
 }
@@ -107,26 +110,37 @@ function renderMarkdown(text: string): ReactNode {
 
 export default function ChatBubble({ message }: ChatBubbleProps) {
   const isUser = message.role === "user";
+  const isError = message.isError === true;
 
   return (
     <div className={`animate-list-item-enter flex flex-col ${isUser ? "items-end" : "items-start"} gap-1`}>
       <div className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
         {!isUser && (
           <div className="mb-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center">
-            <Bot className="h-4 w-4 text-emerald-400" />
+            {isError ? (
+              <AlertCircle className="h-4 w-4 text-red-400" />
+            ) : (
+              <Bot className="h-4 w-4 text-emerald-400" />
+            )}
           </div>
         )}
         {isUser ? (
-          <div className="max-w-[70%] rounded-2xl rounded-br-sm bg-emerald-600 px-4 py-2.5 text-sm leading-relaxed break-words text-white">
+          <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-emerald-600 px-4 py-2.5 text-sm leading-relaxed break-words text-white sm:max-w-[70%]">
             {message.content}
           </div>
         ) : (
-          <div className="max-w-[70%] text-sm leading-relaxed break-words text-gray-100">
+          <div
+            className={`max-w-[85%] rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed break-words sm:max-w-[70%] ${
+              isError
+                ? "border border-red-500/30 bg-red-500/10 text-red-200"
+                : "border border-border bg-surface-sunken text-gray-100"
+            }`}
+          >
             {renderMarkdown(message.content)}
           </div>
         )}
       </div>
-      {!isUser && (message.provider || message.model) && (
+      {!isUser && !isError && (message.provider || message.model) && (
         <span className="ml-9 text-xs text-gray-500">
           {[message.provider, message.model].filter(Boolean).join(" · ")}
         </span>

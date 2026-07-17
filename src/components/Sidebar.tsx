@@ -28,19 +28,42 @@ type NavItem = {
   icon: ComponentType<{ className?: string }>;
 };
 
+type NavSection = {
+  section: string;
+  items: NavItem[];
+};
+
 const navRowWrapper = "flex w-full";
 const navRowPill =
   "nav-link-interactive inline-flex items-center gap-3 rounded-md px-3 py-2.5 text-base font-medium";
 
-const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/expenses", label: "Expenses", icon: Receipt },
-  { href: "/income", label: "Income", icon: TrendingUp },
-  { href: "/budgets", label: "Budgets", icon: PieChart },
-  { href: "/accounts", label: "Accounts", icon: Landmark },
-  { href: "/goals", label: "Goals", icon: Target },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/ai/summaries", label: "Summaries", icon: FileText },
+const navSections: NavSection[] = [
+  {
+    section: "Overview",
+    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    section: "Money",
+    items: [
+      { href: "/expenses", label: "Expenses", icon: Receipt },
+      { href: "/income", label: "Income", icon: TrendingUp },
+      { href: "/accounts", label: "Accounts", icon: Landmark },
+    ],
+  },
+  {
+    section: "Planning",
+    items: [
+      { href: "/budgets", label: "Budgets", icon: PieChart },
+      { href: "/goals", label: "Goals", icon: Target },
+    ],
+  },
+  {
+    section: "Assistant",
+    items: [
+      { href: "/chat", label: "Chat", icon: MessageSquare },
+      { href: "/ai/summaries", label: "Summaries", icon: FileText },
+    ],
+  },
 ];
 
 const settingsItems: NavItem[] = [
@@ -155,7 +178,7 @@ export default function Sidebar({
 
   const sidebarContent = (
     <div className="flex h-full w-[220px] flex-col bg-vault-surface">
-      <div className="relative flex items-center justify-center border-b border-white/5 px-5 py-5">
+      <div className="relative flex items-center justify-center border-b border-border px-5 py-5">
         <Link
           href="/dashboard"
           onMouseEnter={prefetchDashboard}
@@ -178,22 +201,33 @@ export default function Sidebar({
         </button>
       </div>
 
-      <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {navItems.map((item) => (
-          <SidebarNavLink
-            key={item.href}
-            {...item}
-            pathname={pathname}
-            onMouseEnter={item.href === "/dashboard" ? prefetchDashboard : undefined}
-          />
+      <nav aria-label="Main navigation" className="flex-1 overflow-y-auto px-3 py-4">
+        {navSections.map(({ section, items }) => (
+          <div key={section} className="mb-4 last:mb-0 max-lg:mb-3">
+            <p className="mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-gray-600 max-lg:sr-only">
+              {section}
+            </p>
+            <div className="space-y-0.5">
+              {items.map((item) => (
+                <SidebarNavLink
+                  key={item.href}
+                  {...item}
+                  pathname={pathname}
+                  onMouseEnter={item.href === "/dashboard" ? prefetchDashboard : undefined}
+                />
+              ))}
+            </div>
+          </div>
         ))}
 
-        {settingsItems.map((item) => (
-          <SidebarNavLink key={item.href} {...item} pathname={pathname} />
-        ))}
+        <div className="mt-4 border-t border-border pt-4">
+          {settingsItems.map((item) => (
+            <SidebarNavLink key={item.href} {...item} pathname={pathname} />
+          ))}
+        </div>
       </nav>
 
-      <div className="border-t border-white/5 px-3 py-4">
+      <div className="border-t border-border px-3 py-4">
         <SidebarNavButton label="Logout" icon={LogOut} onClick={handleLogout} />
       </div>
     </div>
@@ -211,7 +245,7 @@ export default function Sidebar({
 
       <aside
         aria-label="Navigation"
-        className={`fixed left-0 top-0 z-50 h-full w-[220px] border-r border-white/5 bg-vault-surface shadow-2xl transition-transform duration-base ease-standard lg:z-30 lg:translate-x-0 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-50 h-full w-[220px] border-r border-border bg-vault-surface shadow-2xl transition-transform duration-base ease-standard lg:z-30 lg:translate-x-0 lg:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

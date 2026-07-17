@@ -27,10 +27,8 @@ export default function AuthPageShell({
   const widthClass = maxWidth === "lg" ? "max-w-lg" : "max-w-md";
 
   return (
-    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#0d1520] py-10">
-      <div className="pointer-events-none absolute left-[-10%] top-[-20%] h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-[120px]" />
-      <div className="pointer-events-none absolute bottom-[-20%] right-[-10%] h-[600px] w-[600px] rounded-full bg-teal-500/8 blur-[140px]" />
-      <div className="pointer-events-none absolute right-[20%] top-[40%] h-[300px] w-[300px] rounded-full bg-emerald-400/5 blur-[100px]" />
+    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-app-bg py-10">
+      <div className="pointer-events-none absolute left-1/2 top-[-15%] h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-emerald-500/8 blur-[130px]" />
 
       <div className={`relative z-10 mx-4 w-full ${widthClass} space-y-4`}>
         {banner}

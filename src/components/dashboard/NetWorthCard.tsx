@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { LayoutDashboard, LineChart as LineChartIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, LayoutDashboard, LineChart as LineChartIcon } from "lucide-react";
 
 import { useFormatCurrency } from "@/lib/currencyContext";
 import { DURATION_MODAL, DURATION_SLOW, prefersReducedMotion } from "@/lib/motion";
@@ -118,14 +118,14 @@ export default function NetWorthCard({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-card bg-white/5 p-3">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="mb-1 text-xs font-medium text-gray-500">
                 Calculated
               </p>
               <p className="text-base font-bold text-emerald-400">{formatCurrency(headlineValue)}</p>
             </div>
 
             <div className="rounded-card bg-white/5 p-3">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="mb-1 text-xs font-medium text-gray-500">
                 Manual
               </p>
               <p className={`text-base font-bold ${manual !== null ? "text-blue-400" : "text-gray-600"}`}>
@@ -135,9 +135,14 @@ export default function NetWorthCard({
           </div>
 
           {drift !== null ? (
-            <div className="mt-3 flex items-center gap-2 border-t border-white/5 pt-3">
-              <span className={`text-xs font-semibold ${driftPositive ? "text-emerald-400" : "text-red-400"}`}>
-                {driftPositive ? "▲" : "▼"} {formatCurrency(Math.abs(drift))}
+            <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold ${driftPositive ? "text-emerald-400" : "text-red-400"}`}>
+                {driftPositive ? (
+                  <ArrowUp className="h-3 w-3" aria-hidden />
+                ) : (
+                  <ArrowDown className="h-3 w-3" aria-hidden />
+                )}
+                {formatCurrency(Math.abs(drift))}
               </span>
               <span className="ml-auto text-xs text-gray-500">manual vs calculated</span>
             </div>

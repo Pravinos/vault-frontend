@@ -24,12 +24,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1520] text-white">
+    <div className="min-h-screen bg-app-bg text-white">
       <TokenRefresher />
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
       <div className="min-h-screen overflow-x-hidden lg:ml-[220px]">
-        <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-white/5 bg-[#0f1923] px-4 py-4 lg:hidden">
+        <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-border bg-sidebar px-4 py-4 lg:hidden">
           <SidebarMenuButton onClick={() => setSidebarOpen(true)} />
           <Link
             href="/dashboard"

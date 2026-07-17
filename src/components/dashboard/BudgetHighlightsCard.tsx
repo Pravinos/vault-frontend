@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Pin } from "lucide-react";
+import { ChevronRight, Pin } from "lucide-react";
 
 import Modal from "@/components/ui/Modal";
 import { statusBarColor } from "@/lib/budgetStatus";
@@ -110,7 +110,7 @@ export default function BudgetHighlightsCard({
 
   return (
     <>
-      <div className="animate-card-enter rounded-card-lg border border-white/10 bg-[#1a1a1a] p-card-md">
+      <div className="animate-card-enter flex flex-col rounded-card-lg border border-border bg-surface-raised p-card-md xl:h-full">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-white">Budgets</h2>
@@ -124,24 +124,26 @@ export default function BudgetHighlightsCard({
           </div>
           <Link
             href="/budgets"
-            className="text-xs font-medium text-teal-400 transition-colors hover:text-teal-300"
+            className="btn-interactive inline-flex items-center gap-1 text-xs font-medium text-teal-400 hover:text-teal-300"
           >
-            View all budgets →
+            View all budgets
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
         {budgets.length === 0 ? (
-          <div className="rounded-card border border-dashed border-gray-700/70 p-card-sm text-center">
+          <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-border-strong p-card-sm text-center xl:flex-1">
             <p className="text-sm text-gray-400">No budgets set for this month.</p>
             <Link
               href="/budgets"
-              className="mt-2 inline-block text-xs font-medium text-teal-400 hover:text-teal-300"
+              className="btn-interactive mt-2 inline-flex items-center gap-1 text-xs font-medium text-teal-400 hover:text-teal-300"
             >
-              Set up budgets →
+              Set up budgets
+              <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         ) : canCustomize && !hasPinnedHighlights ? (
-          <div className="rounded-card border border-dashed border-teal-500/20 bg-teal-500/5 p-card-sm text-center">
+          <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-teal-500/20 bg-teal-500/5 p-card-sm text-center xl:flex-1">
             <p className="text-sm text-gray-300">
               Pin up to {MAX_HIGHLIGHTED_BUDGETS} budgets to track them here.
             </p>
@@ -158,7 +160,7 @@ export default function BudgetHighlightsCard({
             </button>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col xl:flex-1">
             <div className="space-y-3">
               {displayed.map((item) => (
                 <BudgetProgressRow
@@ -171,9 +173,9 @@ export default function BudgetHighlightsCard({
             </div>
 
             {alerts.length === 0 ? (
-              <p className="mt-4 text-sm text-gray-500">All budgets on track ✓</p>
+              <p className="mt-4 text-sm text-gray-500 xl:mt-auto xl:pt-4">All budgets on track ✓</p>
             ) : (
-              <p className="mt-4 text-xs text-gray-500">
+              <p className="mt-4 text-xs text-gray-500 xl:mt-auto xl:pt-4">
                 {alerts.length} categor{alerts.length === 1 ? "y needs" : "ies need"} attention
                 {" · "}
                 <Link href="/budgets" className="text-teal-400 hover:text-teal-300">
@@ -181,7 +183,7 @@ export default function BudgetHighlightsCard({
                 </Link>
               </p>
             )}
-          </>
+          </div>
         )}
       </div>
 

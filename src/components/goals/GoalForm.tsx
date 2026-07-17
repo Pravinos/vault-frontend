@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createGoal, updateGoal } from "@/lib/api";
+import { useFormatCurrency } from "@/lib/currencyContext";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Goal, CreateGoalRequest } from "@/types";
 
 type GoalFormProps = {
   goal?: Goal;
-  onSuccess: () => void;
+  onSuccess: (mode: "create" | "edit") => void | Promise<void>;
   onClose: () => void;
 };
 
@@ -22,7 +23,11 @@ type FormErrors = {
   description?: string;
 };
 
+const inputClassName =
+  "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-white placeholder:text-gray-600 focus:border-emerald-500/50 focus:outline-none";
+
 export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
+  const formatCurrency = useFormatCurrency();
   const { isOpen, requestClose } = useModalDismiss();
   const [name, setName] = useState(goal?.name ?? "");
   const [description, setDescription] = useState(goal?.description ?? "");
@@ -45,7 +50,8 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
     const nextErrors: FormErrors = {};
     if (!name.trim()) nextErrors.name = "Name is required";
     if (name.length > 100) nextErrors.name = "Max 100 characters";
-    if (!targetAmount || Number(targetAmount) < 0.01) nextErrors.targetAmount = "Target must be at least 0.01";
+    if (!targetAmount || Number(targetAmount) < 0.01)
+      nextErrors.targetAmount = "Target must be at least 0.01";
     if (!goalType) nextErrors.goalType = "Goal type is required";
     if (description.length > 255) nextErrors.description = "Max 255 characters";
     setErrors(nextErrors);
@@ -63,7 +69,11 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
       targetAmount: Number(targetAmount),
       goalType: goalType as "SHORT_TERM" | "LONG_TERM",
       deadline: deadline || undefined,
-      accountIds: selectedAccountIds.length ? selectedAccountIds : undefined,
+      accountIds: goal
+        ? selectedAccountIds
+        : selectedAccountIds.length
+          ? selectedAccountIds
+          : undefined,
     };
     try {
       if (goal) {
@@ -71,9 +81,9 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
       } else {
         await createGoal(payload);
       }
-      onSuccess();
+      onSuccess(isEditMode ? "edit" : "create");
       requestClose();
-    } catch (error) {
+    } catch {
       setFormError("Unable to save goal.");
     } finally {
       setIsSubmitting(false);
@@ -89,50 +99,69 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {formError ? (
-          <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">{formError}</p>
+          <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {formError}
+          </p>
         ) : null}
+
         <div>
-          <label className="text-sm text-gray-200">Name</label>
+          <label htmlFor="goal-name" className="mb-1.5 block text-sm text-gray-400">
+            Name
+          </label>
           <input
+            id="goal-name"
             type="text"
             value={name}
-            onChange={e => setName(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
+            onChange={(e) => setName(e.target.value)}
+            className={inputClassName}
             maxLength={100}
             required
           />
           {errors.name ? <p className="mt-1 text-xs text-red-400">{errors.name}</p> : null}
         </div>
+
         <div>
-          <label className="text-sm text-gray-200">Description</label>
+          <label htmlFor="goal-description" className="mb-1.5 block text-sm text-gray-400">
+            Description
+          </label>
           <input
+            id="goal-description"
             type="text"
             value={description}
-            onChange={e => setDescription(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
+            onChange={(e) => setDescription(e.target.value)}
+            className={inputClassName}
             maxLength={255}
             placeholder="Optional"
           />
-          {errors.description ? <p className="mt-1 text-xs text-red-400">{errors.description}</p> : null}
+          {errors.description ? (
+            <p className="mt-1 text-xs text-red-400">{errors.description}</p>
+          ) : null}
         </div>
+
         <div>
-          <label className="text-sm text-gray-200">Target amount</label>
+          <label htmlFor="goal-target" className="mb-1.5 block text-sm text-gray-400">
+            Target amount
+          </label>
           <input
+            id="goal-target"
             type="number"
             min="0.01"
             step="0.01"
             value={targetAmount}
-            onChange={e => setTargetAmount(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
+            onChange={(e) => setTargetAmount(e.target.value)}
+            className={inputClassName}
             required
           />
-          {errors.targetAmount ? <p className="mt-1 text-xs text-red-400">{errors.targetAmount}</p> : null}
+          {errors.targetAmount ? (
+            <p className="mt-1 text-xs text-red-400">{errors.targetAmount}</p>
+          ) : null}
         </div>
+
         <div>
           <SelectField
             label="Goal type"
             value={goalType}
-            onChange={e => setGoalType(e.target.value as "SHORT_TERM" | "LONG_TERM")}
+            onChange={(e) => setGoalType(e.target.value as "SHORT_TERM" | "LONG_TERM")}
             required
           >
             <option value="SHORT_TERM">Short Term</option>
@@ -140,55 +169,74 @@ export default function GoalForm({ goal, onSuccess, onClose }: GoalFormProps) {
           </SelectField>
           {errors.goalType ? <p className="mt-1 text-xs text-red-400">{errors.goalType}</p> : null}
         </div>
+
         <div>
-          <label className="text-sm text-gray-200">Deadline</label>
+          <label htmlFor="goal-deadline" className="mb-1.5 block text-sm text-gray-400">
+            Deadline
+          </label>
           <input
+            id="goal-deadline"
             type="date"
             value={deadline}
-            onChange={e => setDeadline(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-base text-white"
+            onChange={(e) => setDeadline(e.target.value)}
+            className={inputClassName}
           />
         </div>
+
+        <div>
+          <p className="text-sm text-gray-400">Link accounts</p>
+          <p className="mt-1 mb-2 text-xs text-gray-500">
+            Select accounts to include in goal progress (optional)
+          </p>
+          {accounts.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-white/10 px-3 py-4 text-center text-sm text-gray-500">
+              No accounts available. Create an account first to track progress.
+            </p>
+          ) : (
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-white/[0.02] p-2">
+              {accounts.map((a) => (
+                <label
+                  key={a.id}
+                  className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-200 transition hover:bg-white/5"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAccountIds.includes(a.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAccountIds((s) => [...s, a.id]);
+                      } else {
+                        setSelectedAccountIds((s) => s.filter((id) => id !== a.id));
+                      }
+                    }}
+                    className="rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-emerald-500/50"
+                  />
+                  <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                  <span className="shrink-0 tabular-nums text-xs text-gray-500">
+                    {formatCurrency(a.calculatedBalance)}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={requestClose}
-            className="btn-interactive w-full rounded-lg border border-gray-700 px-4 py-2 text-base text-gray-200 hover:border-gray-500 sm:w-auto sm:text-sm"
+            className="btn-interactive w-full rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5 sm:w-auto"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2 text-base font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:text-sm"
+            className="btn-interactive w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Saving..." : isEditMode ? "Save" : "Add"}
+            {isSubmitting ? "Saving…" : isEditMode ? "Save changes" : "Add goal"}
           </button>
-        </div>
-
-        <div>
-          <p className="text-sm text-gray-200">Link accounts</p>
-          <p className="mt-1 mb-2 text-xs text-gray-400">Select accounts to include in goal progress (optional)</p>
-          <div className="space-y-2">
-            {accounts.map((a) => (
-              <label key={a.id} className="flex items-center gap-2 text-sm text-gray-200">
-                <input
-                  type="checkbox"
-                  checked={selectedAccountIds.includes(a.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedAccountIds((s) => [...s, a.id]);
-                    } else {
-                      setSelectedAccountIds((s) => s.filter((id) => id !== a.id));
-                    }
-                  }}
-                />
-                <span className="flex-1">{a.name}</span>
-                <span className="text-xs text-gray-400">{Number(a.calculatedBalance).toFixed(2)}</span>
-              </label>
-            ))}
-          </div>
         </div>
       </form>
     </Modal>

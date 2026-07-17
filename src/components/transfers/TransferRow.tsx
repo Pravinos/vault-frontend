@@ -33,9 +33,9 @@ export default function TransferRow({
 }: TransferRowProps) {
   const formatCurrency = useFormatCurrency();
   return (
-    <div className="rounded-card border border-gray-800 bg-[#1a2332] p-3">
+    <div className="rounded-card border border-border bg-surface-raised p-3">
       <div className="relative flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1 rounded-sm bg-[#0f1923] p-3 border border-gray-800">
+        <div className="flex-1 rounded-sm bg-surface-sunken p-3 border border-border">
           <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">From</div>
           <div className="font-semibold text-white">{fromAccount.name}</div>
           {typeof fromAccount.balance === "number" ? (
@@ -53,7 +53,7 @@ export default function TransferRow({
           </div>
         </div>
 
-        <div className="flex-1 rounded-sm bg-[#0f1923] p-3 border border-gray-800">
+        <div className="flex-1 rounded-sm bg-surface-sunken p-3 border border-border">
           <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">To</div>
           <div className="font-semibold text-white">{toAccount.name}</div>
           {typeof toAccount.balance === "number" ? (
@@ -70,11 +70,16 @@ export default function TransferRow({
 
       <div className="mt-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          {note && note.trim() ? (
-            <p className="text-sm text-gray-300 truncate">{note}</p>
+          {date ? (
+            <p className="text-xs text-gray-400">
+              Transfer date: <span className="text-gray-300">{formatDate(date)}</span>
+            </p>
           ) : null}
-          {createdAt ? (
-            <p className="mt-1 text-xs text-gray-500">Created: {formatDate(createdAt)}</p>
+          {note && note.trim() ? (
+            <p className={`text-sm text-gray-300 truncate ${date ? "mt-1" : ""}`}>{note}</p>
+          ) : null}
+          {createdAt && formatDate(createdAt) !== formatDate(date) ? (
+            <p className="mt-1 text-xs text-gray-500">Recorded: {formatDate(createdAt)}</p>
           ) : null}
         </div>
 

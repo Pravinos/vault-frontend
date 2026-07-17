@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type AnimationEvent } from "react";
+import axios from "axios";
 import { ChevronDown, MessageSquarePlus } from "lucide-react";
 import { sendChatMessage } from "@/lib/api";
+import { getChatErrorMessage } from "@/lib/apiErrors";
 import type { ChatMessage } from "@/types";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ChatInput from "@/components/chat/ChatInput";
@@ -14,6 +16,11 @@ import ProviderBadge from "@/components/ui/ProviderBadge";
 import InfoBanner from "@/components/ui/InfoBanner";
 
 const SCROLL_THRESHOLD = 120;
+
+function isAbortError(error: unknown): boolean {
+  if (axios.isCancel(error)) return true;
+  return error instanceof DOMException && error.name === "AbortError";
+}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -30,12 +37,14 @@ export default function ChatPage() {
   const mountedRef = useRef(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const { data: aiConfig } = useAiSettings();
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      abortControllerRef.current?.abort();
     };
   }, []);
 
@@ -60,12 +69,16 @@ export default function ChatPage() {
     });
   };
 
-  const handleSend = async (content: string) => {
+  const handleSend = useCallback(async (content: string) => {
     if (sendingRef.current) return;
 
     const conversationId = conversationIdRef.current;
     sendingRef.current = true;
     shouldAutoScrollRef.current = true;
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -78,42 +91,58 @@ export default function ChatPage() {
     setIsTyping(true);
 
     try {
-      const response = await sendChatMessage({
-        message: content,
-        conversationId,
-      });
+      const response = await sendChatMessage(
+        {
+          message: content,
+          conversationId,
+        },
+        controller.signal,
+      );
 
       if (!mountedRef.current || conversationIdRef.current !== conversationId) return;
+
+      const reply = response.reply?.trim();
+      if (!reply) {
+        throw new Error("The AI provider returned an empty response.");
+      }
 
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: response.reply,
+        content: reply,
         provider: response.provider,
         model: response.model,
         timestamp: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch {
+    } catch (error) {
+      if (isAbortError(error)) return;
       if (!mountedRef.current || conversationIdRef.current !== conversationId) return;
 
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Sorry, something went wrong. Please try again.",
+        content: getChatErrorMessage(error),
         timestamp: new Date().toISOString(),
+        isError: true,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
+
       if (conversationIdRef.current === conversationId) {
         sendingRef.current = false;
         setIsTyping(false);
       }
     }
-  };
+  }, []);
 
   const resetConversation = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     conversationIdRef.current = crypto.randomUUID();
     sendingRef.current = false;
     shouldAutoScrollRef.current = true;
@@ -136,10 +165,6 @@ export default function ChatPage() {
     resetConversation();
   };
 
-  const handlePromptClick = (prompt: string) => {
-    handleSend(prompt);
-  };
-
   const onVaultEntranceEnd = (e: AnimationEvent<HTMLDivElement>) => {
     if (e.animationName === "vaultIconEntrance") {
       setVaultIconPulse(true);
@@ -149,11 +174,16 @@ export default function ChatPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold text-white sm:text-2xl">Chat</h1>
+        <div>
+          <h1 className="text-xl font-bold text-white sm:text-2xl">Chat</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Ask questions about your spending, budgets, and accounts.
+          </p>
+        </div>
         <button
           type="button"
           onClick={handleNewConversation}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-700 px-3 py-2 text-base text-gray-300 transition-colors hover:border-gray-500 hover:text-white sm:w-auto sm:text-sm"
+          className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-gray-300 hover:border-gray-500 hover:text-white sm:w-auto"
           title="New conversation"
         >
           <MessageSquarePlus className="h-4 w-4" />
@@ -168,20 +198,13 @@ export default function ChatPage() {
         />
       ) : null}
 
-      <div className="relative flex h-[70dvh] min-h-[520px] flex-col overflow-hidden rounded-2xl bg-[#1a2332]">
+      <div className="relative flex h-[70dvh] min-h-[520px] flex-col overflow-hidden rounded-card-lg bg-surface-raised">
         <div
           ref={scrollAreaRef}
           onScroll={handleScroll}
           className="min-h-0 flex-1 overflow-y-auto px-4 py-6"
         >
           <div className="mx-auto flex max-w-2xl flex-col gap-4">
-            <div>
-              <p className="text-lg font-semibold text-white">Vault AI</p>
-              <p className="mt-1 text-sm text-gray-400">
-                What do you want to know about your finances?
-              </p>
-            </div>
-
             {messages.length === 0 ? (
               <div className="flex flex-col items-center pb-4 pt-6 text-center">
                 <div
@@ -192,9 +215,13 @@ export default function ChatPage() {
                 >
                   <span className="text-2xl">🤖</span>
                 </div>
+                <p className="text-lg font-semibold text-white">Vault AI</p>
+                <p className="mt-1 text-sm text-gray-400">
+                  What do you want to know about your finances?
+                </p>
                 <SuggestedPrompts
                   disabled={isTyping}
-                  onPromptClick={handlePromptClick}
+                  onPromptClick={handleSend}
                 />
               </div>
             ) : (
@@ -217,7 +244,7 @@ export default function ChatPage() {
                 shouldAutoScrollRef.current = true;
                 scrollToBottom();
               }}
-              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-gray-700 bg-[#0f1923] text-gray-300 shadow-lg transition-all hover:text-white"
+              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-sunken text-gray-300 shadow-lg transition-all hover:text-white"
               aria-label="Scroll to bottom"
             >
               <ChevronDown className="h-4 w-4" />
@@ -225,8 +252,8 @@ export default function ChatPage() {
           </div>
         )}
 
-        <div className="sticky bottom-0 z-10 mx-auto w-full max-w-2xl flex-shrink-0">
-          <div className="px-4 pb-3">
+        <div className="sticky bottom-0 z-10 mx-auto w-full max-w-2xl flex-shrink-0 border-t border-border bg-surface-raised">
+          <div className="px-4 pt-2">
             <div className="flex items-center justify-end">
               {aiConfig?.chat?.provider && (
                 <ProviderBadge

@@ -7,11 +7,13 @@ export type { CurrencyCode } from "@/lib/currency";
 export function formatDate(dateStr: string): string {
   if (!dateStr) return "-";
 
-  // Support both date-only strings (YYYY-MM-DD) and full ISO timestamps
-  let date = new Date(dateStr);
+  // A bare date-only string (YYYY-MM-DD) is parsed by `new Date()` as UTC
+  // midnight, which renders as the *previous* day in negative-offset timezones
+  // (the Americas). Anchor it to local midnight so the calendar day is correct.
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+  let date = new Date(isDateOnly ? `${dateStr}T00:00:00` : dateStr);
 
   if (Number.isNaN(date.getTime())) {
-    // Try appending midnight for bare dates
     date = new Date(`${dateStr}T00:00:00`);
   }
 

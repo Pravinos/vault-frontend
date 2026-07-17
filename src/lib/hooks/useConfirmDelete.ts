@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useConfirmDelete() {
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const pendingIdRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPending = useCallback(() => {
+    pendingIdRef.current = null;
+    setPendingId(null);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -14,17 +20,21 @@ export function useConfirmDelete() {
 
   const handleDelete = useCallback(
     (id: string, onConfirm: () => void) => {
-      if (pendingId === id) {
+      if (pendingIdRef.current === id) {
         if (timerRef.current) clearTimeout(timerRef.current);
-        setPendingId(null);
+        clearPending();
         onConfirm();
-      } else {
-        if (timerRef.current) clearTimeout(timerRef.current);
-        setPendingId(id);
-        timerRef.current = setTimeout(() => setPendingId(null), 3000);
+        return;
       }
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+      pendingIdRef.current = id;
+      setPendingId(id);
+      timerRef.current = setTimeout(() => {
+        clearPending();
+      }, 3000);
     },
-    [pendingId]
+    [clearPending]
   );
 
   const isPendingConfirm = useCallback(

@@ -18,7 +18,6 @@ type BudgetCardProps = {
   budgetId: string | undefined;
   onSave: (categoryId: number, amount: number) => Promise<void>;
   onDelete: (id: string) => void;
-  isPendingConfirm: boolean;
   isSaving: boolean;
   showHighlightToggle?: boolean;
   isHighlighted?: boolean;
@@ -30,7 +29,6 @@ export default function BudgetCard({
   budgetId,
   onSave,
   onDelete,
-  isPendingConfirm,
   isSaving,
   showHighlightToggle = false,
   isHighlighted = false,
@@ -39,6 +37,7 @@ export default function BudgetCard({
   const formatCurrency = useFormatCurrency();
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(item.budgetAmount));
+  const [editError, setEditError] = useState<string | null>(null);
   const [statusPulse, setStatusPulse] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const prevStatusRef = useRef(item.status);
@@ -68,18 +67,20 @@ export default function BudgetCard({
 
   const startEdit = () => {
     setEditValue(String(item.budgetAmount));
+    setEditError(null);
     setEditing(true);
   };
 
   const cancelEdit = () => {
     setEditValue(String(item.budgetAmount));
+    setEditError(null);
     setEditing(false);
   };
 
   const saveEdit = async () => {
     const parsed = Number.parseFloat(editValue);
     if (!isValidBudgetAmount(parsed)) {
-      cancelEdit();
+      setEditError("Enter an amount greater than 0");
       return;
     }
     if (parsed === item.budgetAmount) {
@@ -97,8 +98,8 @@ export default function BudgetCard({
 
   return (
     <div
-      className={`animate-card-enter rounded-card border bg-[#1a1a1a] p-card-sm ${
-        isHighlighted ? "border-teal-500/40 ring-1 ring-teal-500/20" : "border-white/10"
+      className={`animate-card-enter rounded-card border bg-surface-raised p-card-sm ${
+        isHighlighted ? "border-teal-500/40 ring-1 ring-teal-500/20" : "border-border"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -157,16 +158,9 @@ export default function BudgetCard({
             <button
               type="button"
               onClick={() => onDelete(budgetId)}
-              className={`btn-interactive rounded-md p-1.5 ${
-                isPendingConfirm
-                  ? "bg-rose-500/20 text-rose-300"
-                  : "text-gray-400 hover:bg-white/5 hover:text-rose-400"
-              }`}
-              aria-label={
-                isPendingConfirm
-                  ? `Confirm delete budget for ${item.categoryName}`
-                  : `Delete budget for ${item.categoryName}`
-              }
+              className="btn-interactive rounded-md p-1.5 text-gray-400 hover:bg-white/5 hover:text-rose-400"
+              title="Delete budget"
+              aria-label={`Delete budget for ${item.categoryName}`}
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -184,25 +178,33 @@ export default function BudgetCard({
       <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           {editing ? (
-            <input
-              ref={inputRef}
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={editValue}
-              onChange={(event) => setEditValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void saveEdit();
-                }
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  cancelEdit();
-                }
-              }}
-              className="w-28 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-teal-500/50 focus:outline-none"
-            />
+            <>
+              <input
+                ref={inputRef}
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={editValue}
+                onChange={(event) => {
+                  setEditValue(event.target.value);
+                  setEditError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void saveEdit();
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    cancelEdit();
+                  }
+                }}
+                className="w-28 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-sm text-white focus:border-teal-500/50 focus:outline-none"
+              />
+              {editError ? (
+                <p className="mt-1 text-xs text-rose-400">{editError}</p>
+              ) : null}
+            </>
           ) : (
             <p className="text-sm text-gray-300">
               <span className="font-semibold text-white">{formatCurrency(item.spentAmount)}</span>

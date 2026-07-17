@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useExpenseHeatmap } from "@/lib/hooks/useExpenses";
@@ -13,6 +13,8 @@ const CELL_GAP = "3px";
 const DAY_LABEL_WIDTH = "0.75rem";
 
 type ExpenseHeatmapProps = {
+  year: number;
+  onYearChange: (year: number) => void;
   onDayClick?: (date: string) => void;
   selectedDate?: string | null;
   enabled?: boolean;
@@ -106,12 +108,13 @@ function HeatmapSkeleton({ weekColumnCount }: { weekColumnCount: number }) {
 }
 
 export default function ExpenseHeatmap({
+  year,
+  onYearChange,
   onDayClick,
   selectedDate = null,
   enabled = true,
 }: ExpenseHeatmapProps) {
   const formatCurrency = useFormatCurrency();
-  const [year, setYear] = useState(() => new Date().getFullYear());
   const { data, isLoading, error, refetch } = useExpenseHeatmap(year, enabled);
   const weekColumnCount = getWeekColumnCount(year);
   const gridWidth = getGridWidth(weekColumnCount);
@@ -177,7 +180,7 @@ export default function ExpenseHeatmap({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setYear((current) => current - 1)}
+            onClick={() => onYearChange(year - 1)}
             className="rounded p-1 text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
             aria-label="Previous year"
           >
@@ -188,7 +191,7 @@ export default function ExpenseHeatmap({
           </span>
           <button
             type="button"
-            onClick={() => setYear((current) => current + 1)}
+            onClick={() => onYearChange(year + 1)}
             className="rounded p-1 text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
             aria-label="Next year"
           >

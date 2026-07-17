@@ -20,10 +20,14 @@ import {
   useUpsertBudget,
 } from "@/lib/hooks/useBudgets";
 import { useCategories } from "@/lib/hooks/useCategories";
-import { useConfirmDelete } from "@/lib/hooks/useConfirmDelete";
 import { useAnimatedProgress } from "@/lib/hooks/useAnimatedProgress";
 import { useHighlightedBudgets } from "@/lib/hooks/useHighlightedBudgets";
-import { aggregateBudgetStatus, statusBarColor } from "@/lib/budgetStatus";
+import {
+  aggregateBudgetStatus,
+  statusBadgeClasses,
+  statusBarColor,
+  statusLabel,
+} from "@/lib/budgetStatus";
 import { formatMonth, getMonthString } from "@/lib/utils";
 import { useFormatCurrency } from "@/lib/currencyContext";
 
@@ -61,6 +65,7 @@ export default function BudgetsPage() {
     null
   );
   const [savingCategoryId, setSavingCategoryId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const {
     data: summary = [],
@@ -77,7 +82,6 @@ export default function BudgetsPage() {
   const { data: categories = [] } = useCategories();
   const upsertBudgetMutation = useUpsertBudget();
   const deleteBudgetMutation = useDeleteBudget();
-  const { handleDelete: confirmDelete, isPendingConfirm } = useConfirmDelete();
   const budgetCategoryIds = useMemo(
     () => budgets.map((budget) => budget.categoryId),
     [budgets]
@@ -93,10 +97,15 @@ export default function BudgetsPage() {
     void refetchBudgets();
   }, [refetchSummary, refetchBudgets]);
 
-  const budgetItems = useMemo(
-    () => mergeBudgetSummaryItems(budgets, summary),
-    [budgets, summary]
-  );
+  const budgetItems = useMemo(() => {
+    const items = mergeBudgetSummaryItems(budgets, summary);
+    const statusOrder = { OVER_BUDGET: 0, WARNING: 1, ON_TRACK: 2 };
+    return [...items].sort(
+      (a, b) =>
+        statusOrder[a.status] - statusOrder[b.status] ||
+        b.percentageUsed - a.percentageUsed
+    );
+  }, [budgets, summary]);
 
   const loading = summaryLoading || budgetsLoading;
   const monthLabel = formatMonth(selectedMonth);
@@ -169,19 +178,30 @@ export default function BudgetsPage() {
     [selectedMonth, upsertBudgetMutation]
   );
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      confirmDelete(id, async () => {
-        try {
-          await deleteBudgetMutation.mutateAsync(id);
-          setToast({ message: "Budget deleted", type: "success" });
-        } catch {
-          setToast({ message: "Unable to delete budget.", type: "error" });
-        }
-      });
-    },
-    [deleteBudgetMutation, confirmDelete]
-  );
+  const deleteTarget = useMemo(() => {
+    if (!deleteTargetId) return null;
+    const budget = budgets.find((entry) => entry.id === deleteTargetId);
+    return {
+      id: deleteTargetId,
+      categoryName: budget?.categoryName ?? "this category",
+    };
+  }, [deleteTargetId, budgets]);
+
+  const handleDeleteRequest = useCallback((id: string) => {
+    setDeleteTargetId(id);
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+
+    try {
+      await deleteBudgetMutation.mutateAsync(deleteTargetId);
+      setDeleteTargetId(null);
+      setToast({ message: "Budget deleted", type: "success" });
+    } catch {
+      setToast({ message: "Unable to delete budget.", type: "error" });
+    }
+  };
 
   const handleToggleHighlight = (categoryId: number) => {
     const result = toggleHighlight(categoryId);
@@ -259,11 +279,11 @@ export default function BudgetsPage() {
         <BudgetsPageSkeleton />
       ) : (
         <>
-          {budgetItems.length > 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-[#1a1a1a] p-4 sm:p-5">
+          {budgets.length > 0 ? (
+            <div className="rounded-card-lg border border-border bg-surface-raised p-4 sm:p-5">
               <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <p className="text-xs font-medium text-gray-500">
                     {monthLabel} summary
                   </p>
                   <p className="mt-1 text-sm text-gray-400">
@@ -277,9 +297,18 @@ export default function BudgetsPage() {
                     {" budgeted"}
                   </p>
                 </div>
-                <p className="text-xs text-gray-500">
-                  {formatCurrency(Math.max(totals.totalBudgeted - totals.totalSpent, 0))} remaining
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusBadgeClasses(totals.status)}`}
+                  >
+                    {statusLabel(totals.status)}
+                  </span>
+                  <p className="text-xs text-gray-500">
+                    {totals.totalSpent > totals.totalBudgeted
+                      ? `${formatCurrency(totals.totalSpent - totals.totalBudgeted)} over`
+                      : `${formatCurrency(totals.totalBudgeted - totals.totalSpent)} remaining`}
+                  </p>
+                </div>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
                 <div
@@ -290,12 +319,17 @@ export default function BudgetsPage() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
               disabled={availableCategories.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
+              title={
+                availableCategories.length === 0
+                  ? "All categories already have budgets this month"
+                  : undefined
+              }
+              className="btn-interactive inline-flex items-center gap-2 rounded-lg bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
               Add Budget
@@ -303,19 +337,28 @@ export default function BudgetsPage() {
             <button
               type="button"
               onClick={() => setShowCopyConfirm(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 transition hover:bg-white/5"
+              className="btn-interactive inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5"
             >
               <Copy className="h-4 w-4" />
               Copy from last month
             </button>
+            {availableCategories.length === 0 && budgetItems.length > 0 ? (
+              <p className="w-full text-xs text-gray-500 sm:w-auto">
+                All categories have budgets for {monthLabel}.
+              </p>
+            ) : null}
           </div>
 
-          {budgetItems.length === 0 ? (
+          {budgets.length === 0 ? (
             <EmptyState
               icon={PiggyBank}
               title={`No budgets for ${monthLabel}`}
               description="Set category budgets to track spending against your plan."
-              action={{ label: "Add budget", onClick: () => setShowAddModal(true) }}
+              action={{
+                label: "Add budget",
+                onClick: () => setShowAddModal(true),
+                disabled: availableCategories.length === 0,
+              }}
             />
           ) : (
             <>
@@ -339,10 +382,7 @@ export default function BudgetsPage() {
                     item={item}
                     budgetId={budgetIdByCategoryId.get(item.categoryId)}
                     onSave={handleSave}
-                    onDelete={handleDelete}
-                    isPendingConfirm={isPendingConfirm(
-                      budgetIdByCategoryId.get(item.categoryId) ?? ""
-                    )}
+                    onDelete={handleDeleteRequest}
                     isSaving={savingCategoryId === item.categoryId}
                     showHighlightToggle={showHighlightControls}
                     isHighlighted={highlightedIds.includes(item.categoryId)}
@@ -362,6 +402,36 @@ export default function BudgetsPage() {
         onSubmit={handleAdd}
         isSubmitting={upsertBudgetMutation.isPending}
       />
+
+      <Modal
+        isOpen={deleteTarget !== null}
+        onClose={() => !deleteBudgetMutation.isPending && setDeleteTargetId(null)}
+        title="Delete budget"
+      >
+        <p className="text-sm text-gray-400">
+          Are you sure you want to delete the{" "}
+          <span className="font-medium text-white">{deleteTarget?.categoryName}</span> budget for{" "}
+          {monthLabel}? This cannot be undone.
+        </p>
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            onClick={() => setDeleteTargetId(null)}
+            disabled={deleteBudgetMutation.isPending}
+            className="btn-interactive flex-1 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/5 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleConfirmDelete()}
+            disabled={deleteBudgetMutation.isPending}
+            className="btn-interactive flex-1 rounded-lg bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-400 disabled:opacity-50"
+          >
+            {deleteBudgetMutation.isPending ? "Deleting…" : "Delete budget"}
+          </button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showCopyConfirm}

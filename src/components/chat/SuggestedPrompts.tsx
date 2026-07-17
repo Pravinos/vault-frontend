@@ -67,8 +67,8 @@ export default function SuggestedPrompts({
             onClick={() => onPromptClick(prompt.text)}
             className={
               isFeatured
-                ? `col-span-full border-[1px] border-[rgba(29,158,117,0.6)] bg-[rgba(29,158,117,0.08)] text-white ${PROMPT_BUTTON_CLASS}`
-                : `border border-gray-700 bg-[#0f1923] text-gray-200 hover:border-emerald-700/60 hover:bg-[#0f2430] hover:text-white ${PROMPT_BUTTON_CLASS}`
+                ? `col-span-full border border-emerald-500/40 bg-emerald-500/10 text-white ${PROMPT_BUTTON_CLASS}`
+                : `border border-border bg-surface-sunken text-gray-200 hover:border-emerald-700/60 hover:bg-surface-raised hover:text-white ${PROMPT_BUTTON_CLASS}`
             }
           >
             <Icon

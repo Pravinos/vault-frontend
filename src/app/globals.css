@@ -21,6 +21,31 @@
   --font-mono: var(--font-space-grotesk);
 
   /*
+   * Semantic surface + border + accent tokens — single source of truth for the
+   * dark theme. Use `bg-surface`, `bg-surface-raised`, `bg-surface-sunken`,
+   * `border-border`, `text-positive`, etc. instead of ad-hoc hex values so
+   * every card on a screen agrees on color, depth and hairline weight.
+   *   app-bg          → page background
+   *   sidebar         → sidebar / header chrome
+   *   surface         → standard card
+   *   surface-raised  → prominent / chart cards
+   *   surface-sunken  → nested panels inside a card
+   */
+  --color-app-bg: #0d1520;
+  --color-sidebar: #0f1923;
+  --color-surface: #111820;
+  --color-surface-raised: #1a2332;
+  --color-surface-sunken: #141c2a;
+
+  --color-border: rgb(255 255 255 / 0.06);
+  --color-border-strong: rgb(255 255 255 / 0.1);
+
+  --color-positive: #34d399;
+  --color-negative: #f87171;
+  --color-warning: #fbbf24;
+  --color-accent: #1d9e75;
+
+  /*
    * Motion tokens — single source of truth for animation timing across the app.
    * Usage: `duration-fast`, `duration-base`, `duration-modal`, `duration-slow`,
    * `ease-standard` Tailwind utilities, or `var(--duration-base)` etc. in CSS.
@@ -174,7 +199,7 @@ input[type="time"] {
 }
 
 select option {
-  background-color: #1a2332;
+  background-color: var(--color-surface-raised);
   color: #ffffff;
 }
 

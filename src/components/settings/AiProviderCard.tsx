@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getLmStudioModels, getGroqModels } from "@/lib/api";
 import type { AiTaskConfig } from "@/types";
+import type { ProviderConnectivityStatus } from "@/lib/hooks/useAiProviderModels";
 import ConnectivityIndicator from "./ConnectivityIndicator";
 import ModelDropdown from "./ModelDropdown";
 
@@ -13,6 +12,11 @@ interface AiProviderCardProps {
   task: "chat" | "summary";
   config: AiTaskConfig;
   note?: string;
+  lmModels: string[];
+  groqModels: string[];
+  lmStatus: ProviderConnectivityStatus;
+  groqStatus: ProviderConnectivityStatus;
+  onRetryConnectivity?: () => void;
   onChange: (next: { provider: Provider; model: string }) => void;
 }
 
@@ -28,54 +32,23 @@ export default function AiProviderCard({
   task,
   config,
   note,
+  lmModels,
+  groqModels,
+  lmStatus,
+  groqStatus,
+  onRetryConnectivity,
   onChange,
 }: AiProviderCardProps) {
   const provider = config.provider as Provider;
   const model = config.model;
-  const [lmModels, setLmModels] = useState<string[]>([]);
-  const [groqModels, setGroqModels] = useState<string[]>([]);
-  const [lmStatus, setLmStatus] = useState<"loading" | "connected" | "disconnected">("loading");
-  const [groqStatus, setGroqStatus] = useState<"loading" | "connected" | "disconnected">("loading");
-
-  useEffect(() => {
-    getLmStudioModels()
-      .then((models) => {
-        setLmModels(models);
-        setLmStatus("connected");
-      })
-      .catch(() => {
-        setLmModels([]);
-        setLmStatus("disconnected");
-      });
-
-    getGroqModels()
-      .then((models) => {
-        setGroqModels(models);
-        setGroqStatus("connected");
-      })
-      .catch(() => {
-        setGroqModels([]);
-        setGroqStatus("disconnected");
-      });
-  }, []);
-
-  useEffect(() => {
-    if (provider === "lmstudio" && !model && lmModels[0]) {
-      onChange({ provider: "lmstudio", model: lmModels[0] });
-    }
-  }, [provider, model, lmModels, onChange]);
-
-  useEffect(() => {
-    if (provider === "groq" && !model && groqModels[0]) {
-      onChange({ provider: "groq", model: groqModels[0] });
-    }
-  }, [provider, model, groqModels, onChange]);
 
   const activeModels = provider === "lmstudio" ? lmModels : groqModels;
+  const activeStatus = provider === "lmstudio" ? lmStatus : groqStatus;
+  const providerUnavailable = activeStatus === "disconnected" && activeModels.length === 0;
 
   const handleProviderChange = (next: Provider) => {
     const nextModels = next === "lmstudio" ? lmModels : groqModels;
-    const nextModel = nextModels[0] ?? "";
+    const nextModel = nextModels.includes(model) ? model : (nextModels[0] ?? "");
     onChange({ provider: next, model: nextModel });
   };
 
@@ -84,61 +57,89 @@ export default function AiProviderCard({
   };
 
   return (
-    <div className="rounded-card border border-gray-800 bg-gray-900 p-card-md">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-card border border-border bg-surface-raised p-card-md">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-white">{title}</h3>
-        {provider === "lmstudio" && <ConnectivityIndicator status={lmStatus} />}
-        {provider === "groq" && <ConnectivityIndicator status={groqStatus} />}
+        <ConnectivityIndicator
+          status={activeStatus}
+          onRetry={activeStatus === "disconnected" ? onRetryConnectivity : undefined}
+        />
       </div>
 
       <div className="flex flex-col gap-4">
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Provider</p>
+        <fieldset>
+          <legend className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+            Provider
+          </legend>
 
-          <div className="provider-toggle inline-flex bg-white/5 border border-white/10 rounded-lg p-1 gap-2">
+          <div
+            className="inline-flex gap-1 rounded-lg border border-border-strong bg-white/5 p-1"
+            role="radiogroup"
+            aria-label={`${title} provider`}
+          >
             <button
               type="button"
+              role="radio"
+              aria-checked={provider === "lmstudio"}
               onClick={() => handleProviderChange("lmstudio")}
-              className={`flex flex-col items-start px-3 py-2 rounded-md transition-colors ${
+              className={`flex flex-col items-start rounded-md px-3 py-2 transition-colors ${
                 provider === "lmstudio"
-                  ? "bg-emerald-600 text-white font-medium"
-                  : "bg-transparent text-gray-400"
+                  ? "bg-emerald-600 font-medium text-white"
+                  : "bg-transparent text-gray-400 hover:text-gray-300"
               }`}
             >
               <span className="text-sm font-medium">LM Studio</span>
-              <span className="text-xs opacity-60 leading-tight">Local</span>
+              <span className="text-xs leading-tight opacity-60">Local</span>
             </button>
 
             <button
               type="button"
+              role="radio"
+              aria-checked={provider === "groq"}
               onClick={() => handleProviderChange("groq")}
-              className={`flex flex-col items-start px-3 py-2 rounded-md transition-colors ${
+              className={`flex flex-col items-start rounded-md px-3 py-2 transition-colors ${
                 provider === "groq"
-                  ? "bg-emerald-600 text-white font-medium"
-                  : "bg-transparent text-gray-400"
+                  ? "bg-emerald-600 font-medium text-white"
+                  : "bg-transparent text-gray-400 hover:text-gray-300"
               }`}
             >
               <span className="text-sm font-medium">Groq</span>
-              <span className="text-xs opacity-60 leading-tight">Cloud · Fast</span>
+              <span className="text-xs leading-tight opacity-60">Cloud · Fast</span>
             </button>
           </div>
-        </div>
+        </fieldset>
 
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Model</p>
-          <ModelDropdown models={activeModels} value={model} onChange={handleModelChange} />
+          <ModelDropdown
+            models={activeModels}
+            value={model}
+            onChange={handleModelChange}
+            disabled={providerUnavailable}
+          />
+
+          {providerUnavailable && (
+            <p className="mt-2 text-xs text-negative">
+              Cannot reach {provider === "lmstudio" ? "LM Studio" : "Groq"}. Check your backend
+              configuration{onRetryConnectivity ? " or retry the connection" : ""}.
+            </p>
+          )}
+
+          {!model && activeModels.length > 0 && (
+            <p className="mt-2 text-xs text-warning">Select a model to use for {task}.</p>
+          )}
 
           {MODEL_DESCRIPTIONS[model] && (
-            <p className="mt-2 text-xs text-gray-400 flex items-center gap-2">
-              <span>💡</span>
+            <p className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+              <span aria-hidden="true">💡</span>
               {MODEL_DESCRIPTIONS[model]}
             </p>
           )}
         </div>
 
         {note && (
-          <p className="text-xs text-gray-400 flex items-center gap-2 mt-1 mb-0">
-            <span>💡</span>
+          <p className="mb-0 mt-1 flex items-center gap-2 text-xs text-gray-400">
+            <span aria-hidden="true">💡</span>
             {note}
           </p>
         )}

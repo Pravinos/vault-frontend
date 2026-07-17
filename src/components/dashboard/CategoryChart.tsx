@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { PieChart as PieChartIcon } from "lucide-react";
+import { ChevronRight, PieChart as PieChartIcon } from "lucide-react";
 import {
   Cell,
   Pie,
@@ -36,14 +36,14 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
 
   if (summary.byCategory.length === 0) {
     return (
-      <div className="animate-card-enter h-full rounded-2xl bg-[#1a2332] p-5">
+      <div className="animate-card-enter h-full rounded-card-lg bg-surface-raised p-card-md">
         <div className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-white">
             Spending by category
           </h2>
           <p className="text-sm text-gray-400">{formatMonth(summary.month)}</p>
         </div>
-        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-700 py-12 text-center">
+        <div className="mt-6 flex flex-col items-center justify-center rounded-card border-2 border-dashed border-border-strong py-12 text-center">
           <PieChartIcon className="mb-3 h-10 w-10 text-gray-600" />
           <p className="text-sm font-medium text-gray-400">
             No expenses this month
@@ -53,9 +53,10 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
           </p>
           <Link
             href="/expenses"
-            className="mt-4 text-xs font-medium text-emerald-400 hover:text-emerald-300"
+            className="btn-interactive mt-4 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
           >
-            Add your first expense {"->"}
+            Add your first expense
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
@@ -63,7 +64,7 @@ export default function CategoryChart({ summary }: CategoryChartProps) {
   }
 
   return (
-    <div className="animate-card-enter h-full rounded-2xl bg-[#1a2332] p-5">
+    <div className="animate-card-enter h-full rounded-card-lg bg-surface-raised p-card-md">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-white">
           Spending by category

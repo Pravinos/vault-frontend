@@ -53,25 +53,24 @@ export default function ChatInput({ value, onChange, onSend, disabled }: ChatInp
           value={value}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          onInput={resizeToFit}
           disabled={disabled}
           placeholder="Message Vault AI..."
           rows={1}
-          className="flex-1 resize-none rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none disabled:opacity-50 overflow-y-auto"
+          className="input-interactive flex-1 resize-none rounded-xl border border-border bg-surface-sunken px-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/30 focus:outline-none disabled:opacity-50 overflow-y-auto"
           style={{ maxHeight: "6rem" }}
         />
         <button
           type="button"
           onClick={handleSubmit}
           disabled={disabled || !value.trim()}
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white transition-colors hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-interactive flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"
           aria-label="Send message"
         >
           <Send className="h-4 w-4" />
         </button>
       </div>
       <p className="mt-1.5 text-center text-[10px] text-gray-600">
-        Shift + Enter for new line
+        Enter to send · Shift + Enter for new line
       </p>
     </div>
   );

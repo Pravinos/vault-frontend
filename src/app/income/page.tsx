@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import IncomeFilters from "@/components/income/IncomeFilters";
 import IncomeForm from "@/components/income/IncomeForm";
 import IncomeList from "@/components/income/IncomeList";
+import ActiveFilterPills from "@/components/ui/ActiveFilterPills";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import TransactionSearch from "@/components/ui/TransactionSearch";
@@ -78,13 +79,16 @@ export default function IncomePage() {
     setInitialIncomeValues(undefined);
   }, []);
 
-  const handleFormSuccess = useCallback(async (message: string) => {
-    setToast({ message, type: "success" });
-    await qc.invalidateQueries({ queryKey: queryKeys.income(selectedMonth) });
-    await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-    await qc.invalidateQueries({ queryKey: queryKeys.accounts });
-    await qc.invalidateQueries({ queryKey: queryKeys.goals });
-  }, [qc, selectedMonth]);
+  const handleFormSuccess = useCallback(
+    async (message: string) => {
+      setToast({ message, type: "success" });
+      await qc.invalidateQueries({ queryKey: queryKeys.income(selectedMonth) });
+      await qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+      await qc.invalidateQueries({ queryKey: queryKeys.accounts });
+      await qc.invalidateQueries({ queryKey: queryKeys.goals });
+    },
+    [qc, selectedMonth]
+  );
 
   const baseFilteredIncome = useMemo(() => {
     if (!selectedAccountId) return income;
@@ -103,7 +107,6 @@ export default function IncomePage() {
     });
   }, [baseFilteredIncome, searchQuery]);
 
-  // Totals intentionally exclude search — search only narrows the visible list.
   const totalIncome = useMemo(
     () => baseFilteredIncome.reduce((sum, entry) => sum + entry.amount, 0),
     [baseFilteredIncome]
@@ -112,6 +115,7 @@ export default function IncomePage() {
   const monthLabel = selectedMonth ? formatMonth(selectedMonth) : "";
 
   const hasActiveFilters = selectedAccountId !== null;
+  const hasExportFilter = searchQuery.trim() !== "" || hasActiveFilters;
 
   const summaryItems = useMemo(() => {
     if (hasActiveFilters) {
@@ -152,6 +156,25 @@ export default function IncomePage() {
     setSelectedAccountId(null);
   };
 
+  const selectedAccountLabel = useMemo(
+    () => accounts.find((a) => a.id === selectedAccountId)?.name ?? null,
+    [accounts, selectedAccountId]
+  );
+
+  const filterPills = useMemo(() => {
+    if (!selectedAccountLabel) {
+      return [];
+    }
+
+    return [
+      {
+        key: "account",
+        label: `Account: ${selectedAccountLabel}`,
+        onRemove: () => setSelectedAccountId(null),
+      },
+    ];
+  }, [selectedAccountLabel]);
+
   const handleExportCsv = () => {
     exportToCsv(
       displayedIncome.map((entry) => ({
@@ -177,7 +200,7 @@ export default function IncomePage() {
             className="btn-interactive flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-600 bg-[#111a28] px-4 py-2.5 text-base font-semibold text-gray-100 hover:border-emerald-400 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:text-sm"
           >
             <Download className="h-4 w-4" />
-            Export CSV
+            {hasExportFilter ? `Export CSV (${displayedIncome.length})` : "Export CSV"}
           </button>
           <button
             type="button"
@@ -190,21 +213,32 @@ export default function IncomePage() {
         </div>
       </div>
 
-      {!loading && !error && (
-        <div className="border-b border-gray-800 px-0 py-2">
+      <div className="border-b border-gray-800 px-0 py-2">
+        {loading ? (
+          <div className="mb-4 space-y-2">
+            <Skeleton variant="text" className="h-5 w-48" />
+            <Skeleton variant="text" className="h-4 w-32" />
+          </div>
+        ) : !error ? (
           <p className="mb-4 text-sm text-gray-400">
-            <span className="font-semibold text-white">{formatCurrency(totalIncome)}</span>
-            {" "}income in {monthLabel}
+            <span className="font-semibold text-white">{formatCurrency(totalIncome)}</span> income
+            in {monthLabel}
             <span className="text-gray-600">
-              {" "}· {baseFilteredIncome.length} {baseFilteredIncome.length === 1 ? "entry" : "entries"}
+              {" "}
+              · {baseFilteredIncome.length}{" "}
+              {baseFilteredIncome.length === 1 ? "entry" : "entries"}
             </span>
           </p>
-        </div>
-      )}
+        ) : null}
+      </div>
 
       <div className="space-y-5">
         <div>
-          <TransactionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search income..." />
+          <TransactionSearch
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search income..."
+          />
         </div>
 
         <IncomeFilters
@@ -215,17 +249,19 @@ export default function IncomePage() {
           onAccountChange={setSelectedAccountId}
         />
 
+        <ActiveFilterPills pills={filterPills} onClearAll={clearFilters} />
+
         {!error && summaryItems.length > 0 && (
-          <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
+          <div className="mb-4 rounded-card-lg bg-surface-raised p-4">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
               {monthLabel} - Breakdown{hasActiveFilters ? " (filtered)" : ""}
             </h2>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {summaryItems.map(({ category, icon, total }) => (
                 <div
                   key={category}
-                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                  className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
                 >
                   <span className="text-base">{icon}</span>
                   <div>
@@ -244,14 +280,11 @@ export default function IncomePage() {
         )}
 
         {error ? (
-          <ErrorMessage
-            message="Unable to load income."
-            onRetry={() => void refetch()}
-          />
+          <ErrorMessage message="Unable to load income." onRetry={() => void refetch()} />
         ) : searchQuery.trim().length > 0 && !loading && displayedIncome.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
             <Search className="mb-3 h-8 w-8 opacity-50" />
-            <p className="text-sm">No transactions match &quot;{searchQuery}&quot;</p>
+            <p className="text-sm">No income entries match &quot;{searchQuery}&quot;</p>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
@@ -287,14 +320,11 @@ export default function IncomePage() {
         ) : (
           <IncomeList
             income={displayedIncome}
-            month={selectedMonth}
-            monthLabel={monthLabel}
             hasActiveFilters={hasActiveFilters}
             onEdit={handleEdit}
             onDuplicate={handleDuplicate}
             onDelete={handleDelete}
             onClearFilters={clearFilters}
-            onAddClick={handleAddClick}
           />
         )}
       </div>
@@ -305,17 +335,14 @@ export default function IncomePage() {
           initialValues={initialIncomeValues}
           categories={categories}
           accounts={accounts}
+          viewMonth={selectedMonth}
           onSuccess={handleFormSuccess}
           onClose={handleFormClose}
         />
       ) : null}
 
       {toast ? (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       ) : null}
     </div>
   );
