@@ -110,7 +110,7 @@ export default function BudgetHighlightsCard({
 
   return (
     <>
-      <div className="animate-card-enter rounded-card-lg border border-border bg-surface-raised p-card-md">
+      <div className="animate-card-enter flex flex-col rounded-card-lg border border-border bg-surface-raised p-card-md xl:h-full">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-white">Budgets</h2>
@@ -132,7 +132,7 @@ export default function BudgetHighlightsCard({
         </div>
 
         {budgets.length === 0 ? (
-          <div className="rounded-card border border-dashed border-border-strong p-card-sm text-center">
+          <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-border-strong p-card-sm text-center xl:flex-1">
             <p className="text-sm text-gray-400">No budgets set for this month.</p>
             <Link
               href="/budgets"
@@ -143,7 +143,7 @@ export default function BudgetHighlightsCard({
             </Link>
           </div>
         ) : canCustomize && !hasPinnedHighlights ? (
-          <div className="rounded-card border border-dashed border-teal-500/20 bg-teal-500/5 p-card-sm text-center">
+          <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-teal-500/20 bg-teal-500/5 p-card-sm text-center xl:flex-1">
             <p className="text-sm text-gray-300">
               Pin up to {MAX_HIGHLIGHTED_BUDGETS} budgets to track them here.
             </p>
@@ -160,7 +160,7 @@ export default function BudgetHighlightsCard({
             </button>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col xl:flex-1">
             <div className="space-y-3">
               {displayed.map((item) => (
                 <BudgetProgressRow
@@ -173,9 +173,9 @@ export default function BudgetHighlightsCard({
             </div>
 
             {alerts.length === 0 ? (
-              <p className="mt-4 text-sm text-gray-500">All budgets on track ✓</p>
+              <p className="mt-4 text-sm text-gray-500 xl:mt-auto xl:pt-4">All budgets on track ✓</p>
             ) : (
-              <p className="mt-4 text-xs text-gray-500">
+              <p className="mt-4 text-xs text-gray-500 xl:mt-auto xl:pt-4">
                 {alerts.length} categor{alerts.length === 1 ? "y needs" : "ies need"} attention
                 {" · "}
                 <Link href="/budgets" className="text-teal-400 hover:text-teal-300">
@@ -183,7 +183,7 @@ export default function BudgetHighlightsCard({
                 </Link>
               </p>
             )}
-          </>
+          </div>
         )}
       </div>
 

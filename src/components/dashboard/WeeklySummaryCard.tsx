@@ -39,7 +39,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
   if (!summary) {
     return (
       <>
-        <div className="animate-card-enter flex h-full flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md">
+        <div className="animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md xl:h-full">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-white">Weekly Summary</h2>
@@ -48,7 +48,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
           <p className="mt-4 text-sm font-medium text-gray-200">No summary yet</p>
           <p className="mt-1 text-sm text-gray-400">Next summary: {getNextMondayLabel()}</p>
 
-          <div className="mt-5">
+          <div className="mt-5 xl:mt-auto xl:pt-5">
             <button
               type="button"
               onClick={generate}
@@ -68,7 +68,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
 
   return (
     <>
-      <div className="group animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md">
+      <div className="group animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md xl:h-full">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
@@ -115,7 +115,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
 
         <div className="mt-3 text-sm text-gray-400">{formatWeekRange(summary.weekStart, summary.weekEnd)}</div>
 
-        <div className="flex items-center justify-between pt-3">
+        <div className="mt-4 flex items-center justify-between pt-3 xl:mt-auto">
           <Link
             href="/ai/summaries"
             className="btn-interactive inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"

@@ -46,37 +46,51 @@ type CashFlowBarDatum = {
   net: number;
 };
 
+function DashboardHeader({ monthLabel }: { monthLabel?: string }) {
+  return (
+    <header>
+      <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+      {monthLabel ? (
+        <p className="mt-1 text-sm text-gray-500">{monthLabel}</p>
+      ) : (
+        <Skeleton variant="text" className="mt-1 h-4 w-32" />
+      )}
+    </header>
+  );
+}
+
 function DashboardSkeleton() {
   return (
-    <div className="space-y-4 sm:space-y-5">
-      <Skeleton variant="card" className="h-28 rounded-xl" />
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton
-            key={`account-${index}`}
-            variant="card"
-            className="h-24 min-w-[160px] flex-shrink-0 rounded-xl"
-          />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={`stat-${index}`} variant="stat" />
-        ))}
-      </div>
-      <Skeleton variant="card" className="h-24 rounded-xl" />
-      <div className="grid grid-cols-2 gap-3">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={`stat-grid-${index}`} variant="stat" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Skeleton variant="chart" />
+    <div className="flex flex-col gap-4 xl:gap-5">
+      {/* Bands 1+2: net worth → accounts → KPIs on mobile */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-5">
+        <Skeleton variant="card" className="order-1 h-48 rounded-card-lg xl:col-span-8" />
+        <div className="order-2 flex gap-3 overflow-x-auto pb-1 xl:order-3 xl:col-span-12">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton
+              key={`account-${index}`}
+              variant="card"
+              className="h-24 min-w-[160px] flex-shrink-0 rounded-card"
+            />
+          ))}
         </div>
-        <div>
-          <Skeleton variant="card" className="h-[420px] rounded-xl" />
+        <div className="order-3 grid grid-cols-1 gap-3 md:grid-cols-3 xl:order-2 xl:col-span-4 xl:grid-cols-1">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={`kpi-${index}`} variant="stat" className="md:h-full min-h-[72px] xl:min-h-0" />
+          ))}
         </div>
+      </div>
+
+      {/* Band 3: category + budgets — equal height only at xl */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-stretch xl:gap-5">
+        <Skeleton variant="chart" className="xl:col-span-7 xl:min-h-[420px]" />
+        <Skeleton variant="card" className="rounded-card-lg xl:col-span-5 xl:min-h-[420px]" />
+      </div>
+
+      {/* Band 4: trend + summary — equal height only at xl */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-stretch xl:gap-5">
+        <Skeleton variant="chart" className="xl:col-span-7 xl:min-h-[320px]" />
+        <Skeleton variant="card" className="rounded-card-lg xl:col-span-5 xl:min-h-[320px]" />
       </div>
     </div>
   );
@@ -116,7 +130,7 @@ function StatCard({
   return (
     <AnimatedCard
       staggerIndex={staggerIndex}
-      className="rounded-card border border-border bg-surface p-card-sm"
+      className="md:h-full xl:h-full rounded-card border border-border bg-surface p-card-sm"
     >
       <p className="mb-1.5 text-xs font-medium text-gray-500">{label}</p>
       <p className={`truncate font-semibold tabular-nums ${isText ? "text-sm" : "text-base"} text-gray-200`}>
@@ -153,11 +167,11 @@ function NetCashFlowCard({
       : "bg-surface border border-border";
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-card p-card-sm ${tintClass}`}>
+    <AnimatedCard staggerIndex={staggerIndex} className={`md:h-full xl:h-full rounded-card p-card-sm ${tintClass}`}>
       <div className="mb-1.5 flex items-center gap-2">
         <p className="text-xs font-medium text-gray-500">Net Cash Flow</p>
 
-        <div className="relative inline-flex group">
+        <div className="relative hidden sm:inline-flex group">
           <button
             type="button"
             aria-label="Net Cash Flow info"
@@ -172,6 +186,8 @@ function NetCashFlowCard({
           </div>
         </div>
       </div>
+
+      <p className="mb-1 text-[10px] leading-snug text-gray-500 sm:hidden">{subtitle}</p>
 
       <p
         className={`text-lg font-semibold tabular-nums ${
@@ -195,12 +211,12 @@ function MonthlyTrendCard({ data, staggerIndex }: { data: CashFlowBarDatum[]; st
   }
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className="rounded-card-lg bg-surface-raised p-card-md">
+    <AnimatedCard staggerIndex={staggerIndex} className="flex flex-col rounded-card-lg bg-surface-raised p-card-md xl:h-full">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-white">Monthly Trend</h2>
         <span className="text-xs text-gray-500">Last 6 months</span>
       </div>
-      <div className="h-52 min-h-[208px]">
+      <div className="h-52 min-h-[208px] xl:min-h-[208px] xl:flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
             <CartesianGrid strokeDasharray="4 4" stroke="#334155" vertical={false} opacity={0.4} />
@@ -290,7 +306,10 @@ function CategoryFocusCard({
   const remainingSpend = Math.max(total - listedTotal, 0);
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-card-lg bg-surface-raised p-card-md ${className ?? ""}`.trim()}>
+    <AnimatedCard
+      staggerIndex={staggerIndex}
+      className={`flex flex-col rounded-card-lg bg-surface-raised p-card-md xl:h-full ${className ?? ""}`.trim()}
+    >
       <h2 className="text-lg font-semibold text-white">Category focus</h2>
       <p className="mt-1 text-sm text-gray-400">{monthLabel}</p>
 
@@ -416,7 +435,7 @@ function CategoryFocusCard({
 
       <Link
         href="/expenses"
-        className="btn-interactive mt-4 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
+        className="btn-interactive mt-4 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 xl:mt-auto xl:pt-4"
       >
         View all expenses
         <ChevronRight className="h-3.5 w-3.5" />
@@ -475,7 +494,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-4 sm:space-y-6">
-        <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+        <DashboardHeader />
         <DashboardSkeleton />
       </div>
     );
@@ -485,7 +504,7 @@ export default function DashboardPage() {
     const message = error instanceof Error ? error.message : "Failed to load dashboard";
     return (
       <div className="space-y-4 sm:space-y-6">
-        <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+        <DashboardHeader />
         <ErrorState message={message} />
       </div>
     );
@@ -494,7 +513,7 @@ export default function DashboardPage() {
   if (!dashboardData) {
     return (
       <div className="space-y-4 sm:space-y-6">
-        <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+        <DashboardHeader />
         <EmptyState
           icon={LayoutDashboard}
           title="No dashboard data"
@@ -507,44 +526,46 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+      <DashboardHeader monthLabel={dashboardData.currentMonthLabel} />
 
-      <div className="flex flex-col gap-4 sm:gap-5">
-        <NetWorthCard
-          calculated={dashboardData.calculatedNetWorth}
-          manual={dashboardData.manualNetWorth}
-          drift={dashboardData.netWorthDrift}
-          calculatedAnimated={calculatedAnimated}
-          manualAnimated={dashboardData.manualNetWorth !== null ? manualAnimated : undefined}
-          historyData={netWorthHistory}
-        />
+      <div className="flex flex-col gap-4 xl:gap-5">
+        {/* Bands 1+2: mobile order = net worth → accounts → KPIs; desktop = net worth + KPIs, then accounts */}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-5">
+          <div className="order-1 xl:col-span-8">
+            <NetWorthCard
+              calculated={dashboardData.calculatedNetWorth}
+              manual={dashboardData.manualNetWorth}
+              drift={dashboardData.netWorthDrift}
+              calculatedAnimated={calculatedAnimated}
+              manualAnimated={dashboardData.manualNetWorth !== null ? manualAnimated : undefined}
+              historyData={netWorthHistory}
+            />
+          </div>
 
-        <AccountsStrip
-          accounts={dashboardData.accounts.map((account) => {
-            const metrics = investmentMetricsByAccountId.get(account.id);
-            return metrics ? { ...account, ...metrics } : account;
-          })}
-        />
+          <div className="order-2 xl:order-3 xl:col-span-12">
+            <AccountsStrip
+              accounts={dashboardData.accounts.map((account) => {
+                const metrics = investmentMetricsByAccountId.get(account.id);
+                return metrics ? { ...account, ...metrics } : account;
+              })}
+            />
+          </div>
 
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard label="Income This Month" value={dashboardData.incomeThisMonth} staggerIndex={0} />
-          <StatCard label="Expenses This Month" value={dashboardData.expensesThisMonth} staggerIndex={1} />
-          <NetCashFlowCard
-            value={dashboardData.netCashFlow}
-            subtitle="Income - Expenses · transfers excluded"
-            staggerIndex={2}
-          />
+          <div className="order-3 grid grid-cols-1 gap-3 md:grid-cols-3 xl:order-2 xl:col-span-4 xl:grid-cols-1">
+            <StatCard label="Income This Month" value={dashboardData.incomeThisMonth} staggerIndex={0} />
+            <StatCard label="Expenses This Month" value={dashboardData.expensesThisMonth} staggerIndex={1} />
+            <NetCashFlowCard
+              value={dashboardData.netCashFlow}
+              subtitle="Income - Expenses · transfers excluded"
+              staggerIndex={2}
+            />
+          </div>
         </div>
 
-        <BudgetHighlightsCard
-          month={currentMonth}
-          budgets={budgetItems}
-          alerts={dashboardData.budgetAlerts ?? []}
-        />
-
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        {/* Band 3: category focus + budget highlights */}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-stretch xl:gap-5">
           <CategoryFocusCard
-            className="xl:col-span-3"
+            className="xl:col-span-7"
             category={dashboardData.topExpenseCategory}
             amount={dashboardData.topExpenseCategoryAmount}
             total={dashboardData.expensesThisMonth}
@@ -552,8 +573,21 @@ export default function DashboardPage() {
             donutData={categoryDonutData}
             staggerIndex={0}
           />
-          <div className="flex flex-col gap-6 xl:col-span-2">
+          <div className="xl:h-full xl:col-span-5">
+            <BudgetHighlightsCard
+              month={currentMonth}
+              budgets={budgetItems}
+              alerts={dashboardData.budgetAlerts ?? []}
+            />
+          </div>
+        </div>
+
+        {/* Band 4: monthly trend + weekly summary */}
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-stretch xl:gap-5">
+          <div className="xl:h-full xl:col-span-7">
             <MonthlyTrendCard data={monthlyTrendData} staggerIndex={1} />
+          </div>
+          <div className="xl:h-full xl:col-span-5">
             <WeeklySummaryCard summary={summary} />
           </div>
         </div>

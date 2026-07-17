@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type Modifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -33,6 +34,12 @@ import type { AccountDashboardData } from "@/types/dashboard";
 
 const VISIBLE_ACCOUNT_LIMIT = 8;
 
+/** Keep account reordering locked to the horizontal strip axis. */
+const restrictToHorizontalAxis: Modifier = ({ transform }) => ({
+  ...transform,
+  y: 0,
+});
+
 interface AccountsStripProps {
   accounts: AccountDashboardData[];
 }
@@ -48,8 +55,9 @@ function SortableAccountItem({ account, index }: SortableAccountItemProps) {
   });
 
   const reducedMotion = prefersReducedMotion();
+  const horizontalTransform = transform ? { ...transform, y: 0 } : null;
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: horizontalTransform ? CSS.Transform.toString(horizontalTransform) : undefined,
     transition: transition
       ? `${transition}, box-shadow ${DURATION_BASE}ms ${EASE_STANDARD_CSS}, transform ${DURATION_BASE}ms ${EASE_STANDARD_CSS}`
       : undefined,
@@ -152,7 +160,12 @@ export default function AccountsStrip({ accounts }: AccountsStripProps) {
 
   return (
     <div className="relative">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToHorizontalAxis]}
+        onDragEnd={handleDragEnd}
+      >
         <SortableContext items={visibleAccounts.map((account) => account.id)} strategy={horizontalListSortingStrategy}>
           <div className="hide-scrollbar flex w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-0">
             {visibleAccounts.map((account, index) => (
