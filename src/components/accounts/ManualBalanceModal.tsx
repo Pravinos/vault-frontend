@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios";
 
 import Modal from "@/components/ui/Modal";
 import { updateManualBalance } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 import { useFormatCurrency } from "@/lib/currencyContext";
 import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Account } from "@/types";
@@ -28,30 +28,6 @@ export default function ManualBalanceModal({
   const [alsoSetOpeningBalance, setAlsoSetOpeningBalance] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  const getApiErrorMessage = (apiError: unknown): string => {
-    if (apiError instanceof Error && apiError.message.trim()) {
-      return apiError.message;
-    }
-
-    if (!axios.isAxiosError(apiError) || !apiError.response?.data) {
-      return "Unable to update manual balance.";
-    }
-
-    const data = apiError.response.data;
-    if (typeof data === "string" && data.trim()) {
-      return data;
-    }
-
-    if (typeof data === "object" && data !== null) {
-      const message = "message" in data ? data.message : undefined;
-      if (typeof message === "string" && message.trim()) {
-        return message;
-      }
-    }
-
-    return "Unable to update manual balance.";
-  };
 
   const hasNoTransactions =
     account.totalIncome === 0 &&
@@ -82,7 +58,7 @@ export default function ManualBalanceModal({
       await onSuccess(updatedAccount);
       requestClose();
     } catch (apiError) {
-      setError(getApiErrorMessage(apiError));
+      setError(getApiErrorMessage(apiError, "Unable to update manual balance."));
     } finally {
       setIsSubmitting(false);
     }

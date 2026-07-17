@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createAccount, updateAccount } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 import { useCurrency } from "@/lib/currencyContext";
 import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Account, AccountType, CreateAccountPayload } from "@/types";
@@ -87,7 +88,7 @@ export default function AccountForm({ account, onSuccess, onClose }: AccountForm
 
       requestClose();
     } catch (error) {
-      setFormError("Unable to save account.");
+      setFormError(getApiErrorMessage(error, "Unable to save account."));
     } finally {
       setIsSubmitting(false);
     }

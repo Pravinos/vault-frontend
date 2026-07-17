@@ -454,7 +454,9 @@ export default function DashboardPage() {
   const monthRange = data?.monthRange ?? []
   const currentMonth = data?.currentMonth ?? getMonthString()
   const budgetItems = data?.budgetItems ?? []
-  const investmentMetricsByAccountId = useInvestmentMetricsMap(dashboardData?.accounts ?? [])
+  const { metricsByAccountId: investmentMetricsByAccountId } = useInvestmentMetricsMap(
+    dashboardData?.accounts ?? []
+  )
 
   const categoryDonutData = useMemo<DonutSlice[]>(() => {
     const currentMonthSummary = expenseSummaries[expenseSummaries.length - 1]

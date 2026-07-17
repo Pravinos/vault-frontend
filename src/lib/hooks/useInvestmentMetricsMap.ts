@@ -5,6 +5,7 @@ import { getCheckpoints } from "@/lib/api";
 import { applyInvestmentReturnMetrics } from "@/lib/investmentMetrics";
 import { queryKeys } from "@/lib/queryKeys";
 import type { InvestmentMetrics } from "@/lib/investmentMetrics";
+import type { InvestmentCheckpoint } from "@/types";
 
 type MetricsAccount = {
   id: string;
@@ -17,6 +18,27 @@ type MetricsAccount = {
   totalIncome?: number;
   totalExpenses?: number;
 };
+
+export type InvestmentMetricsEntry = Pick<
+  InvestmentMetrics,
+  "currentValue" | "returnAmount" | "returnPercentage"
+> & {
+  latestCheckpointRecordedAt: string | null;
+};
+
+function getLatestCheckpointRecordedAt(
+  checkpoints: InvestmentCheckpoint[]
+): string | null {
+  if (checkpoints.length === 0) {
+    return null;
+  }
+
+  const latest = [...checkpoints].sort(
+    (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+  )[0];
+
+  return latest.recordedAt;
+}
 
 export function useInvestmentMetricsMap<T extends MetricsAccount>(accounts: T[]) {
   const investmentAccounts = useMemo(
@@ -32,22 +54,25 @@ export function useInvestmentMetricsMap<T extends MetricsAccount>(accounts: T[])
     })),
   });
 
-  return useMemo(() => {
-    const metricsByAccountId = new Map<
-      string,
-      Pick<InvestmentMetrics, "currentValue" | "returnAmount" | "returnPercentage">
-    >();
+  const isLoadingCheckpoints =
+    investmentAccounts.length > 0 && checkpointQueries.some((query) => query.isLoading);
+
+  const metricsByAccountId = useMemo(() => {
+    const map = new Map<string, InvestmentMetricsEntry>();
 
     investmentAccounts.forEach((account, index) => {
       const checkpoints = checkpointQueries[index]?.data ?? [];
       const enriched = applyInvestmentReturnMetrics(account, checkpoints);
-      metricsByAccountId.set(account.id, {
+      map.set(account.id, {
         currentValue: enriched.currentValue,
         returnAmount: enriched.returnAmount,
         returnPercentage: enriched.returnPercentage,
+        latestCheckpointRecordedAt: getLatestCheckpointRecordedAt(checkpoints),
       });
     });
 
-    return metricsByAccountId;
+    return map;
   }, [checkpointQueries, investmentAccounts]);
+
+  return { metricsByAccountId, isLoadingCheckpoints };
 }

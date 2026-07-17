@@ -70,11 +70,16 @@ export default function TransferRow({
 
       <div className="mt-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          {note && note.trim() ? (
-            <p className="text-sm text-gray-300 truncate">{note}</p>
+          {date ? (
+            <p className="text-xs text-gray-400">
+              Transfer date: <span className="text-gray-300">{formatDate(date)}</span>
+            </p>
           ) : null}
-          {createdAt ? (
-            <p className="mt-1 text-xs text-gray-500">Created: {formatDate(createdAt)}</p>
+          {note && note.trim() ? (
+            <p className={`text-sm text-gray-300 truncate ${date ? "mt-1" : ""}`}>{note}</p>
+          ) : null}
+          {createdAt && formatDate(createdAt) !== formatDate(date) ? (
+            <p className="mt-1 text-xs text-gray-500">Recorded: {formatDate(createdAt)}</p>
           ) : null}
         </div>
 

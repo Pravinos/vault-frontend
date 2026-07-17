@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import axios from "axios";
 
 import Modal from "@/components/ui/Modal";
 import SelectField from "@/components/ui/SelectField";
 import { createTransfer } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/apiErrors";
 import { useCurrency } from "@/lib/currencyContext";
 import { useModalDismiss } from "@/lib/hooks/useModalDismiss";
 import type { Account, CreateTransferPayload } from "@/types";
@@ -23,31 +23,6 @@ type FormErrors = {
   amount?: string;
   transferDate?: string;
 };
-
-function getApiErrorMessage(error: unknown): string {
-  if (!axios.isAxiosError(error)) {
-    return "Unable to record transfer. Please try again.";
-  }
-
-  const data = error.response?.data;
-
-  if (typeof data === "string" && data.trim()) {
-    return data;
-  }
-
-  if (typeof data === "object" && data !== null) {
-    const message = "message" in data ? data.message : undefined;
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-  }
-
-  if (error.message.trim()) {
-    return error.message;
-  }
-
-  return "Unable to record transfer. Please try again.";
-}
 
 function getTodayDateString(): string {
   const now = new Date();
@@ -142,7 +117,7 @@ export default function TransferForm({
       await onSuccess({ fromAccountId, toAccountId });
       requestClose();
     } catch (error) {
-      setFormError(getApiErrorMessage(error));
+      setFormError(getApiErrorMessage(error, "Unable to record transfer. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
