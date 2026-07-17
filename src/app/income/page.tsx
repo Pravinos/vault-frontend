@@ -216,7 +216,7 @@ export default function IncomePage() {
         />
 
         {!error && summaryItems.length > 0 && (
-          <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
+          <div className="mb-4 rounded-card-lg bg-surface-raised p-4">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
               {monthLabel} - Breakdown{hasActiveFilters ? " (filtered)" : ""}
             </h2>

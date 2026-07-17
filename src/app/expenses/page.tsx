@@ -313,7 +313,7 @@ export default function ExpensesPage() {
         />
 
         {!error && categorySummary.length > 0 && (
-          <div className="mb-4 rounded-2xl bg-[#1a2332] p-4">
+          <div className="mb-4 rounded-card-lg bg-surface-raised p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
               {selectedDate ? `${selectedDateLabel} - Breakdown` : `${monthLabel} - Breakdown`}
               {hasActiveFilters ? " (filtered)" : ""}

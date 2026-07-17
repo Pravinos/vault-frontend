@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, RefreshCw } from "lucide-react";
+import { Calendar, ChevronRight, RefreshCw } from "lucide-react";
 
 import ProviderModelInfo from "@/components/ui/ProviderModelInfo";
 import { useState } from "react";
@@ -39,7 +39,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
   if (!summary) {
     return (
       <>
-        <div className="animate-card-enter flex h-full flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-[#1a2332] p-card-md">
+        <div className="animate-card-enter flex h-full flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
             <h2 className="text-lg font-semibold text-white">Weekly Summary</h2>
@@ -68,7 +68,7 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
 
   return (
     <>
-      <div className="group animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-[#1a2332] p-card-md">
+      <div className="group animate-card-enter flex flex-col rounded-card-lg border-l-4 border-emerald-500/60 bg-surface-raised p-card-md">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />
@@ -118,9 +118,10 @@ export default function WeeklySummaryCard({ summary, onGenerated }: WeeklySummar
         <div className="flex items-center justify-between pt-3">
           <Link
             href="/ai/summaries"
-            className="text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+            className="btn-interactive inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
           >
-            View history -&gt;
+            View history
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
           <ProviderModelInfo provider={summary.provider} model={summary.model} />
         </div>

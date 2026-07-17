@@ -260,10 +260,10 @@ export default function BudgetsPage() {
       ) : (
         <>
           {budgetItems.length > 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-[#1a1a1a] p-4 sm:p-5">
+            <div className="rounded-card-lg border border-border bg-surface-raised p-4 sm:p-5">
               <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <p className="text-xs font-medium text-gray-500">
                     {monthLabel} summary
                   </p>
                   <p className="mt-1 text-sm text-gray-400">

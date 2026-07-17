@@ -168,7 +168,7 @@ export default function ChatPage() {
         />
       ) : null}
 
-      <div className="relative flex h-[70dvh] min-h-[520px] flex-col overflow-hidden rounded-2xl bg-[#1a2332]">
+      <div className="relative flex h-[70dvh] min-h-[520px] flex-col overflow-hidden rounded-card-lg bg-surface-raised">
         <div
           ref={scrollAreaRef}
           onScroll={handleScroll}
@@ -217,7 +217,7 @@ export default function ChatPage() {
                 shouldAutoScrollRef.current = true;
                 scrollToBottom();
               }}
-              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-gray-700 bg-[#0f1923] text-gray-300 shadow-lg transition-all hover:text-white"
+              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface-sunken text-gray-300 shadow-lg transition-all hover:text-white"
               aria-label="Scroll to bottom"
             >
               <ChevronDown className="h-4 w-4" />

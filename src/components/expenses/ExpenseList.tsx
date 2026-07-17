@@ -82,7 +82,7 @@ export default function ExpenseList({
   if (expenses.length === 0) {
     if (hasActiveFilters && onClearFilters) {
       return (
-        <div className="flex flex-col items-center rounded-card-lg bg-[#1a2332] px-6 py-12 text-center">
+        <div className="flex flex-col items-center rounded-card-lg bg-surface-raised px-6 py-12 text-center">
           <span className="mb-3 text-4xl">🧾</span>
           <p className="mb-1 font-semibold text-white">No expenses found</p>
           <p className="text-sm text-gray-400">Try clearing your filters</p>

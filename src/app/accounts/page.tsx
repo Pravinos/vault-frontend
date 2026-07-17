@@ -374,8 +374,8 @@ export default function AccountsPage() {
                     }
                     details={
                       <>
-                        <div className="rounded-xl border border-gray-800 bg-[#0f1923] p-3">
-                          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                        <div className="rounded-card border border-border bg-surface-sunken p-3">
+                          <p className="text-xs font-medium text-gray-500">
                             Manual balance
                           </p>
                           <p className="mt-1 font-medium tabular-nums text-gray-100">
@@ -444,7 +444,7 @@ export default function AccountsPage() {
             </div>
           ) : (
             <>
-              <div className="rounded-xl border border-gray-800 bg-[#1a2332] p-4">
+              <div className="rounded-card border border-border bg-surface-raised p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                   <div className="w-full sm:max-w-xs">
                     <SelectField

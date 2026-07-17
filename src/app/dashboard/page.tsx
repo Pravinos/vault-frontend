@@ -15,7 +15,7 @@ import {
   YAxis,
   ReferenceLine,
 } from "recharts";
-import { Info, LayoutDashboard } from "lucide-react";
+import { ChevronRight, Info, LayoutDashboard } from "lucide-react";
 
 import WeeklySummaryCard from "@/components/dashboard/WeeklySummaryCard";
 import BudgetHighlightsCard from "@/components/dashboard/BudgetHighlightsCard";
@@ -116,9 +116,9 @@ function StatCard({
   return (
     <AnimatedCard
       staggerIndex={staggerIndex}
-      className="rounded-xl border border-white/[0.04] bg-[#111820] p-3.5"
+      className="rounded-card border border-border bg-surface p-card-sm"
     >
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+      <p className="mb-1.5 text-xs font-medium text-gray-500">{label}</p>
       <p className={`truncate font-semibold tabular-nums ${isText ? "text-sm" : "text-base"} text-gray-200`}>
         {formattedValue}
       </p>
@@ -150,12 +150,12 @@ function NetCashFlowCard({
       ? "bg-emerald-950/25 border border-emerald-900/25"
       : displayValue < 0
       ? "bg-rose-950/25 border border-rose-900/25"
-      : "bg-[#111820] border border-white/[0.04]";
+      : "bg-surface border border-border";
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-xl p-3.5 ${tintClass}`}>
+    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-card p-card-sm ${tintClass}`}>
       <div className="mb-1.5 flex items-center gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Net Cash Flow</p>
+        <p className="text-xs font-medium text-gray-500">Net Cash Flow</p>
 
         <div className="relative inline-flex group">
           <button
@@ -195,7 +195,7 @@ function MonthlyTrendCard({ data, staggerIndex }: { data: CashFlowBarDatum[]; st
   }
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className="rounded-2xl bg-[#1a2332] p-5">
+    <AnimatedCard staggerIndex={staggerIndex} className="rounded-card-lg bg-surface-raised p-card-md">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-white">Monthly Trend</h2>
         <span className="text-xs text-gray-500">Last 6 months</span>
@@ -290,15 +290,15 @@ function CategoryFocusCard({
   const remainingSpend = Math.max(total - listedTotal, 0);
 
   return (
-    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-2xl bg-[#1a2332] p-5 ${className ?? ""}`.trim()}>
+    <AnimatedCard staggerIndex={staggerIndex} className={`rounded-card-lg bg-surface-raised p-card-md ${className ?? ""}`.trim()}>
       <h2 className="text-lg font-semibold text-white">Category focus</h2>
       <p className="mt-1 text-sm text-gray-400">{monthLabel}</p>
 
       {hasTopCategory ? (
         <>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-gray-700/60 bg-[#141c2a] p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Top category</p>
+            <div className="rounded-card border border-border bg-surface-sunken p-4">
+              <p className="text-xs font-medium text-gray-500">Top category</p>
               <div className="mt-2 flex items-end justify-between gap-3">
                 <p className="text-xl font-bold text-white">{category}</p>
                 <p className="text-sm font-semibold text-emerald-300">{share.toFixed(1)}%</p>
@@ -312,8 +312,8 @@ function CategoryFocusCard({
               </div>
             </div>
 
-            <div className="hidden rounded-xl border border-gray-700/60 bg-[#141c2a] p-3 sm:block">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Category split</p>
+            <div className="hidden rounded-card border border-border bg-surface-sunken p-3 sm:block">
+              <p className="text-xs font-medium text-gray-500">Category split</p>
               <div className="mt-2 h-32">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -356,7 +356,7 @@ function CategoryFocusCard({
                           total > 0 ? (sliceTotal / total) * 100 : 0;
 
                         return (
-                          <div className="rounded-lg border border-slate-600 bg-[#141c2a] px-3 py-2 shadow-lg">
+                          <div className="rounded-lg border border-border-strong bg-surface-sunken px-3 py-2 shadow-lg">
                             <div className="flex items-center gap-2">
                               <span
                                 className="h-2 w-2 flex-shrink-0 rounded-full"
@@ -379,8 +379,8 @@ function CategoryFocusCard({
             </div>
           </div>
 
-          <div className="mt-3 rounded-xl border border-gray-700/60 bg-[#141c2a] p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Top categories</p>
+          <div className="mt-3 rounded-card border border-border bg-surface-sunken p-3">
+            <p className="text-xs font-medium text-gray-500">Top categories</p>
             <div className="mt-2 space-y-2">
               {listedCategories.map((entry, index) => {
                 const entryShare = total > 0 ? (entry.total / total) * 100 : 0;
@@ -400,7 +400,7 @@ function CategoryFocusCard({
                 );
               })}
               {remainingSpend > 0 ? (
-                <div className="flex items-center justify-between gap-2 border-t border-gray-700/70 pt-2 text-sm">
+                <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-sm">
                   <span className="text-gray-400">Other categories</span>
                   <span className="text-gray-300">{formatCurrency(remainingSpend)}</span>
                 </div>
@@ -409,16 +409,17 @@ function CategoryFocusCard({
           </div>
         </>
       ) : (
-        <div className="mt-6 rounded-xl border border-dashed border-gray-700/70 bg-[#141c2a] p-4 text-sm text-gray-400">
+        <div className="mt-6 rounded-card border border-dashed border-border-strong bg-surface-sunken p-4 text-sm text-gray-400">
           No category spending data for this month yet.
         </div>
       )}
 
       <Link
         href="/expenses"
-        className="mt-4 inline-block text-xs font-medium text-emerald-400 transition-colors hover:text-emerald-300"
+        className="btn-interactive mt-4 inline-flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300"
       >
-        View all expenses →
+        View all expenses
+        <ChevronRight className="h-3.5 w-3.5" />
       </Link>
     </AnimatedCard>
   );
@@ -466,12 +467,10 @@ export default function DashboardPage() {
     )
   }, [monthRange, monthlyTrendData, dashboardData?.calculatedNetWorth])
 
-  // Call count-up hooks unconditionally to preserve Hooks order across renders.
+  // Count-up is reserved for the hero net worth value so the dashboard doesn't
+  // animate every number at once. Call hooks unconditionally to preserve order.
   const calculatedAnimated = useCountUp(dashboardData?.calculatedNetWorth ?? 0);
   const manualAnimated = useCountUp(dashboardData?.manualNetWorth ?? 0);
-  const incomeAnimated = useCountUp(dashboardData?.incomeThisMonth ?? 0);
-  const expensesAnimated = useCountUp(dashboardData?.expensesThisMonth ?? 0);
-  const netCashAnimated = useCountUp(dashboardData?.netCashFlow ?? 0);
 
   if (loading) {
     return (
@@ -528,11 +527,10 @@ export default function DashboardPage() {
         />
 
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-          <StatCard label="Income This Month" value={incomeAnimated} staggerIndex={0} />
-          <StatCard label="Expenses This Month" value={expensesAnimated} staggerIndex={1} />
+          <StatCard label="Income This Month" value={dashboardData.incomeThisMonth} staggerIndex={0} />
+          <StatCard label="Expenses This Month" value={dashboardData.expensesThisMonth} staggerIndex={1} />
           <NetCashFlowCard
             value={dashboardData.netCashFlow}
-            animatedValue={netCashAnimated}
             subtitle="Income - Expenses · transfers excluded"
             staggerIndex={2}
           />

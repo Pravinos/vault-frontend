@@ -70,7 +70,7 @@ export default function ManageAccountsModal({ goal, onClose, onSuccess }: Props)
               {goal.linkedAccounts.map((a) => (
                 <div
                   key={a.id}
-                  className={`flex items-center justify-between rounded-lg border border-gray-800 border-l-4 ${getAccountAccent(a.accountType)} bg-[#1a2332]/60 px-3 py-2`}
+                  className={`flex items-center justify-between rounded-lg border border-border border-l-4 ${getAccountAccent(a.accountType)} bg-surface-raised/60 px-3 py-2`}
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="truncate text-sm text-gray-200">{a.name}</span>
@@ -105,7 +105,7 @@ export default function ManageAccountsModal({ goal, onClose, onSuccess }: Props)
               : accounts.filter(a => !linkedIds.has(a.id)).map((a) => (
                 <div
                   key={a.id}
-                  className={`flex items-center justify-between rounded-lg border border-gray-800 border-l-4 ${getAccountAccent(a.accountType)} bg-[#1a2332]/60 px-3 py-2`}
+                  className={`flex items-center justify-between rounded-lg border border-border border-l-4 ${getAccountAccent(a.accountType)} bg-surface-raised/60 px-3 py-2`}
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="truncate text-sm text-gray-200">{a.name}</span>

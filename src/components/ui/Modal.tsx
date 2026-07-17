@@ -107,7 +107,7 @@ export default function Modal({ isOpen, onClose, onClosed, title, children }: Mo
     >
       <div
         ref={panelRef}
-        className={`modal-panel w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[#1a2332] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white shadow-xl sm:mx-auto sm:w-full sm:max-w-md sm:rounded-2xl ${
+        className={`modal-panel w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-surface-raised p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white shadow-xl sm:mx-auto sm:w-full sm:max-w-md sm:rounded-2xl ${
           visible ? "scale-100 opacity-100" : "scale-[0.97] opacity-0"
         }`}
         onClick={(event) => event.stopPropagation()}

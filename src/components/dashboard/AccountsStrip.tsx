@@ -162,7 +162,7 @@ export default function AccountsStrip({ accounts }: AccountsStripProps) {
           </div>
         </SortableContext>
       </DndContext>
-      <div className="pointer-events-none absolute bottom-2 right-0 top-0 w-8 bg-gradient-to-l from-[#0d1520] to-transparent sm:hidden" />
+      <div className="pointer-events-none absolute bottom-2 right-0 top-0 w-8 bg-gradient-to-l from-app-bg to-transparent sm:hidden" />
     </div>
   );
 }

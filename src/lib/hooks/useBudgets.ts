@@ -21,14 +21,20 @@ export function useBudgetSummary(month: string) {
   });
 }
 
+// Invalidate every budgets-scoped query. The ["budgets"] prefix covers both the
+// per-month budgets list (["budgets", month]) and the budget summary
+// (["budgets", "summary", month]), so edited amounts refresh immediately instead
+// of the summary cache serving a stale budgetAmount for its staleTime window.
+function invalidateBudgetQueries(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ["budgets"] });
+  void qc.invalidateQueries({ queryKey: queryKeys.dashboard });
+}
+
 export function useUpsertBudget() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: upsertBudget,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["budgets"] });
-      void qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-    },
+    onSuccess: () => invalidateBudgetQueries(qc),
   });
 }
 
@@ -36,9 +42,6 @@ export function useDeleteBudget() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteBudget(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["budgets"] });
-      void qc.invalidateQueries({ queryKey: queryKeys.dashboard });
-    },
+    onSuccess: () => invalidateBudgetQueries(qc),
   });
 }

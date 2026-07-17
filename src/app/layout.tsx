@@ -35,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} h-full antialiased`}>
-      <body className="min-h-full bg-[#0d1520] text-gray-100">
+      <body className="min-h-full bg-app-bg text-gray-100">
         <Providers>
           <AppLayout>{children}</AppLayout>
         </Providers>

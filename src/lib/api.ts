@@ -156,7 +156,14 @@ async function handleAuthFailure(): Promise<null> {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // A successful response means the session is valid again, so re-arm the
+    // auth-failure guard for any future 401. We intentionally do NOT reset it on
+    // every outgoing request: doing so let a concurrent request clear the flag
+    // mid-logout and trigger duplicate logout/redirects.
+    authFailureHandling = false;
+    return response;
+  },
   async (error) => {
     const config = error.config as
       | (InternalAxiosRequestConfig & { __retry?: boolean })
@@ -166,17 +173,15 @@ api.interceptors.response.use(
     if (typeof window !== "undefined") {
       const pathname = window.location.pathname;
 
+      // Only 401 (Unauthorized / expired token) forces a logout. A 403
+      // (Forbidden) is an authorization decision, not an expired session, so we
+      // surface it to the caller instead of ejecting the user to /login.
       if (status === 401 && pathname !== "/login") {
         await handleAuthFailure();
         return Promise.reject(error);
       }
 
       if (status === 401 && pathname === "/login") {
-        return Promise.reject(error);
-      }
-
-      if (status === 403 && pathname !== "/login") {
-        await handleAuthFailure();
         return Promise.reject(error);
       }
     }
@@ -205,8 +210,6 @@ api.interceptors.response.use(
 );
 
 api.interceptors.request.use((config) => {
-  authFailureHandling = false;
-
   const token = getToken();
   if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
