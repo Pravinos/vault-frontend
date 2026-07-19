@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 /**
  * Local open/close state for a modal-wrapping component that its parent mounts/unmounts
@@ -21,6 +21,6 @@ import { useState } from "react";
  */
 export function useModalDismiss() {
   const [isOpen, setIsOpen] = useState(true);
-  const requestClose = () => setIsOpen(false);
+  const requestClose = useCallback(() => setIsOpen(false), []);
   return { isOpen, requestClose };
 }

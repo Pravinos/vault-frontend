@@ -26,8 +26,11 @@ const focusableSelector =
 
 export default function Modal({ isOpen, onClose, onClosed, title, children }: ModalProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const { mounted, visible } = useEnterExitAnimation(isOpen);
   const wasMountedRef = useRef(mounted);
+
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (wasMountedRef.current && !mounted) {
@@ -56,24 +59,40 @@ export default function Modal({ isOpen, onClose, onClosed, title, children }: Mo
       panel.querySelectorAll<HTMLElement>(focusableSelector)
     );
     const first = focusable[0] ?? panel;
-    const last = focusable[focusable.length - 1] ?? panel;
 
     if (!panel.hasAttribute("tabindex")) {
       panel.setAttribute("tabindex", "-1");
     }
 
     first.focus();
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (!panel) {
+      return;
+    }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
       if (event.key !== "Tab") {
         return;
       }
+
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(focusableSelector)
+      );
+      const first = focusable[0] ?? panel;
+      const last = focusable[focusable.length - 1] ?? panel;
 
       if (focusable.length === 0) {
         event.preventDefault();
@@ -95,7 +114,7 @@ export default function Modal({ isOpen, onClose, onClosed, title, children }: Mo
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [mounted, onClose]);
+  }, [mounted]);
 
   if (!mounted) {
     return null;
